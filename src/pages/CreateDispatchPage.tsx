@@ -40,7 +40,7 @@ import { useTheme } from '@mui/material/styles';
 import type { Dayjs } from 'dayjs';
 import { forwardRef, useCallback, useEffect, useMemo, useState, type InputHTMLAttributes } from 'react';
 import type { SvgIconProps } from '@mui/material/SvgIcon';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const sidebarAssets = {
   wordmark: 'https://www.figma.com/api/mcp/asset/e7c0691a-d380-4140-a650-1760e676249f',
@@ -105,10 +105,7 @@ const CONTACT_DIRECTORY_USERS: ContactDirectoryUser[] = [
 
 const CONTACT_ROLE_ROWS = [
   { id: 'decision_maker', label: 'Decision Maker', color: '#9747FF' },
-  { id: 'end_user', label: 'End User', color: '#146DFF' },
   { id: 'billing', label: 'Billing', color: '#2E964B' },
-  { id: 'blocker', label: 'Blocker', color: '#D9534F' },
-  { id: 'influencer', label: 'Influencer', color: '#F4780B' },
 ] as const;
 
 /** Figma 44329:162823 — Affiliation (multi-select pills). */
@@ -276,8 +273,8 @@ function LabeledDatePicker(props: {
   );
 }
 
-function SidebarContent(props: { showCollapseChevron?: boolean }) {
-  const { showCollapseChevron = true } = props;
+function SidebarContent(props: { showCollapseChevron?: boolean; activeIconAlt?: string }) {
+  const { showCollapseChevron = true, activeIconAlt } = props;
   return (
     <Box
       sx={{
@@ -310,7 +307,7 @@ function SidebarContent(props: { showCollapseChevron?: boolean }) {
                 borderRadius: 2,
                 display: 'grid',
                 placeItems: 'center',
-                bgcolor: i.selected ? '#2DA551' : 'transparent',
+                bgcolor: i.alt === activeIconAlt ? '#2DA551' : 'transparent',
               }}
             >
               <Box
@@ -349,10 +346,17 @@ function SidebarContent(props: { showCollapseChevron?: boolean }) {
 
 export function CreateDispatchPage() {
   const theme = useTheme();
+  const location = useLocation();
   const navigate = useNavigate();
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
   const isSmUp = useMediaQuery(theme.breakpoints.up('sm'));
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  // Sidebar icon highlight for this screen.
+  const activeSidebarIconAlt = useMemo(() => {
+    // This screen is in the "Deals/Contracts" workflow; highlight the 3rd icon.
+    return 'deal';
+  }, [location.pathname]);
 
   const industryVerticalOptions = useMemo<UiOption[]>(
     () => [
@@ -368,10 +372,9 @@ export function CreateDispatchPage() {
 
   const occurrenceUnitOptions = useMemo<UiOption[]>(
     () => [
-      { label: 'Select week, month, or day', value: '' },
+      { label: 'Select week or month', value: '' },
       { label: 'Week', value: 'Week' },
       { label: 'Month', value: 'Month' },
-      { label: 'Day', value: 'Day' },
     ],
     [],
   );
@@ -388,10 +391,7 @@ export function CreateDispatchPage() {
   const [contactPhone, setContactPhone] = useState('');
   const [contactUserByRole, setContactUserByRole] = useState<Record<string, string>>(() => ({
     decision_maker: '',
-    end_user: '',
     billing: '',
-    blocker: '',
-    influencer: '',
   }));
 
   const [contractStartDate, setContractStartDate] = useState<Dayjs | null>(null);
@@ -569,7 +569,7 @@ export function CreateDispatchPage() {
     if (!serviceStartDate) e.serviceStartDate = 'Service start date is required.';
     const n = Number.parseInt(occurrenceEvery, 10);
     if (!occurrenceEvery.trim() || Number.isNaN(n) || n < 1) e.occurrenceEvery = 'Enter a valid number (1+).';
-    if (!occurrenceUnit.trim()) e.occurrenceUnit = 'Select week, month, or day.';
+    if (!occurrenceUnit.trim()) e.occurrenceUnit = 'Select week or month.';
     if (!serviceLabel.trim()) e.serviceLabel = 'Service name is required.';
     if (serviceProducts.length === 0) e.serviceProducts = 'Add at least one product.';
     for (let i = 0; i < serviceProducts.length; i++) {
@@ -627,10 +627,7 @@ export function CreateDispatchPage() {
     setContactPhone('');
     setContactUserByRole({
       decision_maker: '',
-      end_user: '',
       billing: '',
-      blocker: '',
-      influencer: '',
     });
     setContractStartDate(null);
     setCycleReferenceDate(null);
@@ -703,7 +700,7 @@ export function CreateDispatchPage() {
       serviceOccurrence: { every: Number.parseInt(occurrenceEvery, 10), unit: occurrenceUnit, jobDays: [] },
       service: {
         label: serviceLabel,
-        priceSummary: `${serviceProductsSubtotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })} / ${occurrenceUnit === 'Day' ? 'day' : occurrenceUnit === 'Month' ? 'monthly' : 'weekly'}`,
+        priceSummary: `${serviceProductsSubtotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })} / ${occurrenceUnit === 'Month' ? 'monthly' : occurrenceUnit === 'Week' ? 'weekly' : '—'}`,
         resourceType,
         invoiceLineItem,
         serviceStartingDate: serviceStartDate?.toISOString(),
@@ -830,7 +827,7 @@ export function CreateDispatchPage() {
             minWidth: 0,
           }}
         >
-          <SidebarContent />
+          <SidebarContent activeIconAlt={activeSidebarIconAlt} />
         </Box>
       ) : null}
 
@@ -844,7 +841,7 @@ export function CreateDispatchPage() {
           },
         }}
       >
-        <SidebarContent showCollapseChevron={false} />
+        <SidebarContent showCollapseChevron={false} activeIconAlt={activeSidebarIconAlt} />
       </Drawer>
 
       <Box
@@ -1817,9 +1814,7 @@ export function CreateDispatchPage() {
                           ? 'monthly'
                           : occurrenceUnit === 'Week'
                             ? 'weekly'
-                            : occurrenceUnit === 'Day'
-                              ? 'daily'
-                              : '—'}
+                            : '—'}
                       </Typography>
                     </Box>
                     {fieldErrors.serviceProducts ? (
