@@ -18,6 +18,7 @@ import {
   Stack,
   TextField,
   Toolbar,
+  Tooltip,
   Typography,
   useMediaQuery,
 } from '@mui/material';
@@ -25,15 +26,28 @@ import Grid from '@mui/material/Grid';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import AddOutlined from '@mui/icons-material/AddOutlined';
 import CalendarTodayOutlined from '@mui/icons-material/CalendarTodayOutlined';
+import CloseOutlined from '@mui/icons-material/CloseOutlined';
 import DeleteOutlineOutlined from '@mui/icons-material/DeleteOutlineOutlined';
+import DashboardOutlined from '@mui/icons-material/DashboardOutlined';
 import DescriptionOutlined from '@mui/icons-material/DescriptionOutlined';
 import EditOutlined from '@mui/icons-material/EditOutlined';
 import KeyboardArrowDown from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowDownOutlined from '@mui/icons-material/KeyboardArrowDownOutlined';
+import LocationOnOutlined from '@mui/icons-material/LocationOnOutlined';
 import NotificationsNoneOutlined from '@mui/icons-material/NotificationsNoneOutlined';
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded';
 import PersonOutlineOutlined from '@mui/icons-material/PersonOutlineOutlined';
 import Refresh from '@mui/icons-material/Refresh';
+import ApartmentOutlined from '@mui/icons-material/ApartmentOutlined';
+import LocalOfferOutlined from '@mui/icons-material/LocalOfferOutlined';
+import ContactsOutlined from '@mui/icons-material/ContactsOutlined';
+import PublicOutlined from '@mui/icons-material/PublicOutlined';
+import PeopleOutlineOutlined from '@mui/icons-material/PeopleOutlineOutlined';
+import ChecklistOutlined from '@mui/icons-material/ChecklistOutlined';
+import ViewKanbanOutlined from '@mui/icons-material/ViewKanbanOutlined';
+import TravelExploreOutlined from '@mui/icons-material/TravelExploreOutlined';
+import SettingsOutlined from '@mui/icons-material/SettingsOutlined';
+import ChevronLeft from '@mui/icons-material/ChevronLeft';
 import { AddressAutocompleteField } from '../components/createContract/AddressAutocompleteField';
 import { FormSection } from '../components/createContract/FormSection';
 import { useTheme } from '@mui/material/styles';
@@ -42,24 +56,20 @@ import { forwardRef, useCallback, useEffect, useMemo, useState, type InputHTMLAt
 import type { SvgIconProps } from '@mui/material/SvgIcon';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-const sidebarAssets = {
-  wordmark: 'https://www.figma.com/api/mcp/asset/e7c0691a-d380-4140-a650-1760e676249f',
-  navCollapse: 'https://www.figma.com/api/mcp/asset/bae78b8b-e290-4421-a3e6-5dd454611f36',
-  icons: [
-    { src: 'https://www.figma.com/api/mcp/asset/b532a744-bcae-4c88-b26e-c6ec8f6d8b33', selected: false, alt: 'dashboard' },
-    { src: 'https://www.figma.com/api/mcp/asset/e512386d-8409-41dd-930b-6c8133bab4f6', selected: false, alt: 'company' },
-    { src: 'https://www.figma.com/api/mcp/asset/00675fae-8b13-4757-a5d9-bbee1c6cc186', selected: false, alt: 'map-pin' },
-    { src: 'https://www.figma.com/api/mcp/asset/e8ff504a-83fd-4d63-b4f9-597e8e401e18', selected: false, alt: 'deal' },
-    { src: 'https://www.figma.com/api/mcp/asset/faa15863-9511-4f6d-9852-193da13e2bb9', selected: true, alt: 'file-text' },
-    { src: 'https://www.figma.com/api/mcp/asset/76426b60-92a2-42dc-ba1f-7f8e2faf70d1', selected: false, alt: 'contact' },
-    { src: 'https://www.figma.com/api/mcp/asset/ef80e71b-e94d-4a11-95e2-742d03900860', selected: false, alt: 'public' },
-    { src: 'https://www.figma.com/api/mcp/asset/322a696e-79c1-4ac3-a824-ac6bd624f89b', selected: false, alt: 'user' },
-    { src: 'https://www.figma.com/api/mcp/asset/1f20b451-1f45-4e8d-ae3a-740ec01ba9e5', selected: false, alt: 'checklist' },
-    { src: 'https://www.figma.com/api/mcp/asset/6768af15-b2db-49e0-b4f3-e72a594eb60a', selected: false, alt: 'trello' },
-    { src: 'https://www.figma.com/api/mcp/asset/f1ee7e19-0a1f-49a0-bd01-39cb0dba392c', selected: false, alt: 'scouting' },
-    { src: 'https://www.figma.com/api/mcp/asset/33ef4ecd-9fee-4064-bf65-8a4895978ba3', selected: false, alt: 'settings' },
-  ],
-};
+const sidebarIcons = [
+  { alt: 'dashboard', Icon: DashboardOutlined },
+  { alt: 'company', Icon: ApartmentOutlined },
+  { alt: 'map-pin', Icon: LocationOnOutlined },
+  { alt: 'deal', Icon: LocalOfferOutlined },
+  { alt: 'file-text', Icon: DescriptionOutlined },
+  { alt: 'contact', Icon: ContactsOutlined },
+  { alt: 'public', Icon: PublicOutlined },
+  { alt: 'user', Icon: PeopleOutlineOutlined },
+  { alt: 'checklist', Icon: ChecklistOutlined },
+  { alt: 'trello', Icon: ViewKanbanOutlined },
+  { alt: 'scouting', Icon: TravelExploreOutlined },
+  { alt: 'settings', Icon: SettingsOutlined },
+] as const;
 
 /** Figma — header profile (node 1117:24765); match design until API provides avatars. */
 const createContractHeaderAvatar =
@@ -127,19 +137,11 @@ type SigneeCard = {
   id: string;
   name: string;
   role: 'Sales Person' | 'Client';
+  title?: string;
   email?: string;
   hasSignature?: boolean;
   signatureText?: string;
 };
-
-/** Placeholder names when adding a signee (replaces generic “New signee”). */
-const DUMMY_SIGNEE_NAMES = [
-  'Jordan Ellis',
-  'Sam Parker',
-  'Riley Chen',
-  'Casey Brooks',
-  'Morgan Lee',
-] as const;
 
 function parseMoneyInput(s: string) {
   const n = parseFloat(s.replace(/[^0-9.]/g, ''));
@@ -147,7 +149,7 @@ function parseMoneyInput(s: string) {
 }
 
 function LabeledField(props: {
-  label: string;
+  label?: string;
   required?: boolean;
   width?: number | string;
   placeholder?: string;
@@ -173,10 +175,12 @@ function LabeledField(props: {
       : undefined;
   return (
     <Stack spacing={0.75} sx={{ width: props.width ?? '100%' }}>
-      <Typography sx={figmaLabelSx}>
-        {props.label}
-        {props.required ? <Box component="span" sx={{ color: '#B32318' }}> *</Box> : null}
-      </Typography>
+      {props.label ? (
+        <Typography sx={figmaLabelSx}>
+          {props.label}
+          {props.required ? <Box component="span" sx={{ color: '#B32318' }}> *</Box> : null}
+        </Typography>
+      ) : null}
       <TextField
         fullWidth
         size="small"
@@ -291,31 +295,33 @@ function SidebarContent(props: { showCollapseChevron?: boolean; activeIconAlt?: 
       }}
     >
       <Stack spacing={0} sx={{ alignItems: 'center', gap: '12px' }}>
-        <Box
-          component="img"
-          src={sidebarAssets.wordmark}
-          alt="Filtergo"
-          sx={{ width: { xs: 52, md: 58 }, height: 18, mt: 0.5 }}
-        />
+        <Typography
+          component="div"
+          sx={{
+            mt: 0.5,
+            fontSize: 14,
+            fontWeight: 800,
+            letterSpacing: 0.5,
+            color: '#FFFFFF',
+            lineHeight: '18px',
+          }}
+        >
+          Filtergo
+        </Typography>
         <Stack spacing={0.5} sx={{ alignItems: 'center' }}>
-          {sidebarAssets.icons.map((i) => (
+          {sidebarIcons.map(({ alt, Icon }) => (
             <Box
-              key={i.alt}
+              key={alt}
               sx={{
                 width: { xs: 40, md: 44 },
                 height: { xs: 40, md: 44 },
                 borderRadius: 2,
                 display: 'grid',
                 placeItems: 'center',
-                bgcolor: i.alt === activeIconAlt ? '#2DA551' : 'transparent',
+                bgcolor: alt === activeIconAlt ? '#2DA551' : 'transparent',
               }}
             >
-              <Box
-                component="img"
-                src={i.src}
-                alt={i.alt}
-                sx={{ width: { xs: 18, md: 20 }, height: { xs: 18, md: 20 } }}
-              />
+              <Icon sx={{ fontSize: { xs: 18, md: 20 }, color: '#FFFFFF' }} />
             </Box>
           ))}
         </Stack>
@@ -333,11 +339,17 @@ function SidebarContent(props: { showCollapseChevron?: boolean; activeIconAlt?: 
           }}
         >
           <Box
-            component="img"
-            src={sidebarAssets.navCollapse}
-            alt="collapse"
-            sx={{ width: 28, height: 28 }}
-          />
+            sx={{
+              width: 28,
+              height: 28,
+              borderRadius: 999,
+              border: '1px solid rgba(255,255,255,0.18)',
+              display: 'grid',
+              placeItems: 'center',
+            }}
+          >
+            <ChevronLeft sx={{ fontSize: 20, color: '#FFFFFF' }} />
+          </Box>
         </Box>
       ) : null}
     </Box>
@@ -438,12 +450,9 @@ export function CreateDispatchPage() {
   );
 
   const [billingType, setBillingType] = useState('');
+  const [cycleReferenceDateInput, setCycleReferenceDateInput] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Credit Card');
   const [paymentTerms, setPaymentTerms] = useState('');
-  const [cardHolderName, setCardHolderName] = useState('');
-  const [cardNumber, setCardNumber] = useState('');
-  const [cardCvv, setCardCvv] = useState('');
-  const [cardExpiry, setCardExpiry] = useState('');
   const billingTypeOptions = useMemo<UiOption[]>(
     () => [
       { label: 'Select billing type', value: '' },
@@ -472,13 +481,15 @@ export function CreateDispatchPage() {
   const [billFirstName, setBillFirstName] = useState('');
   const [billLastName, setBillLastName] = useState('');
   const [billEmail, setBillEmail] = useState('');
-  const [billPhone, setBillPhone] = useState('');
+  const [billPhoneCountryCode, setBillPhoneCountryCode] = useState('+1');
+  const [billPhoneNumber, setBillPhoneNumber] = useState('');
   const [billCountry, setBillCountry] = useState('');
   const [billCity, setBillCity] = useState('');
   const [billState, setBillState] = useState('');
   const [billZip, setBillZip] = useState('');
   const [billAddress, setBillAddress] = useState('');
   const [billingSameAsContactDetails, setBillingSameAsContactDetails] = useState(false);
+  const [billingAddressSameAsProperty, setBillingAddressSameAsProperty] = useState(false);
   const countryOptions = useMemo<UiOption[]>(
     () => [
       { label: 'Select country', value: '' },
@@ -518,6 +529,24 @@ export function CreateDispatchPage() {
   const [signContractModalSigneeId, setSignContractModalSigneeId] = useState<string | null>(null);
   const [modalSignaturePreview, setModalSignaturePreview] = useState('');
 
+  const [addSigneeRowOpen, setAddSigneeRowOpen] = useState(false);
+  const [newSigneeName, setNewSigneeName] = useState('');
+  const [newSigneeEmail, setNewSigneeEmail] = useState('');
+  const [newSigneeTitle, setNewSigneeTitle] = useState('');
+
+  const [editingSigneeId, setEditingSigneeId] = useState<string | null>(null);
+  const [editingSigneeName, setEditingSigneeName] = useState('');
+  const [editingSigneeEmail, setEditingSigneeEmail] = useState('');
+  const [editingSigneeTitle, setEditingSigneeTitle] = useState('');
+
+  const [createContactModalOpen, setCreateContactModalOpen] = useState(false);
+  const [createContactEmail, setCreateContactEmail] = useState('');
+  const [createContactFirstName, setCreateContactFirstName] = useState('');
+  const [createContactLastName, setCreateContactLastName] = useState('');
+  const [createContactJobTitle, setCreateContactJobTitle] = useState('');
+  const [createContactCountryCode, setCreateContactCountryCode] = useState('+1');
+  const [createContactPhoneNumber, setCreateContactPhoneNumber] = useState('');
+
   const signContractSignee = useMemo(
     () => (signContractModalSigneeId ? signeeCards.find((c) => c.id === signContractModalSigneeId) ?? null : null),
     [signContractModalSigneeId, signeeCards],
@@ -537,8 +566,15 @@ export function CreateDispatchPage() {
     setBillFirstName(parts[0] ?? '');
     setBillLastName(parts.slice(1).join(' ') || '');
     setBillEmail(contactEmail);
-    setBillPhone(contactPhone);
+    setBillPhoneCountryCode('+1');
+    setBillPhoneNumber(contactPhone);
   }, [billingSameAsContactDetails, contactName, contactEmail, contactPhone]);
+
+  useEffect(() => {
+    if (!billingAddressSameAsProperty) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- billing address mirrors property when enabled
+    setBillAddress(propertyAddress);
+  }, [billingAddressSameAsProperty, propertyAddress]);
 
   const clearFieldError = useCallback((key: string) => {
     setFieldErrors((prev) => {
@@ -580,17 +616,6 @@ export function CreateDispatchPage() {
       if (!p.quantity.trim() || Number.isNaN(qn) || qn < 1) e[`product_${i}_quantity`] = 'Enter quantity (1+).';
     }
 
-    if (paymentMethod === 'Credit Card') {
-      if (!cardHolderName.trim()) e.cardHolderName = 'Card holder name is required.';
-      const cardDigits = cardNumber.replace(/\D/g, '');
-      if (!cardDigits) e.cardNumber = 'Credit card number is required.';
-      else if (cardDigits.length < 13 || cardDigits.length > 19) e.cardNumber = 'Enter a valid card number (13–19 digits).';
-      if (!cardCvv.trim()) e.cardCvv = 'CVV is required.';
-      else if (!/^\d{3,4}$/.test(cardCvv.trim())) e.cardCvv = 'Enter 3 or 4 digits.';
-      if (!cardExpiry.trim()) e.cardExpiry = 'Expiry is required.';
-      else if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(cardExpiry.trim())) e.cardExpiry = 'Use MM/YY format.';
-    }
-
     setFieldErrors(e);
     return Object.keys(e).length === 0;
   }, [
@@ -609,10 +634,6 @@ export function CreateDispatchPage() {
     serviceLabel,
     serviceProducts,
     paymentMethod,
-    cardHolderName,
-    cardNumber,
-    cardCvv,
-    cardExpiry,
   ]);
 
   const resetForm = useCallback(() => {
@@ -643,25 +664,39 @@ export function CreateDispatchPage() {
     setPreferredEndTime(null);
     setServiceProducts(DEFAULT_SERVICE_PRODUCTS.map((p) => ({ ...p })));
     setBillingType('');
+    setCycleReferenceDateInput('');
     setPaymentMethod('Credit Card');
     setPaymentTerms('');
-    setCardHolderName('');
-    setCardNumber('');
-    setCardCvv('');
-    setCardExpiry('');
     setBillFirstName('');
     setBillLastName('');
     setBillEmail('');
-    setBillPhone('');
+    setBillPhoneCountryCode('+1');
+    setBillPhoneNumber('');
     setBillCountry('');
     setBillCity('');
     setBillState('');
     setBillZip('');
     setBillAddress('');
     setBillingSameAsContactDetails(false);
+    setBillingAddressSameAsProperty(false);
     setSigneeCards([]);
     setSignContractModalSigneeId(null);
     setModalSignaturePreview('');
+    setAddSigneeRowOpen(false);
+    setNewSigneeName('');
+    setNewSigneeEmail('');
+    setNewSigneeTitle('');
+    setEditingSigneeId(null);
+    setEditingSigneeName('');
+    setEditingSigneeEmail('');
+    setEditingSigneeTitle('');
+    setCreateContactModalOpen(false);
+    setCreateContactEmail('');
+    setCreateContactFirstName('');
+    setCreateContactLastName('');
+    setCreateContactJobTitle('');
+    setCreateContactCountryCode('+1');
+    setCreateContactPhoneNumber('');
   }, []);
 
   const handleSubmit = (ev: React.FormEvent) => {
@@ -714,7 +749,9 @@ export function CreateDispatchPage() {
         firstName: billFirstName,
         lastName: billLastName,
         email: billEmail,
-        phone: billPhone,
+        phone: billPhoneNumber.trim()
+          ? `${billPhoneCountryCode} ${billPhoneNumber.trim()}`
+          : '',
         country: billCountry,
         city: billCity,
         state: billState,
@@ -722,19 +759,10 @@ export function CreateDispatchPage() {
         address: billAddress,
       },
       payment: {
+        cycleReferenceDate: cycleReferenceDateInput,
         billingType,
         paymentMethod,
         paymentTerms,
-        ...(paymentMethod === 'Credit Card'
-          ? {
-              card: {
-                holderName: cardHolderName.trim(),
-                number: cardNumber.replace(/\D/g, ''),
-                cvv: cardCvv.trim(),
-                expiry: cardExpiry.trim(),
-              },
-            }
-          : {}),
       },
       signees: signeeCards,
     };
@@ -1337,7 +1365,14 @@ export function CreateDispatchPage() {
                               select
                               name={`contactRole_${row.id}`}
                               value={value}
-                              onChange={(e) => handleContactRoleUserChange(row.id, e.target.value)}
+                              onChange={(e) => {
+                                const next = e.target.value;
+                                if ((row.id === 'decision_maker' || row.id === 'billing') && next === '__create_new_contact__') {
+                                  setCreateContactModalOpen(true);
+                                  return;
+                                }
+                                handleContactRoleUserChange(row.id, next);
+                              }}
                               size="small"
                               fullWidth
                               error={Boolean(decisionMakerError)}
@@ -1384,11 +1419,26 @@ export function CreateDispatchPage() {
                                 },
                               }}
                             >
-                              <MenuItem value="">
-                                <Typography sx={{ fontSize: 14, color: '#CCCCCC', fontStyle: 'italic' }}>
-                                  {placeholder}
-                                </Typography>
-                              </MenuItem>
+                              {row.id === 'decision_maker' || row.id === 'billing' ? (
+                                <MenuItem
+                                  value="__create_new_contact__"
+                                  sx={{
+                                    justifyContent: 'center',
+                                    color: 'primary.main',
+                                  }}
+                                >
+                                  <Typography sx={{ width: '100%', textAlign: 'center', fontSize: 14, fontWeight: 500, color: 'inherit' }}>
+                                    Create new contact
+                                  </Typography>
+                                </MenuItem>
+                              ) : null}
+                              {row.id !== 'decision_maker' && row.id !== 'billing' ? (
+                                <MenuItem value="">
+                                  <Typography sx={{ fontSize: 14, color: '#CCCCCC', fontStyle: 'italic' }}>
+                                    {placeholder}
+                                  </Typography>
+                                </MenuItem>
+                              ) : null}
                               {CONTACT_DIRECTORY_USERS.map((u) => (
                                 <MenuItem key={u.id} value={u.id}>
                                   <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 0.75 }}>
@@ -1841,7 +1891,8 @@ export function CreateDispatchPage() {
                             setBillFirstName(parts[0] ?? '');
                             setBillLastName(parts.slice(1).join(' ') || '');
                             setBillEmail(contactEmail);
-                            setBillPhone(contactPhone);
+                            setBillPhoneCountryCode('+1');
+                            setBillPhoneNumber(contactPhone);
                           }
                         }}
                       />
@@ -1889,14 +1940,105 @@ export function CreateDispatchPage() {
                     />
                   </Grid>
                   <Grid size={{ xs: 12, md: 4 }}>
+                    <Stack spacing={0.75} sx={{ width: '100%' }}>
+                      <Typography sx={figmaLabelSx}>
+                        Phone number
+                        <Box component="span" sx={{ color: '#B32318' }}>
+                          {' '}
+                          *
+                        </Box>
+                      </Typography>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        variant="outlined"
+                        placeholder="Phone number"
+                        value={billPhoneNumber}
+                        onChange={(e) => setBillPhoneNumber(e.target.value)}
+                        disabled={billingSameAsContactDetails}
+                        sx={[
+                          figmaTextFieldSx,
+                          {
+                            '& .MuiOutlinedInput-root': { minHeight: 36, height: 36 },
+                            '& .MuiInputAdornment-root': { mr: 0.75 },
+                          },
+                        ]}
+                        slotProps={{
+                          input: {
+                            startAdornment: (
+                              <InputAdornment position="start" sx={{ mr: 0.75 }}>
+                                <TextField
+                                  select
+                                  variant="standard"
+                                  value={billPhoneCountryCode}
+                                  onChange={(e) => setBillPhoneCountryCode(e.target.value)}
+                                  disabled={billingSameAsContactDetails}
+                                  sx={{
+                                    minWidth: 54,
+                                    '& .MuiInputBase-root': { fontSize: 14, lineHeight: '24px' },
+                                    '& .MuiInput-underline:before': { borderBottom: 'none' },
+                                    '& .MuiInput-underline:after': { borderBottom: 'none' },
+                                    '& .MuiInput-underline:hover:not(.Mui-disabled):before': { borderBottom: 'none' },
+                                    '& .MuiSelect-nativeInput': { width: 54 },
+                                    '& .MuiSelect-select': {
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: 0.75,
+                                      pr: '20px',
+                                    },
+                                    '& .MuiSelect-icon': { right: 4 },
+                                  }}
+                                  slotProps={{ select: { IconComponent: FieldSelectChevronIcon } }}
+                                >
+                                  <MenuItem value="+1">🇺🇸 +1</MenuItem>
+                                  <MenuItem value="+44">🇬🇧 +44</MenuItem>
+                                  <MenuItem value="+92">🇵🇰 +92</MenuItem>
+                                  <MenuItem value="+91">🇮🇳 +91</MenuItem>
+                                </TextField>
+                              </InputAdornment>
+                            ),
+                          },
+                          htmlInput: { inputMode: 'tel', autoComplete: 'tel' },
+                        }}
+                      />
+                    </Stack>
+                  </Grid>
+
+                  <Grid size={12}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
+                      <Typography sx={{ fontSize: 14, fontWeight: 600, lineHeight: '20px', color: '#262527' }}>
+                        Billing address
+                      </Typography>
+                      <FormControlLabel
+                        sx={{ m: 0, alignItems: 'center', flexShrink: 0 }}
+                        control={
+                          <Checkbox
+                            size="small"
+                            checked={billingAddressSameAsProperty}
+                            onChange={(_, checked) => {
+                              setBillingAddressSameAsProperty(checked);
+                              if (checked) setBillAddress(propertyAddress);
+                            }}
+                          />
+                        }
+                        label={
+                          <Typography sx={{ fontSize: 14, lineHeight: '20px', color: '#262527' }}>
+                            Same as property address
+                          </Typography>
+                        }
+                      />
+                    </Box>
+                  </Grid>
+
+                  <Grid size={12}>
                     <LabeledField
-                      name="billPhone"
-                      label="Phone"
+                      name="billAddress"
+                      label="Address"
                       required
-                      placeholder="Add phone (e.g. +1-555-0100)"
-                      value={billPhone}
-                      onChange={setBillPhone}
-                      disabled={billingSameAsContactDetails}
+                      placeholder="Enter billing street, city, state, ZIP"
+                      value={billAddress}
+                      onChange={setBillAddress}
+                      disabled={billingAddressSameAsProperty}
                     />
                   </Grid>
                   <Grid size={{ xs: 12, md: 4 }}>
@@ -1918,22 +2060,21 @@ export function CreateDispatchPage() {
                       onChange={setBillZip}
                     />
                   </Grid>
-                  <Grid size={12}>
-                    <LabeledField
-                      name="billAddress"
-                      label="Address"
-                      required
-                      placeholder="Enter billing street, city, state, ZIP"
-                      value={billAddress}
-                      onChange={setBillAddress}
-                    />
-                  </Grid>
                 </Grid>
               </FormSection>
 
               <FormSection title="Payment">
                 <Grid container spacing={2}>
-                  <Grid size={{ xs: 12, md: 4 }}>
+                  <Grid size={{ xs: 12, md: 3 }}>
+                    <LabeledField
+                      name="cycleReferenceDate"
+                      label="Cycle Reference Date"
+                      placeholder="Enter cycle reference date"
+                      value={cycleReferenceDateInput}
+                      onChange={setCycleReferenceDateInput}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 3 }}>
                     <LabeledField
                       name="billingType"
                       label="Billing type"
@@ -1944,7 +2085,7 @@ export function CreateDispatchPage() {
                       options={billingTypeOptions}
                     />
                   </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
+                  <Grid size={{ xs: 12, md: 3 }}>
                     <LabeledField
                       name="paymentMethod"
                       label="Payment method"
@@ -1952,16 +2093,12 @@ export function CreateDispatchPage() {
                       value={paymentMethod}
                       onChange={(v) => {
                         setPaymentMethod(v);
-                        clearFieldError('cardHolderName');
-                        clearFieldError('cardNumber');
-                        clearFieldError('cardCvv');
-                        clearFieldError('cardExpiry');
                       }}
                       select
                       options={paymentMethodOptions}
                     />
                   </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
+                  <Grid size={{ xs: 12, md: 3 }}>
                     <LabeledField
                       name="paymentTerms"
                       label="Payment terms"
@@ -1974,69 +2111,29 @@ export function CreateDispatchPage() {
                   </Grid>
                   {paymentMethod === 'Credit Card' ? (
                     <>
-                      <Grid size={{ xs: 12, sm: 3 }}>
-                        <LabeledField
-                          name="cardHolderName"
-                          label="Card holder name"
-                          required
-                          placeholder="Add name as shown on card"
-                          value={cardHolderName}
-                          onChange={(v) => {
-                            setCardHolderName(v);
-                            clearFieldError('cardHolderName');
+                      <Grid size={{ xs: 12 }}>
+                        <Button
+                          type="button"
+                          variant="text"
+                          fullWidth
+                          startIcon={<AddOutlined />}
+                          sx={{
+                            height: 36,
+                            minHeight: 36,
+                            px: '14px',
+                            py: 0,
+                            fontSize: 14,
+                            fontWeight: 500,
+                            lineHeight: '20px',
+                            color: '#444446',
+                            textTransform: 'none',
+                            borderRadius: '8px',
+                            gap: 1,
+                            '&:hover': { backgroundColor: 'rgba(0,0,0,0.04)' },
                           }}
-                          error={Boolean(fieldErrors.cardHolderName)}
-                          helperText={fieldErrors.cardHolderName}
-                          htmlInput={{ autoComplete: 'cc-name' }}
-                        />
-                      </Grid>
-                      <Grid size={{ xs: 12, sm: 3 }}>
-                        <LabeledField
-                          name="cardNumber"
-                          label="Credit card number"
-                          required
-                          placeholder="Enter card number"
-                          value={cardNumber}
-                          onChange={(v) => {
-                            setCardNumber(v);
-                            clearFieldError('cardNumber');
-                          }}
-                          error={Boolean(fieldErrors.cardNumber)}
-                          helperText={fieldErrors.cardNumber}
-                          htmlInput={{ inputMode: 'numeric', autoComplete: 'cc-number', maxLength: 23 }}
-                        />
-                      </Grid>
-                      <Grid size={{ xs: 12, sm: 3 }}>
-                        <LabeledField
-                          name="cardExpiry"
-                          label="Expiry"
-                          required
-                          placeholder="MM/YY"
-                          value={cardExpiry}
-                          onChange={(v) => {
-                            setCardExpiry(v);
-                            clearFieldError('cardExpiry');
-                          }}
-                          error={Boolean(fieldErrors.cardExpiry)}
-                          helperText={fieldErrors.cardExpiry}
-                          htmlInput={{ inputMode: 'numeric', autoComplete: 'cc-exp', maxLength: 5 }}
-                        />
-                      </Grid>
-                      <Grid size={{ xs: 12, sm: 3 }}>
-                        <LabeledField
-                          name="cardCvv"
-                          label="CVV"
-                          required
-                          placeholder="123"
-                          value={cardCvv}
-                          onChange={(v) => {
-                            setCardCvv(v);
-                            clearFieldError('cardCvv');
-                          }}
-                          error={Boolean(fieldErrors.cardCvv)}
-                          helperText={fieldErrors.cardCvv}
-                          htmlInput={{ inputMode: 'numeric', autoComplete: 'cc-csc', maxLength: 4 }}
-                        />
+                        >
+                          Add Payment Method
+                        </Button>
                       </Grid>
                     </>
                   ) : null}
@@ -2051,7 +2148,7 @@ export function CreateDispatchPage() {
                       <Box
                         sx={{
                           display: 'grid',
-                          gridTemplateColumns: '302px 247px auto 1fr',
+                          gridTemplateColumns: '260px 200px 220px auto 1fr',
                           columnGap: 2,
                           alignItems: 'start',
                           width: '100%',
@@ -2059,6 +2156,7 @@ export function CreateDispatchPage() {
                       >
                         <Typography sx={{ color: '#86868B', fontSize: 12, fontWeight: 400, lineHeight: '20px' }}>Name</Typography>
                         <Typography sx={{ color: '#86868B', fontSize: 12, fontWeight: 400, lineHeight: '20px' }}>Title</Typography>
+                        <Typography sx={{ color: '#86868B', fontSize: 12, fontWeight: 400, lineHeight: '20px' }}>Email</Typography>
                         <Typography sx={{ color: '#86868B', fontSize: 12, fontWeight: 400, lineHeight: '20px' }}>Signee</Typography>
                         <Box />
                       </Box>
@@ -2068,50 +2166,91 @@ export function CreateDispatchPage() {
                             <Box
                               sx={{
                                 display: 'grid',
-                                gridTemplateColumns: '302px 247px auto 1fr',
+                                gridTemplateColumns: '260px 200px 220px auto 1fr',
                                 columnGap: 2,
-                                alignItems: 'center',
+                                alignItems: editingSigneeId === s.id ? 'end' : 'center',
                                 width: '100%',
                               }}
                             >
-                              <Stack sx={{ flexDirection: 'row', alignItems: 'center', gap: 2, minWidth: 0 }}>
-                                <Avatar
-                                  sx={{
-                                    width: 40,
-                                    height: 40,
-                                    flexShrink: 0,
-                                    bgcolor: '#EFF8EF',
-                                  }}
-                                >
-                                  <PersonOutlineOutlined sx={{ fontSize: 22, color: '#2DA551' }} />
-                                </Avatar>
-                                <Typography
-                                  sx={{
-                                    fontSize: 14,
-                                    fontWeight: 500,
-                                    lineHeight: '20px',
-                                    color: '#262527',
-                                    whiteSpace: 'nowrap',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                  }}
-                                >
-                                  {s.name}
-                                </Typography>
-                              </Stack>
-                              <Typography
-                                sx={{
-                                  fontSize: 14,
-                                  fontWeight: 400,
-                                  lineHeight: '20px',
-                                  color: '#6A6A70',
-                                  whiteSpace: 'nowrap',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                }}
-                              >
-                                {s.role}
-                              </Typography>
+                              {editingSigneeId === s.id ? (
+                                <>
+                                  <LabeledField
+                                    name="editSigneeName"
+                                    label={undefined}
+                                    value={editingSigneeName}
+                                    onChange={setEditingSigneeName}
+                                    placeholder="Name"
+                                  />
+                                  <LabeledField
+                                    name="editSigneeTitle"
+                                    label={undefined}
+                                    value={editingSigneeTitle}
+                                    onChange={setEditingSigneeTitle}
+                                    placeholder="Title"
+                                  />
+                                  <LabeledField
+                                    name="editSigneeEmail"
+                                    label={undefined}
+                                    value={editingSigneeEmail}
+                                    onChange={setEditingSigneeEmail}
+                                    placeholder="Email"
+                                  />
+                                </>
+                              ) : (
+                                <>
+                                  <Stack sx={{ flexDirection: 'row', alignItems: 'center', gap: 2, minWidth: 0 }}>
+                                    <Avatar
+                                      sx={{
+                                        width: 40,
+                                        height: 40,
+                                        flexShrink: 0,
+                                        bgcolor: '#EFF8EF',
+                                      }}
+                                    >
+                                      <PersonOutlineOutlined sx={{ fontSize: 22, color: '#2DA551' }} />
+                                    </Avatar>
+                                    <Typography
+                                      sx={{
+                                        fontSize: 14,
+                                        fontWeight: 500,
+                                        lineHeight: '20px',
+                                        color: '#262527',
+                                        whiteSpace: 'nowrap',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                      }}
+                                    >
+                                      {s.name}
+                                    </Typography>
+                                  </Stack>
+                                  <Typography
+                                    sx={{
+                                      fontSize: 14,
+                                      fontWeight: 400,
+                                      lineHeight: '20px',
+                                      color: '#6A6A70',
+                                      whiteSpace: 'nowrap',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                    }}
+                                  >
+                                    {s.title?.trim() ? s.title.trim() : s.role}
+                                  </Typography>
+                                  <Typography
+                                    sx={{
+                                      fontSize: 14,
+                                      fontWeight: 400,
+                                      lineHeight: '20px',
+                                      color: '#6A6A70',
+                                      whiteSpace: 'nowrap',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                    }}
+                                  >
+                                    {s.email?.trim() ? s.email.trim() : 'dummy@signal.com'}
+                                  </Typography>
+                                </>
+                              )}
                               <Box
                                 sx={{
                                   bgcolor: '#EFF8EF',
@@ -2129,44 +2268,135 @@ export function CreateDispatchPage() {
                               <Stack
                                 sx={{
                                   flexDirection: 'row',
-                                  alignItems: 'center',
-                                  justifyContent: 'flex-end',
+                                  alignItems: editingSigneeId === s.id ? 'flex-start' : 'center',
+                                  justifyContent: 'center',
                                   gap: 1.75,
                                   minWidth: 0,
                                 }}
                               >
-                                <IconButton type="button" size="small" aria-label={`Edit ${s.name}`} sx={{ p: 0.5, color: '#6A6A70' }}>
-                                  <EditOutlined sx={{ fontSize: 16 }} />
-                                </IconButton>
-                                <Button
-                                  type="button"
-                                  variant="outlined"
-                                  size="small"
-                                  disableRipple
-                                  startIcon={<AddOutlined sx={{ fontSize: 16, color: '#6A6A70' }} />}
-                                  onClick={() => {
-                                    setSignContractModalSigneeId(s.id);
-                                    setModalSignaturePreview(s.name);
-                                  }}
-                                  sx={{
-                                    height: 32,
-                                    minHeight: 32,
-                                    px: 1,
-                                    py: 1,
-                                    borderRadius: '8px',
-                                    borderColor: '#F5F5F6',
-                                    bgcolor: '#F5F5F6',
-                                    color: '#6A6A70',
-                                    textTransform: 'none',
-                                    fontSize: 14,
-                                    fontWeight: 500,
-                                    lineHeight: '20px',
-                                    boxShadow: 'none',
-                                    '&:hover': { bgcolor: '#EBEBED', borderColor: '#EBEBED' },
-                                  }}
-                                >
-                                  Add Sign
-                                </Button>
+                                {editingSigneeId === s.id ? (
+                                  <>
+                                    <Tooltip title="Cancel" arrow>
+                                      <IconButton
+                                        type="button"
+                                        size="small"
+                                        aria-label="Cancel"
+                                        onClick={() => {
+                                          setEditingSigneeId(null);
+                                          setEditingSigneeName('');
+                                          setEditingSigneeEmail('');
+                                          setEditingSigneeTitle('');
+                                        }}
+                                        sx={{ p: 0.5, color: '#6A6A70' }}
+                                      >
+                                        <CloseOutlined sx={{ fontSize: 18 }} />
+                                      </IconButton>
+                                    </Tooltip>
+                                    <Tooltip title="Remove" arrow>
+                                      <IconButton
+                                        type="button"
+                                        size="small"
+                                        aria-label={`Remove ${s.name}`}
+                                        onClick={() => {
+                                          setSigneeCards((prev) => prev.filter((c) => c.id !== s.id));
+                                          setEditingSigneeId(null);
+                                          setEditingSigneeName('');
+                                          setEditingSigneeEmail('');
+                                          setEditingSigneeTitle('');
+                                        }}
+                                        sx={{ p: 0.5, color: '#B42318' }}
+                                      >
+                                        <DeleteOutlineOutlined sx={{ fontSize: 18 }} />
+                                      </IconButton>
+                                    </Tooltip>
+                                    <Button
+                                      type="button"
+                                      variant="contained"
+                                      size="small"
+                                      onClick={() => {
+                                        const name = editingSigneeName.trim();
+                                        if (!name) {
+                                          setSnackbar({ open: true, message: 'Please enter a name.', severity: 'error' });
+                                          return;
+                                        }
+                                        const email = editingSigneeEmail.trim();
+                                        const title = editingSigneeTitle.trim();
+                                        setSigneeCards((prev) =>
+                                          prev.map((c) =>
+                                            c.id === s.id
+                                              ? {
+                                                  ...c,
+                                                  name,
+                                                  email: email || undefined,
+                                                  title: title || undefined,
+                                                }
+                                              : c,
+                                          ),
+                                        );
+                                        setEditingSigneeId(null);
+                                        setEditingSigneeName('');
+                                        setEditingSigneeEmail('');
+                                        setEditingSigneeTitle('');
+                                      }}
+                                      sx={{
+                                        textTransform: 'none',
+                                        height: 36,
+                                        minHeight: 36,
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                      }}
+                                    >
+                                      Save
+                                    </Button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <IconButton
+                                      type="button"
+                                      size="small"
+                                      aria-label={`Edit ${s.name}`}
+                                      sx={{ p: 0.5, color: '#6A6A70' }}
+                                      onClick={() => {
+                                        setEditingSigneeId(s.id);
+                                        setEditingSigneeName(s.name);
+                                        setEditingSigneeEmail(s.email ?? '');
+                                        setEditingSigneeTitle(s.title ?? '');
+                                      }}
+                                    >
+                                      <EditOutlined sx={{ fontSize: 16 }} />
+                                    </IconButton>
+                                    <Button
+                                      type="button"
+                                      variant="outlined"
+                                      size="small"
+                                      disableRipple
+                                      startIcon={<AddOutlined sx={{ fontSize: 16, color: '#6A6A70' }} />}
+                                      onClick={() => {
+                                        setSignContractModalSigneeId(s.id);
+                                        setModalSignaturePreview(s.name);
+                                      }}
+                                      sx={{
+                                        height: 32,
+                                        minHeight: 32,
+                                        px: 1,
+                                        py: 1,
+                                        borderRadius: '8px',
+                                        borderColor: '#F5F5F6',
+                                        bgcolor: '#F5F5F6',
+                                        color: '#6A6A70',
+                                        textTransform: 'none',
+                                        fontSize: 14,
+                                        fontWeight: 500,
+                                        lineHeight: '20px',
+                                        boxShadow: 'none',
+                                        '&:hover': { bgcolor: '#EBEBED', borderColor: '#EBEBED' },
+                                      }}
+                                    >
+                                      Add Sign
+                                    </Button>
+                                  </>
+                                )}
                               </Stack>
                             </Box>
                             {sIdx < signeeCards.length - 1 ? (
@@ -2181,14 +2411,82 @@ export function CreateDispatchPage() {
                         No signees yet. Use Add Signee to add one.
                       </Typography>
                     )}
+                    {addSigneeRowOpen ? (
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          flexDirection: 'row',
+                          gap: 2,
+                          alignItems: 'flex-end',
+                          width: '100%',
+                        }}
+                      >
+                        <Box sx={{ width: 260, flexShrink: 0 }}>
+                          <LabeledField
+                            name="newSigneeName"
+                            label="Name"
+                            value={newSigneeName}
+                            onChange={setNewSigneeName}
+                            placeholder="Name"
+                          />
+                        </Box>
+                        <Box sx={{ width: 200, flexShrink: 0 }}>
+                          <LabeledField
+                            name="newSigneeTitle"
+                            label="Title"
+                            value={newSigneeTitle}
+                            onChange={setNewSigneeTitle}
+                            placeholder="Title"
+                          />
+                        </Box>
+                        <Box sx={{ width: 220, flexShrink: 0 }}>
+                          <LabeledField
+                            name="newSigneeEmail"
+                            label="Email"
+                            value={newSigneeEmail}
+                            onChange={setNewSigneeEmail}
+                            placeholder="Email"
+                          />
+                        </Box>
+                        <Box sx={{ flex: '1 1 auto', display: 'flex', justifyContent: 'flex-end' }}>
+                          <Button
+                            type="button"
+                            size="medium"
+                            variant="outlined"
+                            color="primary"
+                            onClick={() => {
+                              const name = newSigneeName.trim();
+                              const email = newSigneeEmail.trim();
+                              const title = newSigneeTitle.trim();
+                              if (!name) {
+                                setSnackbar({ open: true, message: 'Please enter a name.', severity: 'error' });
+                                return;
+                              }
+                              setSigneeCards((prev) => [
+                                ...prev,
+                                {
+                                  id: `s${Date.now()}`,
+                                  name,
+                                  role: 'Client',
+                                  title: title || undefined,
+                                  email: email || undefined,
+                                },
+                              ]);
+                              setAddSigneeRowOpen(false);
+                              setNewSigneeName('');
+                              setNewSigneeEmail('');
+                              setNewSigneeTitle('');
+                            }}
+                            sx={{ textTransform: 'none' }}
+                          >
+                            Add contact
+                          </Button>
+                        </Box>
+                      </Box>
+                    ) : null}
                     <Button
                       type="button"
-                      onClick={() =>
-                        setSigneeCards((prev) => {
-                          const name = DUMMY_SIGNEE_NAMES[prev.length % DUMMY_SIGNEE_NAMES.length];
-                          return [...prev, { id: `s${Date.now()}`, name, role: 'Client' as const }];
-                        })
-                      }
+                      onClick={() => setAddSigneeRowOpen(true)}
                       variant="text"
                       disableRipple
                       startIcon={<AddOutlined sx={{ fontSize: 16, color: '#146DFF' }} />}
@@ -2492,6 +2790,190 @@ export function CreateDispatchPage() {
                 {snackbar.message}
               </Alert>
             </Snackbar>
+
+            <Dialog
+              open={createContactModalOpen}
+              onClose={() => setCreateContactModalOpen(false)}
+              maxWidth="md"
+              fullWidth
+              slotProps={{
+                paper: {
+                  sx: {
+                    borderRadius: '12px',
+                    border: '1px solid #E6E6E7',
+                    boxShadow:
+                      '0px 20px 24px -4px rgba(16, 24, 40, 0.10), 0px 8px 8px -4px rgba(16, 24, 40, 0.04)',
+                    maxWidth: 780,
+                  },
+                },
+              }}
+            >
+              <DialogContent sx={{ p: 0 }}>
+                <Box sx={{ px: 4, pt: 3, pb: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 2 }}>
+                    <Stack sx={{ gap: 0.5, minWidth: 0 }}>
+                      <Typography sx={{ fontSize: 20, fontWeight: 700, lineHeight: '28px', color: '#262527' }}>
+                        Create a New Contact
+                      </Typography>
+                      <Typography sx={{ fontSize: 14, fontWeight: 400, lineHeight: '20px', color: '#5B5B5F' }}>
+                        Add the following information to create a new contact
+                      </Typography>
+                    </Stack>
+                    <IconButton
+                      aria-label="Close"
+                      onClick={() => setCreateContactModalOpen(false)}
+                      sx={{ color: '#5B5B5F' }}
+                    >
+                      <CloseOutlined sx={{ fontSize: 20 }} />
+                    </IconButton>
+                  </Box>
+                </Box>
+
+                <Divider />
+
+                <Box sx={{ px: 4, py: 3 }}>
+                  <Grid container spacing={2}>
+                    <Grid size={{ xs: 12 }}>
+                      <LabeledField
+                        name="newContactEmail"
+                        label="Email"
+                        required
+                        placeholder="Add email"
+                        value={createContactEmail}
+                        onChange={setCreateContactEmail}
+                        htmlInput={{ autoComplete: 'email' }}
+                      />
+                    </Grid>
+
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <LabeledField
+                        name="newContactFirstName"
+                        label="First Name"
+                        required
+                        placeholder="First Name"
+                        value={createContactFirstName}
+                        onChange={setCreateContactFirstName}
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <LabeledField
+                        name="newContactLastName"
+                        label="Last Name"
+                        required
+                        placeholder="Last Name"
+                        value={createContactLastName}
+                        onChange={setCreateContactLastName}
+                      />
+                    </Grid>
+
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <LabeledField
+                        name="newContactJobTitle"
+                        label="Job Title"
+                        required
+                        placeholder="Job Title"
+                        value={createContactJobTitle}
+                        onChange={setCreateContactJobTitle}
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <Stack spacing={0.75} sx={{ width: '100%' }}>
+                        <Typography sx={figmaLabelSx}>
+                          Phone number
+                          <Box component="span" sx={{ color: '#B32318' }}>
+                            {' '}
+                            *
+                          </Box>
+                        </Typography>
+                        <TextField
+                          fullWidth
+                          size="small"
+                          variant="outlined"
+                          placeholder="Contact#"
+                          value={createContactPhoneNumber}
+                          onChange={(e) => setCreateContactPhoneNumber(e.target.value)}
+                          sx={[
+                            figmaTextFieldSx,
+                            {
+                              '& .MuiOutlinedInput-root': { minHeight: 36, height: 36 },
+                              '& .MuiInputAdornment-root': { mr: 0.75 },
+                            },
+                          ]}
+                          slotProps={{
+                            input: {
+                              startAdornment: (
+                                <InputAdornment position="start" sx={{ mr: 0.75 }}>
+                                  <TextField
+                                    select
+                                    variant="standard"
+                                    value={createContactCountryCode}
+                                    onChange={(e) => setCreateContactCountryCode(e.target.value)}
+                                    sx={{
+                                      minWidth: 54,
+                                      '& .MuiInputBase-root': {
+                                        fontSize: 14,
+                                        lineHeight: '24px',
+                                      },
+                                      '& .MuiInput-underline:before': { borderBottom: 'none' },
+                                      '& .MuiInput-underline:after': { borderBottom: 'none' },
+                                      '& .MuiInput-underline:hover:not(.Mui-disabled):before': { borderBottom: 'none' },
+                                      '& .MuiSelect-nativeInput': { width: 54 },
+                                      '& .MuiSelect-select': {
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 0.75,
+                                        pr: '20px',
+                                      },
+                                      '& .MuiSelect-icon': {
+                                        right: 4,
+                                      },
+                                    }}
+                                    slotProps={{
+                                      select: { IconComponent: FieldSelectChevronIcon },
+                                    }}
+                                  >
+                                    <MenuItem value="+1">🇺🇸 +1</MenuItem>
+                                    <MenuItem value="+44">🇬🇧 +44</MenuItem>
+                                    <MenuItem value="+92">🇵🇰 +92</MenuItem>
+                                    <MenuItem value="+91">🇮🇳 +91</MenuItem>
+                                  </TextField>
+                                </InputAdornment>
+                              ),
+                            },
+                            htmlInput: { inputMode: 'tel', autoComplete: 'tel' },
+                          }}
+                        />
+                      </Stack>
+                    </Grid>
+                  </Grid>
+                </Box>
+
+                <Divider />
+
+                <Box sx={{ px: 4, py: 2.5, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+                  <Button
+                    type="button"
+                    variant="outlined"
+                    size="medium"
+                    onClick={() => setCreateContactModalOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="contained"
+                    color="primary"
+                    size="medium"
+                    onClick={() => {
+                      setCreateContactModalOpen(false);
+                      setSnackbar({ open: true, message: 'Contact created (UI only).', severity: 'success' });
+                    }}
+                  >
+                    Create Contact
+                  </Button>
+                </Box>
+              </DialogContent>
+            </Dialog>
       </Box>
     </Box>
   );
