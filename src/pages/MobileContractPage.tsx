@@ -19,7 +19,9 @@ import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import PersonIcon from '@mui/icons-material/Person';
-import { useState } from 'react';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const C = {
@@ -63,7 +65,7 @@ function Field({
           border: `1px solid ${C.border}`,
           borderRadius: '8px',
           px: 1.5,
-          minHeight: 38,
+          minHeight: 42,
           display: 'flex',
           alignItems: 'center',
         }}
@@ -106,13 +108,16 @@ function SelectField({
         displayEmpty
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        IconComponent={ExpandMoreIcon}
         MenuProps={{ disableScrollLock: true }}
         sx={{
           bgcolor: C.white,
           borderRadius: '8px',
           fontSize: 14,
           '& .MuiOutlinedInput-notchedOutline': { borderColor: C.border },
-          '& .MuiSelect-select': { py: '9px', px: 1.5 },
+          height: 42,
+          minHeight: 42,
+          '& .MuiSelect-select': { py: 0, px: 1.5, display: 'flex', alignItems: 'center' },
         }}
       >
         {options.map((o) => (
@@ -232,7 +237,7 @@ const STATE_OPTIONS = [
 ];
 
 type Product = { id: number; dimension: string; rate: string; quantity: string };
-type Signee  = { id: number; name: string; title: string; email: string };
+type Signee  = { id: number; name: string; title: string; email: string; signature?: string };
 
 export function MobileContractPage() {
   const navigate = useNavigate();
@@ -340,6 +345,12 @@ export function MobileContractPage() {
   const [signeeNewTitle, setSigneeNewTitle]       = useState('');
   const [signeeNewEmail, setSigneeNewEmail]       = useState('');
 
+  /* Sign contract bottom sheet */
+  const [signSheetOpen, setSignSheetOpen]         = useState(false);
+  const [signeeIdForSign, setSigneeIdForSign]     = useState<number | null>(null);
+  const canvasRef                                 = useRef<HTMLCanvasElement>(null);
+  const isDrawingRef                              = useRef(false);
+
   /* ── Section accordion state ── */
   const [openCompany, setOpenCompany]           = useState(true);
   const [openContact, setOpenContact]           = useState(true);
@@ -370,6 +381,74 @@ export function MobileContractPage() {
   }
   function removeSignee(id: number) {
     setSignees((s) => s.filter((sg) => sg.id !== id));
+  }
+
+  function openSignSheet(id: number) {
+    setSigneeIdForSign(id);
+    setSignSheetOpen(true);
+    setTimeout(() => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }, 50);
+  }
+
+  function getCanvasPos(e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>, canvas: HTMLCanvasElement) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    if ('touches' in e) {
+      return { x: (e.touches[0].clientX - rect.left) * scaleX, y: (e.touches[0].clientY - rect.top) * scaleY };
+    }
+    return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
+  }
+
+  function onCanvasStart(e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) {
+    e.preventDefault();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    isDrawingRef.current = true;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const pos = getCanvasPos(e, canvas);
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y);
+  }
+
+  function onCanvasDraw(e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) {
+    e.preventDefault();
+    if (!isDrawingRef.current) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.strokeStyle = '#111';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    const pos = getCanvasPos(e, canvas);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+  }
+
+  function onCanvasEnd(e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) {
+    e.preventDefault();
+    isDrawingRef.current = false;
+  }
+
+  function clearSignatureCanvas() {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  function handleAddSignature() {
+    const canvas = canvasRef.current;
+    const dataUrl = canvas ? canvas.toDataURL() : '';
+    setSignees((prev) => prev.map((sg) => sg.id === signeeIdForSign ? { ...sg, signature: dataUrl } : sg));
+    setSignSheetOpen(false);
   }
 
   return (
@@ -423,8 +502,7 @@ export function MobileContractPage() {
             px: 1,
             display: 'flex',
             alignItems: 'center',
-            bgcolor: 'rgba(255,255,255,0.6)',
-            backdropFilter: 'blur(7px)',
+            bgcolor: C.white,
             borderBottom: `0.5px solid ${C.border}`,
             flexShrink: 0,
             gap: 1,
@@ -696,6 +774,22 @@ export function MobileContractPage() {
                 <SelectField label="Billing type" value={billingType} onChange={setBillingType} options={BILLING_TYPE_OPTIONS} />
                 <SelectField label="Payment method" value={paymentMethod} onChange={setPaymentMethod} options={PAYMENT_METHOD_OPTIONS} />
                 <SelectField label="Payment terms" value={paymentTerms} onChange={setPaymentTerms} options={PAYMENT_TERMS_OPTIONS} />
+                <Button
+                  variant="outlined"
+                  startIcon={<AddIcon />}
+                  sx={{
+                    borderRadius: '8px',
+                    borderColor: C.border,
+                    color: C.grey700,
+                    textTransform: 'none',
+                    fontSize: 14,
+                    fontWeight: 500,
+                    height: 42,
+                    minHeight: 42,
+                  }}
+                >
+                  Add payment method
+                </Button>
               </Stack>
             </Collapse>
           </Box>
@@ -722,25 +816,36 @@ export function MobileContractPage() {
                         </IconButton>
                       </Stack>
                     </Stack>
-                    {/* Avatar + info */}
-                    <Stack direction="row" sx={{ gap: 1.5, alignItems: 'center' }}>
-                      <Box sx={{ width: 62, height: 62, borderRadius: '50%', bgcolor: '#E5F6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <PersonIcon sx={{ fontSize: 34, color: '#146DFF' }} />
-                      </Box>
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75, alignItems: 'flex-start' }}>
-                        <Typography sx={{ fontSize: 16, fontWeight: 500, color: '#262527', lineHeight: '20px' }}>
-                          {s.name || '—'}
-                        </Typography>
-                        <Typography sx={{ fontSize: 12, fontWeight: 400, color: '#262527', lineHeight: '20px' }}>
-                          {s.title || '—'}
-                        </Typography>
+                    {/* Avatar + info + Add Sign */}
+                    <Stack direction="row" sx={{ gap: 1.5, alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Stack direction="row" sx={{ gap: 1.5, alignItems: 'center' }}>
+                        <Box sx={{ width: 42, height: 42, borderRadius: '50%', bgcolor: '#E5F6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <PersonIcon sx={{ fontSize: 24, color: '#146DFF' }} />
+                        </Box>
+                        <Box>
+                          <Typography sx={{ fontSize: 16, fontWeight: 500, color: '#262527', lineHeight: '20px' }}>
+                            {s.name || '—'}
+                          </Typography>
+                          <Typography sx={{ fontSize: 12, fontWeight: 400, color: '#262527', lineHeight: '20px' }}>
+                            {s.title || '—'}
+                          </Typography>
+                        </Box>
+                      </Stack>
+                      {s.signature ? (
+                        <Stack direction="row" sx={{ alignItems: 'center', gap: 0.5 }}>
+                          <CheckCircleIcon sx={{ fontSize: 16, color: '#1A9E4A' }} />
+                          <Typography sx={{ fontSize: 12, color: '#1A9E4A', fontWeight: 500 }}>Signed</Typography>
+                        </Stack>
+                      ) : (
                         <Button
-                          variant="outlined"
-                          sx={{ borderRadius: '8px', borderColor: '#1A9E4A', color: '#1A9E4A', textTransform: 'none', fontSize: 12, fontWeight: 600, px: 1.25, py: 0.25, minHeight: 28, '&:hover': { borderColor: '#1A9E4A', bgcolor: '#EDFAF3' } }}
+                          variant="text"
+                          startIcon={<AddIcon sx={{ fontSize: '14px !important' }} />}
+                          onClick={() => openSignSheet(s.id)}
+                          sx={{ borderRadius: '8px', color: C.grey700, textTransform: 'none', fontSize: 12, fontWeight: 500, px: 1.25, py: 0.25, minHeight: 28, flexShrink: 0, '&:hover': { bgcolor: C.bg } }}
                         >
                           Add Sign
                         </Button>
-                      </Box>
+                      )}
                     </Stack>
                   </Box>
                 ))}
@@ -748,7 +853,7 @@ export function MobileContractPage() {
                   startIcon={<AddIcon />}
                   onClick={openAddSigneeSheet}
                   variant="outlined"
-                  sx={{ borderRadius: '8px', borderColor: '#1A9E4A', color: '#1A9E4A', textTransform: 'none', fontSize: 14, fontWeight: 500, py: 0.75, '&:hover': { borderColor: '#1A9E4A', bgcolor: '#EDFAF3' } }}
+                  sx={{ borderRadius: '8px', borderColor: '#1A9E4A', color: '#1A9E4A', textTransform: 'none', fontSize: 14, fontWeight: 500, height: 48, minHeight: 48, '&:hover': { borderColor: '#1A9E4A', bgcolor: '#EDFAF3' } }}
                 >
                   Add signee
                 </Button>
@@ -767,23 +872,44 @@ export function MobileContractPage() {
             pt: 1.5,
           }}
         >
-          <Button
-            fullWidth
-            variant="contained"
-            disableElevation
-            sx={{
-              bgcolor: '#1A9E4A',
-              color: C.white,
-              borderRadius: '12px',
-              height: 48,
-              fontSize: 16,
-              fontWeight: 600,
-              textTransform: 'none',
-              '&:hover': { bgcolor: '#158040' },
-            }}
-          >
-            Submit Contract
-          </Button>
+          <Stack direction="column" sx={{ gap: 0 }}>
+            <Button
+              variant="contained"
+              disableElevation
+              sx={{
+                flex: 1,
+                bgcolor: '#1A9E4A',
+                color: C.white,
+                borderRadius: '12px',
+                height: 48,
+                minHeight: 48,
+                fontSize: 15,
+                fontWeight: 600,
+                textTransform: 'none',
+                '&:hover': { bgcolor: '#158040' },
+              }}
+            >
+              Submit Contract
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={() => navigate('/mobile')}
+              sx={{
+                flex: 1,
+                border: 'none',
+                color: C.grey700,
+                borderRadius: '12px',
+                height: 48,
+                minHeight: 48,
+                fontSize: 15,
+                fontWeight: 500,
+                textTransform: 'none',
+                '&:hover': { bgcolor: C.bg, border: 'none' },
+              }}
+            >
+              Cancel
+            </Button>
+          </Stack>
           <Box sx={{ height: 34, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', pb: 1, mt: 0.5 }}>
             <Box sx={{ width: 134, height: 5, bgcolor: C.black, borderRadius: '100px' }} />
           </Box>
@@ -901,6 +1027,105 @@ export function MobileContractPage() {
             </Box>
           </>
         )}
+
+        {/* ── Sign contract bottom sheet ── */}
+        {signSheetOpen && (() => {
+          const signee = signees.find((sg) => sg.id === signeeIdForSign);
+          return (
+            <>
+              <Box
+                onClick={() => setSignSheetOpen(false)}
+                sx={{ position: 'absolute', inset: 0, bgcolor: 'rgba(0,0,0,0.35)', zIndex: 20, borderRadius: '40px' }}
+              />
+              <Box
+                sx={{
+                  position: 'absolute',
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  bgcolor: C.white,
+                  borderRadius: '20px 20px 0 0',
+                  zIndex: 21,
+                  px: 2.5,
+                  pt: 2,
+                  pb: 3,
+                }}
+              >
+                {/* Handle */}
+                <Box sx={{ width: 36, height: 4, bgcolor: C.border, borderRadius: '2px', mx: 'auto', mb: 2 }} />
+
+                {/* Title */}
+                <Typography sx={{ fontSize: 18, fontWeight: 700, color: C.black }}>Sign Contract</Typography>
+                <Typography sx={{ fontSize: 13, color: C.grey700, mt: 0.5, mb: 2 }}>
+                  Please add signature to sign contract
+                </Typography>
+
+                {/* Signee info row */}
+                {signee && (
+                  <Stack direction="row" sx={{ alignItems: 'center', gap: 1.5, mb: 2 }}>
+                    <Box sx={{ width: 42, height: 42, borderRadius: '50%', bgcolor: '#EDFAF3', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <PersonIcon sx={{ fontSize: 22, color: '#1A9E4A' }} />
+                    </Box>
+                    <Box>
+                      <Typography sx={{ fontSize: 12, fontWeight: 700, color: C.black, lineHeight: '20px' }}>
+                        {signee.name || '—'}
+                      </Typography>
+                      <Typography sx={{ fontSize: 12, color: C.grey700, lineHeight: '18px' }}>
+                        {[signee.title, signee.email].filter(Boolean).join(' · ') || '—'}
+                      </Typography>
+                    </Box>
+                  </Stack>
+                )}
+
+                {/* Draw signature row */}
+                <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                  <Typography sx={{ fontSize: 13, fontWeight: 500, color: C.grey700 }}>Draw Signature</Typography>
+                  <IconButton size="small" onClick={clearSignatureCanvas} sx={{ color: C.grey400 }}>
+                    <RefreshIcon sx={{ fontSize: 20 }} />
+                  </IconButton>
+                </Stack>
+
+                {/* Canvas */}
+                <Box sx={{ borderRadius: '10px', overflow: 'hidden', bgcolor: C.bg, mb: 2 }}>
+                  <canvas
+                    ref={canvasRef}
+                    width={310}
+                    height={160}
+                    style={{ display: 'block', width: '100%', height: 160, touchAction: 'none', cursor: 'crosshair' }}
+                    onMouseDown={onCanvasStart}
+                    onMouseMove={onCanvasDraw}
+                    onMouseUp={onCanvasEnd}
+                    onMouseLeave={onCanvasEnd}
+                    onTouchStart={onCanvasStart}
+                    onTouchMove={onCanvasDraw}
+                    onTouchEnd={onCanvasEnd}
+                  />
+                </Box>
+
+                <Divider sx={{ mb: 2 }} />
+
+                {/* CTAs */}
+                <Stack direction="row" sx={{ gap: 1.5, justifyContent: 'flex-end' }}>
+                  <Button
+                    variant="outlined"
+                    onClick={() => setSignSheetOpen(false)}
+                    sx={{ borderRadius: '10px', borderColor: C.border, color: C.grey700, textTransform: 'none', fontSize: 14, fontWeight: 500, height: 44, flex: 1, '&:hover': { bgcolor: C.bg, borderColor: C.border } }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="contained"
+                    disableElevation
+                    onClick={handleAddSignature}
+                    sx={{ borderRadius: '10px', bgcolor: '#1A9E4A', color: C.white, textTransform: 'none', fontSize: 14, fontWeight: 600, height: 44, flex: 1, '&:hover': { bgcolor: '#158040' } }}
+                  >
+                    Add Signature
+                  </Button>
+                </Stack>
+              </Box>
+            </>
+          );
+        })()}
       </Box>
     </Box>
   );

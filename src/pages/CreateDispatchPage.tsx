@@ -25,6 +25,7 @@ import {
 import Grid from '@mui/material/Grid';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import AddOutlined from '@mui/icons-material/AddOutlined';
+import CheckOutlined from '@mui/icons-material/CheckOutlined';
 import CalendarTodayOutlined from '@mui/icons-material/CalendarTodayOutlined';
 import CloseOutlined from '@mui/icons-material/CloseOutlined';
 import DeleteOutlineOutlined from '@mui/icons-material/DeleteOutlineOutlined';
@@ -2347,10 +2348,16 @@ export function CreateDispatchPage() {
                                       variant="outlined"
                                       size="small"
                                       disableRipple
-                                      startIcon={<AddOutlined sx={{ fontSize: 16, color: '#6A6A70' }} />}
+                                      startIcon={
+                                        s.hasSignature
+                                          ? <CheckOutlined sx={{ fontSize: 16, color: '#1A9E4A' }} />
+                                          : <AddOutlined sx={{ fontSize: 16, color: '#6A6A70' }} />
+                                      }
                                       onClick={() => {
-                                        setSignContractModalSigneeId(s.id);
-                                        setModalSignaturePreview(s.name);
+                                        if (!s.hasSignature) {
+                                          setSignContractModalSigneeId(s.id);
+                                          setModalSignaturePreview(s.name);
+                                        }
                                       }}
                                       sx={{
                                         height: 32,
@@ -2358,18 +2365,22 @@ export function CreateDispatchPage() {
                                         px: 1,
                                         py: 1,
                                         borderRadius: '8px',
-                                        borderColor: '#F5F5F6',
-                                        bgcolor: '#F5F5F6',
-                                        color: '#6A6A70',
+                                        borderColor: s.hasSignature ? '#EDFAF3' : '#F5F5F6',
+                                        bgcolor: s.hasSignature ? '#EDFAF3' : '#F5F5F6',
+                                        color: s.hasSignature ? '#1A9E4A' : '#6A6A70',
                                         textTransform: 'none',
                                         fontSize: 14,
                                         fontWeight: 500,
                                         lineHeight: '20px',
                                         boxShadow: 'none',
-                                        '&:hover': { bgcolor: '#EBEBED', borderColor: '#EBEBED' },
+                                        cursor: s.hasSignature ? 'default' : 'pointer',
+                                        '&:hover': {
+                                          bgcolor: s.hasSignature ? '#EDFAF3' : '#EBEBED',
+                                          borderColor: s.hasSignature ? '#EDFAF3' : '#EBEBED',
+                                        },
                                       }}
                                     >
-                                      Add Sign
+                                      {s.hasSignature ? 'Signed' : 'Add Sign'}
                                     </Button>
                                   </>
                                 )}
@@ -2465,7 +2476,7 @@ export function CreateDispatchPage() {
                       onClick={() => setAddSigneeRowOpen(true)}
                       variant="text"
                       disableRipple
-                      startIcon={<AddOutlined sx={{ fontSize: 16, color: '#146DFF' }} />}
+                      startIcon={<AddOutlined sx={{ fontSize: 16, color: '#1A9E4A' }} />}
                       sx={{
                         alignSelf: 'flex-start',
                         py: 0.75,
@@ -2475,8 +2486,8 @@ export function CreateDispatchPage() {
                         fontSize: 14,
                         fontWeight: 500,
                         lineHeight: '20px',
-                        color: '#146DFF',
-                        '&:hover': { bgcolor: 'transparent', color: '#0d5cd4' },
+                        color: '#1A9E4A',
+                        '&:hover': { bgcolor: 'transparent', color: '#158040' },
                       }}
                     >
                       Add Signee
@@ -2729,8 +2740,8 @@ export function CreateDispatchPage() {
                           setModalSignaturePreview('');
                         }}
                         sx={{
-                          bgcolor: '#146DFF',
-                          border: '1px solid #146DFF',
+                          bgcolor: '#1A9E4A',
+                          border: '1px solid #1A9E4A',
                           color: '#FFFFFF',
                           textTransform: 'none',
                           fontSize: 14,
@@ -2740,7 +2751,7 @@ export function CreateDispatchPage() {
                           py: 1,
                           borderRadius: '8px',
                           boxShadow: '0px 1px 2px 0px rgba(16, 24, 40, 0.05)',
-                          '&:hover': { bgcolor: '#0d5cd4', borderColor: '#0d5cd4' },
+                          '&:hover': { bgcolor: '#158040', borderColor: '#158040' },
                         }}
                       >
                         Add Signature

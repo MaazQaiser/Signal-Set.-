@@ -44,10 +44,10 @@ type Deal = {
 };
 
 const DEALS: Deal[] = [
-  { id: '#2300', amount: '$10,000', name: 'Costco wholesale',  address: '456 Elm Avenue, Chandler, AZ, 10128', franchise: 'H&M', requiresSignature: true },
-  { id: '#2300', amount: '$10,000', name: 'Costco wholesale',  address: '456 Elm Avenue, Chandler, AZ, 10128', franchise: 'H&M', requiresSignature: true },
-  { id: '#2300', amount: '$10,000', name: 'Gavinci Bank',      address: '456 Elm Avenue, Chandler, AZ, 10128', franchise: 'H&M', requiresSignature: true },
-  { id: '#2300', amount: '$10,000', name: 'H&M Store',         address: '456 Elm Avenue, Chandler, AZ, 10128', franchise: 'H&M', requiresSignature: true },
+  { id: '#2301', amount: '$10,000', name: 'Costco Wholesale',  address: '456 Elm Avenue, Chandler, AZ, 10128', franchise: 'H&M',     requiresSignature: true },
+  { id: '#2302', amount: '$24,500', name: 'Gavinci Bank',      address: '820 Oak Street, Phoenix, AZ, 85001',  franchise: 'Chase',   requiresSignature: false },
+  { id: '#2303', amount: '$8,750',  name: 'H&M Store',         address: '101 Market Blvd, Tempe, AZ, 85281',  franchise: 'H&M',     requiresSignature: true },
+  { id: '#2304', amount: '$53,200', name: 'Pacific Traders',   address: '77 Harbor Drive, Scottsdale, AZ, 85254', franchise: 'Nike', requiresSignature: false },
 ];
 
 const FILTERS = ['Proposal Status', 'Stage', 'Deal Type', 'Market Vertical'];
@@ -127,8 +127,8 @@ function BottomTab({ icon, label, active = false }: { icon: React.ReactNode; lab
         pt: 0.5,
       }}
     >
-      <Box sx={{ color: active ? C.blue : C.grey400, display: 'flex' }}>{icon}</Box>
-      <Typography sx={{ fontSize: 12, fontWeight: 500, color: active ? C.blue : C.grey400, lineHeight: 'normal' }}>
+      <Box sx={{ color: active ? '#1A9E4A' : C.grey400, display: 'flex' }}>{icon}</Box>
+      <Typography sx={{ fontSize: 12, fontWeight: 500, color: active ? '#1A9E4A' : C.grey400, lineHeight: 'normal' }}>
         {label}
       </Typography>
     </Stack>
@@ -214,12 +214,12 @@ export function MobileDealsPage() {
               size="small"
               onClick={() => setSheetOpen(true)}
               sx={{
-                bgcolor: C.blue,
+                bgcolor: '#1A9E4A',
                 color: C.white,
                 width: 32,
                 height: 32,
                 borderRadius: '50%',
-                '&:hover': { bgcolor: '#0040c4' },
+                '&:hover': { bgcolor: '#158040' },
               }}
             >
               <AddIcon sx={{ fontSize: 20 }} />
@@ -364,10 +364,9 @@ export function MobileDealsPage() {
               px: 2,
               py: 1.75,
               cursor: 'pointer',
-              '&:hover': { bgcolor: '#F0F4FF' },
             }}
           >
-            <AddCircleOutlineOutlinedIcon sx={{ color: C.blue, fontSize: 22 }} />
+            <AddCircleOutlineOutlinedIcon sx={{ color: '#1A9E4A', fontSize: 22 }} />
             <Typography sx={{ fontSize: 16, fontWeight: 500, color: C.black }}>
               Create Deal
             </Typography>
@@ -383,10 +382,9 @@ export function MobileDealsPage() {
               px: 2,
               py: 1.75,
               cursor: 'pointer',
-              '&:hover': { bgcolor: '#F0F4FF' },
             }}
           >
-            <ArticleOutlinedIcon sx={{ color: C.blue, fontSize: 22 }} />
+            <ArticleOutlinedIcon sx={{ color: '#1A9E4A', fontSize: 22 }} />
             <Typography sx={{ fontSize: 16, fontWeight: 500, color: C.black }}>
               Create Smart Contract
             </Typography>
