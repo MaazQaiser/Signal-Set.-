@@ -1,6 +1,14 @@
 import { Box, Button, Chip, Divider, Stack, Typography } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 
+declare const __BUILD_DATE__: string;
+
+const lastUpdated = new Date(__BUILD_DATE__).toLocaleDateString('en-US', {
+  month: 'long',
+  day: 'numeric',
+  year: 'numeric',
+});
+
 const COLORS = {
   white: '#FFFFFF',
   primaryMint: '#2DA551',
@@ -48,23 +56,51 @@ export function HomePage() {
   const navigate = useNavigate();
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: COLORS.white }}>
+    <Box
+      sx={{
+        height: '100vh',
+        bgcolor: COLORS.white,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+      }}
+    >
+      {/* ── Header ── */}
       <Box
+        component="header"
         sx={{
-          maxWidth: 1440,
-          mx: 'auto',
+          position: 'sticky',
+          top: 0,
+          zIndex: 100,
+          bgcolor: COLORS.white,
+          borderBottom: `1px solid ${COLORS.slate300}`,
           px: { xs: 3, md: 16.25 },
-          pt: { xs: 4, md: 5.5 },
-          pb: { xs: 4, md: 4 },
+          height: 50,
+          display: 'flex',
+          alignItems: 'center',
           boxSizing: 'border-box',
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-          <Typography sx={{ fontSize: 28, fontWeight: 800, lineHeight: '42px', color: COLORS.primaryMint }}>
-            Filtergo
-          </Typography>
-        </Box>
+        <Typography sx={{ fontSize: 20, fontWeight: 800, lineHeight: 1, color: COLORS.primaryMint }}>
+          Filtergo
+        </Typography>
+      </Box>
 
+      {/* ── Main content (scrollable) ── */}
+      <Box
+        sx={{
+          flex: 1,
+          overflowY: 'auto',
+          maxWidth: 1440,
+          width: '100%',
+          mx: 'auto',
+          px: { xs: 3, md: 16.25 },
+          pt: { xs: 4, md: 5.5 },
+          boxSizing: 'border-box',
+        }}
+      >
+
+        {/* Title */}
         <Box sx={{ mt: 4 }}>
           <Typography
             sx={{
@@ -75,117 +111,95 @@ export function HomePage() {
               color: COLORS.primaryBlack,
             }}
           >
-            <Box component="span" sx={{ fontWeight: 800 }}>
-              Use Case
-            </Box>
-            <Box component="span" sx={{ fontWeight: 500 }}>
-              {' '}
-              - Contract Creation - Set
-            </Box>
+            <Box component="span" sx={{ fontWeight: 800 }}>Use Case</Box>
+            <Box component="span" sx={{ fontWeight: 500 }}>{' '}- Smart Contract - SET</Box>
           </Typography>
         </Box>
 
         <Divider sx={{ mt: 2, borderColor: COLORS.slate300 }} />
 
+        {/* Sections */}
         <Stack sx={{ mt: 2.5, gap: 3 }}>
           <Section title="Problem Statement">
             <Typography sx={{ fontSize: 14, lineHeight: '20px', color: COLORS.slate600, whiteSpace: 'pre-wrap' }}>
-              Our current system follows a fixed business structure that does not accommodate variations in different
-              business models and operational needs. As a result, certain businesses cannot configure workflows, billing
-              logic, or service rules according to their specific requirements.
+              The current deal creation process is lengthy and cumbersome — it relies on a multi-step form with many
+              fields that demand significant time and effort from sales reps and clients alike. This friction slows down
+              deal velocity, increases the chance of errors, and creates a poor experience for everyone involved.
               {'\n\n'}
-              Additionally, the existing payment term setup is not aligned with Stripe integration capabilities. To
-              support flexible billing scenarios (e.g., prepaid, recurring, pay-after-service), we need to redesign the
-              payment term structure and ensure seamless integration with Stripe for accurate billing execution and
-              automation.
+              Teams need a faster, leaner way to create contracts without sacrificing the accuracy or completeness of
+              the information captured.
             </Typography>
           </Section>
 
           <Section title="Solution">
             <Typography sx={{ fontSize: 14, lineHeight: '20px', color: COLORS.slate600 }}>
-              We introduced an Update Service configuration to support different business needs instead of fixed system
-              rules. We also redesigned the payment terms (Prepaid, Recurring, Pay After Service Completion) with proper
-              Stripe integration to ensure accurate billing triggers, automated invoicing, and real-time payment updates.
+              We designed a <strong>Smart Contract</strong> flow that strips deal creation down to the bare minimum
+              required fields. By eliminating unnecessary steps and surfacing only what truly matters, sales reps can
+              create a complete, valid contract in a fraction of the time — improving efficiency, reducing drop-off, and
+              delivering a significantly smoother experience across both desktop and mobile.
             </Typography>
           </Section>
         </Stack>
 
+        {/* CTA buttons */}
         <Stack direction="row" sx={{ mt: 3, gap: 1.5, flexWrap: 'wrap' }}>
-          <Button
-            variant="contained"
-            disableElevation
-            onClick={() => navigate('/contract')}
-            sx={{
-              bgcolor: COLORS.primaryEucalyptus,
-              color: COLORS.primarySoot,
-              textTransform: 'none',
-              borderRadius: '5px',
-              px: 2.625,
-              py: 1.625,
-              fontSize: 15,
-              lineHeight: '21px',
-              '&:hover': { bgcolor: COLORS.primaryEucalyptus },
-            }}
-          >
-            Experience for Set
-          </Button>
-          <Button
-            variant="contained"
-            disableElevation
-            onClick={() => navigate('/contract')}
-            sx={{
-              bgcolor: COLORS.primaryEucalyptus,
-              color: COLORS.primarySoot,
-              textTransform: 'none',
-              borderRadius: '5px',
-              px: 2.625,
-              py: 1.625,
-              fontSize: 15,
-              lineHeight: '21px',
-              '&:hover': { bgcolor: COLORS.primaryEucalyptus },
-            }}
-          >
-            Experience for Set for mobile
-          </Button>
-          <Button
-            variant="contained"
-            disableElevation
-            onClick={() => navigate('/contract')}
-            sx={{
-              bgcolor: COLORS.primaryEucalyptus,
-              color: COLORS.primarySoot,
-              textTransform: 'none',
-              borderRadius: '5px',
-              px: 2.625,
-              py: 1.625,
-              fontSize: 15,
-              lineHeight: '21px',
-              '&:hover': { bgcolor: COLORS.primaryEucalyptus },
-            }}
-          >
-            Experience for Edge Invoice
-          </Button>
+          {[
+            { label: 'Experience SET Web', path: '/deals' },
+            { label: 'Experience SET Mobile App', path: '/mobile' },
+          ].map(({ label, path }) => (
+            <Button
+              key={label}
+              variant="contained"
+              disableElevation
+              onClick={() => navigate(path)}
+              sx={{
+                bgcolor: COLORS.primaryEucalyptus,
+                color: COLORS.primarySoot,
+                textTransform: 'none',
+                borderRadius: '5px',
+                px: 2.625,
+                py: 1.625,
+                fontSize: 15,
+                lineHeight: '21px',
+                '&:hover': { bgcolor: COLORS.primaryEucalyptus },
+              }}
+            >
+              {label}
+            </Button>
+          ))}
         </Stack>
+      </Box>
 
+      {/* ── Footer — pinned to bottom of viewport ── */}
+      <Box
+        component="footer"
+        sx={{
+          flexShrink: 0,
+          width: '100%',
+          px: { xs: 3, md: 16.25 },
+          pb: { xs: 3, md: 4 },
+          boxSizing: 'border-box',
+          bgcolor: COLORS.white,
+        }}
+      >
         <Stack
           direction={{ xs: 'column', md: 'row' }}
           sx={{
-            mt: 10,
+            pt: 3,
+            borderTop: `1px solid ${COLORS.slate300}`,
             alignItems: { xs: 'flex-start', md: 'center' },
             justifyContent: 'space-between',
             gap: 3,
-            maxWidth: 673,
+            width: '100%',
           }}
         >
           <Stack sx={{ gap: 1 }}>
-            <Typography sx={{ fontSize: 14, lineHeight: '20px', color: COLORS.slate400 }}>Persona’s</Typography>
+            <Typography sx={{ fontSize: 14, lineHeight: '20px', color: COLORS.slate400 }}>Persona's</Typography>
             <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap' }}>
               <Badge label="Sales Rep" />
-              <Badge label="Installer" />
-              <Badge label="Client" />
             </Stack>
             <Typography sx={{ fontSize: 14, lineHeight: '20px', color: COLORS.slate400 }}>
-              Last updated: July 13th, 2025
+              Last updated: {lastUpdated}
             </Typography>
           </Stack>
 
@@ -201,4 +215,3 @@ export function HomePage() {
     </Box>
   );
 }
-

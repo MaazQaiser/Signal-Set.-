@@ -28,26 +28,14 @@ import AddOutlined from '@mui/icons-material/AddOutlined';
 import CalendarTodayOutlined from '@mui/icons-material/CalendarTodayOutlined';
 import CloseOutlined from '@mui/icons-material/CloseOutlined';
 import DeleteOutlineOutlined from '@mui/icons-material/DeleteOutlineOutlined';
-import DashboardOutlined from '@mui/icons-material/DashboardOutlined';
 import DescriptionOutlined from '@mui/icons-material/DescriptionOutlined';
 import EditOutlined from '@mui/icons-material/EditOutlined';
 import KeyboardArrowDown from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowDownOutlined from '@mui/icons-material/KeyboardArrowDownOutlined';
-import LocationOnOutlined from '@mui/icons-material/LocationOnOutlined';
 import NotificationsNoneOutlined from '@mui/icons-material/NotificationsNoneOutlined';
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded';
 import PersonOutlineOutlined from '@mui/icons-material/PersonOutlineOutlined';
 import Refresh from '@mui/icons-material/Refresh';
-import ApartmentOutlined from '@mui/icons-material/ApartmentOutlined';
-import LocalOfferOutlined from '@mui/icons-material/LocalOfferOutlined';
-import ContactsOutlined from '@mui/icons-material/ContactsOutlined';
-import PublicOutlined from '@mui/icons-material/PublicOutlined';
-import PeopleOutlineOutlined from '@mui/icons-material/PeopleOutlineOutlined';
-import ChecklistOutlined from '@mui/icons-material/ChecklistOutlined';
-import ViewKanbanOutlined from '@mui/icons-material/ViewKanbanOutlined';
-import TravelExploreOutlined from '@mui/icons-material/TravelExploreOutlined';
-import SettingsOutlined from '@mui/icons-material/SettingsOutlined';
-import ChevronLeft from '@mui/icons-material/ChevronLeft';
 import { AddressAutocompleteField } from '../components/createContract/AddressAutocompleteField';
 import { FormSection } from '../components/createContract/FormSection';
 import { useTheme } from '@mui/material/styles';
@@ -56,20 +44,27 @@ import { forwardRef, useCallback, useEffect, useMemo, useState, type InputHTMLAt
 import type { SvgIconProps } from '@mui/material/SvgIcon';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-const sidebarIcons = [
-  { alt: 'dashboard', Icon: DashboardOutlined },
-  { alt: 'company', Icon: ApartmentOutlined },
-  { alt: 'map-pin', Icon: LocationOnOutlined },
-  { alt: 'deal', Icon: LocalOfferOutlined },
-  { alt: 'file-text', Icon: DescriptionOutlined },
-  { alt: 'contact', Icon: ContactsOutlined },
-  { alt: 'public', Icon: PublicOutlined },
-  { alt: 'user', Icon: PeopleOutlineOutlined },
-  { alt: 'checklist', Icon: ChecklistOutlined },
-  { alt: 'trello', Icon: ViewKanbanOutlined },
-  { alt: 'scouting', Icon: TravelExploreOutlined },
-  { alt: 'settings', Icon: SettingsOutlined },
-] as const;
+const sidebarImgAssets = {
+  wordmark: 'https://www.figma.com/api/mcp/asset/b383f08a-2ee2-4182-8425-9d9c2c1775ca',
+  lastPage: 'https://www.figma.com/api/mcp/asset/350aceba-ddd0-42ea-a4c6-9071ac4fc152',
+  icons: [
+    { src: 'https://www.figma.com/api/mcp/asset/8d98c452-eb87-413a-8088-8735ff92ff06', alt: 'dashboard' },
+    { src: 'https://www.figma.com/api/mcp/asset/9fb49f27-8478-478b-9fad-3fbf8d61f34b', alt: 'company' },
+    { src: 'https://www.figma.com/api/mcp/asset/fbb49c00-3a70-448a-84f7-a76d678f670f', alt: 'map-pin' },
+    { src: 'https://www.figma.com/api/mcp/asset/8e6dd3ea-f0b5-4d7a-91a4-e31d899e8858', alt: 'deal' },
+    { src: 'https://www.figma.com/api/mcp/asset/664ebf81-1d0a-48a0-a5b7-b0f8645a6fca', alt: 'contact' },
+    { src: 'https://www.figma.com/api/mcp/asset/46a2a309-bba3-4168-939e-15389ebe6dea', alt: 'public' },
+    { src: 'https://www.figma.com/api/mcp/asset/9fd54eac-22ae-4f6a-b6e4-ab3a7b6478d9', alt: 'users' },
+    { src: 'https://www.figma.com/api/mcp/asset/1a43c57f-6efa-4c55-850f-7f1a88120021', alt: 'checklist' },
+    { src: 'https://www.figma.com/api/mcp/asset/432ea8f0-71ef-44fc-80be-3fe8df0c8c2b', alt: 'trello' },
+    {
+      src: 'https://www.figma.com/api/mcp/asset/4a3e4ce6-44dc-4439-8e69-294ae4d87804',
+      alt: 'scouting',
+      dual: 'https://www.figma.com/api/mcp/asset/c15febca-3db7-48ab-9b9b-9f24bafe6826',
+    },
+    { src: 'https://www.figma.com/api/mcp/asset/bcd1fc9a-003e-4681-8213-df0ce04179b6', alt: 'settings' },
+  ],
+};
 
 /** Figma — header profile (node 1117:24765); match design until API provides avatars. */
 const createContractHeaderAvatar =
@@ -280,75 +275,56 @@ function LabeledDatePicker(props: {
 function SidebarContent(props: { showCollapseChevron?: boolean; activeIconAlt?: string }) {
   const { showCollapseChevron = true, activeIconAlt } = props;
   return (
-    <Box
-      sx={{
-        width: { xs: 72, md: 76 },
-        flex: { md: '1 1 auto' },
-        minHeight: 0,
-        bgcolor: '#262527',
-        position: 'relative',
-        px: { xs: 0.5, md: 1 },
-        py: 2,
-        h: { xs: '100%', md: '100%' },
-        boxSizing: 'border-box',
-        flexShrink: 0,
-      }}
-    >
-      <Stack spacing={0} sx={{ alignItems: 'center', gap: '12px' }}>
-        <Typography
-          component="div"
-          sx={{
-            mt: 0.5,
-            fontSize: 14,
-            fontWeight: 800,
-            letterSpacing: 0.5,
-            color: '#FFFFFF',
-            lineHeight: '18px',
-          }}
-        >
-          Filtergo
-        </Typography>
-        <Stack spacing={0.5} sx={{ alignItems: 'center' }}>
-          {sidebarIcons.map(({ alt, Icon }) => (
-            <Box
-              key={alt}
-              sx={{
-                width: { xs: 40, md: 44 },
-                height: { xs: 40, md: 44 },
-                borderRadius: 2,
-                display: 'grid',
-                placeItems: 'center',
-                bgcolor: alt === activeIconAlt ? '#2DA551' : 'transparent',
-              }}
-            >
-              <Icon sx={{ fontSize: { xs: 18, md: 20 }, color: '#FFFFFF' }} />
-            </Box>
-          ))}
-        </Stack>
+    <Box sx={{ width: { xs: 72, md: 76 }, height: '100vh', bgcolor: '#262527', position: 'relative', flexShrink: 0 }}>
+      <Box sx={{ px: 1, py: 2, display: 'flex', justifyContent: 'center' }}>
+        <Box component="img" alt="Filtergo" src={sidebarImgAssets.wordmark} sx={{ width: 58, height: 18 }} />
+      </Box>
+
+      <Stack spacing={0} sx={{ px: 1, pt: 2 }}>
+        {sidebarImgAssets.icons.map((ic) => (
+          <Box
+            key={ic.alt}
+            sx={{
+              width: { xs: 40, md: 44 },
+              height: { xs: 40, md: 44 },
+              mx: 'auto',
+              borderRadius: 2,
+              display: 'grid',
+              placeItems: 'center',
+              bgcolor: ic.alt === activeIconAlt ? '#2DA551' : 'transparent',
+            }}
+          >
+            {'dual' in ic ? (
+              <Box sx={{ position: 'relative', width: 20, height: 20 }}>
+                <Box component="img" alt="" src={ic.src} sx={{ position: 'absolute', inset: 0, width: 20, height: 20 }} />
+                <Box component="img" alt="" src={ic.dual} sx={{ position: 'absolute', inset: 0, width: 20, height: 20 }} />
+              </Box>
+            ) : (
+              <Box component="img" alt="" src={ic.src} sx={{ width: 20, height: 20 }} />
+            )}
+          </Box>
+        ))}
       </Stack>
+
       {showCollapseChevron ? (
         <Box
           sx={{
             display: { xs: 'none', md: 'block' },
             position: 'absolute',
-            left: 62,
-            bottom: 16,
+            right: -14,
+            top: 436,
             width: 28,
             height: 28,
-            transform: 'rotate(180deg)',
+            zIndex: 1,
           }}
         >
-          <Box
-            sx={{
-              width: 28,
-              height: 28,
-              borderRadius: 999,
-              border: '1px solid rgba(255,255,255,0.18)',
-              display: 'grid',
-              placeItems: 'center',
-            }}
-          >
-            <ChevronLeft sx={{ fontSize: 20, color: '#FFFFFF' }} />
+          <Box sx={{ width: 28, height: 28, transform: 'rotate(180deg)' }}>
+            <Box
+              component="img"
+              alt=""
+              src={sidebarImgAssets.lastPage}
+              sx={{ width: 28, height: 28, display: 'block' }}
+            />
           </Box>
         </Box>
       ) : null}
@@ -773,7 +749,7 @@ export function CreateDispatchPage() {
 
   const handleCancel = () => {
     resetForm();
-    navigate('/');
+    navigate('/deals');
   };
 
   const applyContactUserToPrimaryFields = useCallback(

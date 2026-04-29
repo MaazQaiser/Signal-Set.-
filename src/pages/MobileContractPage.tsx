@@ -1,0 +1,907 @@
+import {
+  Box,
+  Button,
+  Checkbox,
+  Collapse,
+  Divider,
+  FormControlLabel,
+  IconButton,
+  InputBase,
+  MenuItem,
+  Select,
+  Stack,
+  Typography,
+} from '@mui/material';
+import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
+import AddIcon from '@mui/icons-material/Add';
+import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined';
+import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import PersonIcon from '@mui/icons-material/Person';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+
+const C = {
+  bg: '#F6F6F8',
+  white: '#FFFFFF',
+  black: '#000000',
+  blue: '#004FE3',
+  grey700: '#4D4D51',
+  grey400: '#86868B',
+  grey100: '#E6E6E7',
+  border: '#E6E6E7',
+  red: '#B32318',
+  sectionLabel: '#86868B',
+} as const;
+
+/* ─── Reusable text field ─── */
+function Field({
+  label,
+  placeholder,
+  value,
+  onChange,
+  required,
+  type = 'text',
+}: {
+  label: string;
+  placeholder?: string;
+  value: string;
+  onChange: (v: string) => void;
+  required?: boolean;
+  type?: string;
+}) {
+  return (
+    <Stack sx={{ gap: 0.5 }}>
+      <Typography sx={{ fontSize: 12, fontWeight: 500, color: C.grey700 }}>
+        {label}
+        {required && <Box component="span" sx={{ color: C.red }}> *</Box>}
+      </Typography>
+      <Box
+        sx={{
+          bgcolor: C.white,
+          border: `1px solid ${C.border}`,
+          borderRadius: '8px',
+          px: 1.5,
+          minHeight: 38,
+          display: 'flex',
+          alignItems: 'center',
+        }}
+      >
+        <InputBase
+          fullWidth
+          type={type}
+          placeholder={placeholder}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          sx={{ fontSize: 14, color: C.black, '& input': { p: 0 } }}
+        />
+      </Box>
+    </Stack>
+  );
+}
+
+/* ─── Reusable select field ─── */
+function SelectField({
+  label,
+  value,
+  onChange,
+  options,
+  required,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: { label: string; value: string }[];
+  required?: boolean;
+}) {
+  return (
+    <Stack sx={{ gap: 0.5 }}>
+      <Typography sx={{ fontSize: 12, fontWeight: 500, color: C.grey700 }}>
+        {label}
+        {required && <Box component="span" sx={{ color: C.red }}> *</Box>}
+      </Typography>
+      <Select
+        size="small"
+        displayEmpty
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        MenuProps={{ disableScrollLock: true }}
+        sx={{
+          bgcolor: C.white,
+          borderRadius: '8px',
+          fontSize: 14,
+          '& .MuiOutlinedInput-notchedOutline': { borderColor: C.border },
+          '& .MuiSelect-select': { py: '9px', px: 1.5 },
+        }}
+      >
+        {options.map((o) => (
+          <MenuItem
+            key={o.value}
+            value={o.value}
+            sx={{
+              fontSize: 14,
+              ...(o.value === 'new' && {
+                color: '#1A9E4A',
+                fontWeight: 600,
+                justifyContent: 'center',
+              }),
+            }}
+          >
+            {o.label}
+          </MenuItem>
+        ))}
+      </Select>
+    </Stack>
+  );
+}
+
+/* ─── Section header ─── */
+function SectionHeader({ title, open, onToggle }: { title: string; open: boolean; onToggle: () => void }) {
+  return (
+    <Box>
+      <Box
+        onClick={onToggle}
+        sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', mb: 0.75 }}
+      >
+        <Typography sx={{ fontSize: 13, fontWeight: 700, color: C.black }}>
+          {title}
+        </Typography>
+        <ExpandMoreIcon
+          sx={{
+            fontSize: 18,
+            color: C.grey700,
+            transition: 'transform 0.2s',
+            transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
+          }}
+        />
+      </Box>
+      <Divider />
+    </Box>
+  );
+}
+
+/* ─── Option constants ─── */
+const AFFILIATION_OPTIONS = [
+  { id: 'headquarters', label: 'Headquarters' },
+  { id: 'regional_office', label: 'Regional Office' },
+  { id: 'managed', label: 'Managed' },
+  { id: 'owned', label: 'Owned' },
+  { id: 'shared', label: 'Shared' },
+  { id: 'tenant', label: 'Tenant' },
+];
+const INDUSTRY_OPTIONS = [
+  { label: 'Select industry vertical', value: '' },
+  { label: 'QSR / Fast Food', value: 'QSR / Fast Food' },
+  { label: 'Hyperstores', value: 'Hyperstores' },
+  { label: 'Healthcare', value: 'Healthcare' },
+  { label: 'Education', value: 'Education' },
+  { label: 'Residential', value: 'Residential' },
+];
+const FRANCHISE_OPTIONS = [
+  { label: 'Select associated franchise', value: '' },
+  { label: '#402 Nebraska, NB', value: '#402 Nebraska, NB' },
+  { label: 'None', value: 'None' },
+  { label: 'IFA / Franchisee network', value: 'IFA / Franchisee network' },
+  { label: 'Regional co-op', value: 'Regional co-op' },
+];
+const OCCURRENCE_UNIT_OPTIONS = [
+  { label: 'Select week or month', value: '' },
+  { label: 'Week', value: 'Week' },
+  { label: 'Month', value: 'Month' },
+];
+const PRODUCT_DIM_OPTIONS = [
+  { label: 'Select product size', value: '' },
+  { label: '20*20*12', value: '20*20*12' },
+  { label: '10*10*8', value: '10*10*8' },
+];
+const BILLING_TYPE_OPTIONS = [
+  { label: 'Select billing type', value: '' },
+  { label: 'Post Bill', value: 'Post Bill' },
+  { label: 'Pre Bill', value: 'Pre Bill' },
+];
+const PAYMENT_METHOD_OPTIONS = [
+  { label: 'Select payment method', value: '' },
+  { label: 'Credit Card', value: 'Credit Card' },
+  { label: 'ACH', value: 'ACH' },
+];
+const PAYMENT_TERMS_OPTIONS = [
+  { label: 'Select payment terms', value: '' },
+  { label: 'Due upon invoice', value: 'Due upon invoice' },
+  { label: 'Net 30', value: 'Net 30' },
+];
+const DEFAULT_CONTACTS = [
+  { label: 'John Smith', value: 'john-smith' },
+  { label: 'Sarah Johnson', value: 'sarah-johnson' },
+  { label: 'Michael Lee', value: 'michael-lee' },
+];
+const COUNTRY_OPTIONS = [
+  { label: 'Select country', value: '' },
+  { label: 'United States of America', value: 'United States of America' },
+  { label: 'Canada', value: 'Canada' },
+];
+const CITY_OPTIONS = [
+  { label: 'Select city', value: '' },
+  { label: 'New York', value: 'New York' },
+  { label: 'Omaha', value: 'Omaha' },
+];
+const STATE_OPTIONS = [
+  { label: 'Select state', value: '' },
+  { label: 'Florida', value: 'Florida' },
+  { label: 'Nebraska', value: 'Nebraska' },
+];
+
+type Product = { id: number; dimension: string; rate: string; quantity: string };
+type Signee  = { id: number; name: string; title: string; email: string };
+
+export function MobileContractPage() {
+  const navigate = useNavigate();
+
+  /* ── Company ── */
+  const [companyName, setCompanyName]             = useState('');
+  const [companyAddress, setCompanyAddress]       = useState('');
+  const [propertyAddress, setPropertyAddress]     = useState('');
+  const [industryVertical, setIndustryVertical]   = useState('');
+  const [franchise, setFranchise]                 = useState('');
+  const [affiliations, setAffiliations]           = useState<string[]>([]);
+
+  function toggleAffiliation(id: string) {
+    setAffiliations((prev) =>
+      prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id],
+    );
+  }
+
+  /* ── Contact ── */
+  const [contacts, setContacts] = useState(DEFAULT_CONTACTS);
+  const [decisionMakerPick, setDecisionMakerPick]   = useState('');
+  const [billingContactPick, setBillingContactPick] = useState('');
+
+  /* Create contact bottom sheet */
+  const [createSheetOpen, setCreateSheetOpen]       = useState(false);
+  const [createSheetFor, setCreateSheetFor]         = useState<'dm' | 'bc'>('dm');
+  const [newFirstName, setNewFirstName]             = useState('');
+  const [newLastName, setNewLastName]               = useState('');
+  const [newEmail, setNewEmail]                     = useState('');
+  const [newPhone, setNewPhone]                     = useState('');
+
+  function openCreateSheet(target: 'dm' | 'bc') {
+    setCreateSheetFor(target);
+    setNewFirstName(''); setNewLastName(''); setNewEmail(''); setNewPhone('');
+    setCreateSheetOpen(true);
+  }
+
+  function handleCreateContact() {
+    const fullName = `${newFirstName} ${newLastName}`.trim() || 'New Contact';
+    const id = `contact-${Date.now()}`;
+    setContacts((prev) => [...prev, { label: fullName, value: id }]);
+    if (createSheetFor === 'dm') setDecisionMakerPick(id);
+    if (createSheetFor === 'bc') setBillingContactPick(id);
+    setCreateSheetOpen(false);
+  }
+
+  /* ── Contract & dates ── */
+  const [contractStartDate, setContractStartDate]   = useState('');
+  const [serviceStartDate, setServiceStartDate]     = useState('');
+  const [sameAsContract, setSameAsContract]         = useState(false);
+  const [occurrenceType, setOccurrenceType]         = useState<'one-time' | 'recurring'>('recurring');
+  const [occurrenceEvery, setOccurrenceEvery]       = useState('01');
+  const [occurrenceUnit, setOccurrenceUnit]         = useState('Month');
+
+  /* ── Products ── */
+  const [products, setProducts] = useState<Product[]>([
+    { id: 1, dimension: '20*20*12', rate: '35.00', quantity: '1' },
+  ]);
+  const [nextProductId, setNextProductId] = useState(2);
+
+  function addProduct() {
+    setProducts((p) => [...p, { id: nextProductId, dimension: '', rate: '', quantity: '' }]);
+    setNextProductId((n) => n + 1);
+  }
+  function updateProduct(id: number, field: keyof Omit<Product, 'id'>, val: string) {
+    setProducts((p) => p.map((pr) => (pr.id === id ? { ...pr, [field]: val } : pr)));
+  }
+  function removeProduct(id: number) {
+    setProducts((p) => p.filter((pr) => pr.id !== id));
+  }
+
+  const subtotal = products.reduce((sum, p) => {
+    const r = parseFloat(p.rate.replace(/[^0-9.]/g, '')) || 0;
+    const q = parseInt(p.quantity, 10) || 0;
+    return sum + r * q;
+  }, 0);
+
+  /* ── Billing info ── */
+  const [sameAsContact, setSameAsContact]               = useState(false);
+  const [billAddressSameAsProperty, setBillAddressSameAsProperty] = useState(false);
+  const [billFirstName, setBillFirstName]               = useState('');
+  const [billLastName, setBillLastName]                 = useState('');
+  const [billEmail, setBillEmail]                       = useState('');
+  const [billPhone, setBillPhone]                       = useState('');
+  const [billAddress, setBillAddress]                   = useState('');
+  const [billCountry, setBillCountry]                   = useState('');
+  const [billCity, setBillCity]                         = useState('');
+  const [billState, setBillState]                       = useState('');
+  const [billZip, setBillZip]                           = useState('');
+
+  /* ── Payment ── */
+  const [cycleRefDate, setCycleRefDate]       = useState('');
+  const [billingType, setBillingType]         = useState('');
+  const [paymentMethod, setPaymentMethod]     = useState('Credit Card');
+  const [paymentTerms, setPaymentTerms]       = useState('');
+
+  /* ── Signees ── */
+  const [signees, setSignees]     = useState<Signee[]>([]);
+  const [nextSigneeId, setNextSigneeId] = useState(1);
+
+  /* Signee bottom sheet */
+  const [signeeSheetOpen, setSigneeSheetOpen]     = useState(false);
+  const [editingSigneeId, setEditingSigneeId]     = useState<number | null>(null);
+  const [signeeNewName, setSigneeNewName]         = useState('');
+  const [signeeNewTitle, setSigneeNewTitle]       = useState('');
+  const [signeeNewEmail, setSigneeNewEmail]       = useState('');
+
+  /* ── Section accordion state ── */
+  const [openCompany, setOpenCompany]           = useState(true);
+  const [openContact, setOpenContact]           = useState(true);
+  const [openContractDates, setOpenContractDates] = useState(true);
+  const [openProducts, setOpenProducts]         = useState(true);
+  const [openBilling, setOpenBilling]           = useState(true);
+  const [openPayment, setOpenPayment]           = useState(true);
+  const [openSignee, setOpenSignee]             = useState(true);
+
+  function openAddSigneeSheet() {
+    setEditingSigneeId(null);
+    setSigneeNewName(''); setSigneeNewTitle(''); setSigneeNewEmail('');
+    setSigneeSheetOpen(true);
+  }
+  function openEditSigneeSheet(s: Signee) {
+    setEditingSigneeId(s.id);
+    setSigneeNewName(s.name); setSigneeNewTitle(s.title); setSigneeNewEmail(s.email);
+    setSigneeSheetOpen(true);
+  }
+  function handleSaveSignee() {
+    if (editingSigneeId !== null) {
+      setSignees((prev) => prev.map((sg) => sg.id === editingSigneeId ? { ...sg, name: signeeNewName, title: signeeNewTitle, email: signeeNewEmail } : sg));
+    } else {
+      setSignees((prev) => [...prev, { id: nextSigneeId, name: signeeNewName, title: signeeNewTitle, email: signeeNewEmail }]);
+      setNextSigneeId((n) => n + 1);
+    }
+    setSigneeSheetOpen(false);
+  }
+  function removeSignee(id: number) {
+    setSignees((s) => s.filter((sg) => sg.id !== id));
+  }
+
+  return (
+    <Box
+      sx={{
+        minHeight: '100vh',
+        bgcolor: '#E5E5E5',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        py: 4,
+      }}
+    >
+      <Box
+        id="mobile-contract-shell"
+        sx={{
+          position: 'relative',
+          width: 375,
+          height: 812,
+          flexShrink: 0,
+          bgcolor: C.bg,
+          overflow: 'hidden',
+          boxShadow: '0 8px 40px rgba(0,0,0,0.18)',
+          borderRadius: '40px',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        {/* Status bar */}
+        <Box
+          sx={{
+            height: 44,
+            px: 2,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            bgcolor: 'rgba(255,255,255,0.6)',
+            backdropFilter: 'blur(7px)',
+            borderBottom: `0.5px solid ${C.border}`,
+            flexShrink: 0,
+          }}
+        >
+          <Typography sx={{ fontSize: 15, fontWeight: 600, letterSpacing: -0.165 }}>9:41</Typography>
+          <Box sx={{ width: 17, height: 12, bgcolor: C.black, borderRadius: '2px', opacity: 0.8 }} />
+        </Box>
+
+        {/* Nav bar */}
+        <Box
+          sx={{
+            height: 54,
+            px: 1,
+            display: 'flex',
+            alignItems: 'center',
+            bgcolor: 'rgba(255,255,255,0.6)',
+            backdropFilter: 'blur(7px)',
+            borderBottom: `0.5px solid ${C.border}`,
+            flexShrink: 0,
+            gap: 1,
+          }}
+        >
+          <IconButton size="small" onClick={() => navigate('/mobile')} sx={{ color: 'rgba(41, 41, 41, 1)' }}>
+            <ArrowBackIosNewIcon sx={{ fontSize: 18 }} />
+          </IconButton>
+          <Typography sx={{ fontSize: 16, fontWeight: 600, color: C.black, flex: 1 }}>
+            Smart Contract
+          </Typography>
+        </Box>
+
+        {/* Scrollable form */}
+        <Box
+          sx={{
+            flex: 1,
+            overflowY: 'auto',
+            px: 2,
+            pt: 1,
+            pb: 3,
+            bgcolor: C.white,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2,
+            '&::-webkit-scrollbar': { display: 'none' },
+          }}
+        >
+          {/* ── Company ── */}
+          <Box>
+            <SectionHeader title="Company" open={openCompany} onToggle={() => setOpenCompany((v) => !v)} />
+            <Collapse in={openCompany}>
+              <Stack sx={{ gap: 1.5, pt: 1.5 }}>
+                <Field label="Company" placeholder="Add company name" value={companyName} onChange={setCompanyName} required />
+                <Field label="Company address" placeholder="Enter company street, city, state, ZIP" value={companyAddress} onChange={setCompanyAddress} />
+                <Field label="Property" placeholder="Enter property street, city, state, ZIP" value={propertyAddress} onChange={setPropertyAddress} required />
+                <SelectField label="Industry vertical" value={industryVertical} onChange={setIndustryVertical} options={INDUSTRY_OPTIONS} required />
+                <SelectField label="Associated Franchise" value={franchise} onChange={setFranchise} options={FRANCHISE_OPTIONS} />
+                <Stack sx={{ gap: 0.5 }}>
+                  <Typography sx={{ fontSize: 12, fontWeight: 500, color: C.grey700 }}>Affiliation</Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {AFFILIATION_OPTIONS.map((opt) => {
+                      const selected = affiliations.includes(opt.id);
+                      return (
+                        <Button
+                          key={opt.id}
+                          variant="outlined"
+                          disableElevation
+                          onClick={() => toggleAffiliation(opt.id)}
+                          sx={{
+                            height: 32,
+                            px: 1.5,
+                            borderRadius: '40px',
+                            textTransform: 'none',
+                            fontSize: 12,
+                            fontWeight: 400,
+                            color: selected ? '#1A9E4A' : C.black,
+                            bgcolor: selected ? '#EDFAF3' : C.white,
+                            borderWidth: selected ? '1.5px' : '1px',
+                            borderColor: selected ? '#1A9E4A' : C.border,
+                            '&:hover': { bgcolor: selected ? '#EDFAF3' : C.white, borderColor: selected ? '#1A9E4A' : '#C0C0C5' },
+                          }}
+                        >
+                          {opt.label}
+                        </Button>
+                      );
+                    })}
+                  </Box>
+                </Stack>
+              </Stack>
+            </Collapse>
+          </Box>
+
+          {/* ── Contact details ── */}
+          <Box>
+            <SectionHeader title="Contact details" open={openContact} onToggle={() => setOpenContact((v) => !v)} />
+            <Collapse in={openContact}>
+              <Stack sx={{ gap: 1.5, pt: 1.5 }}>
+                {/* Decision maker */}
+                <SelectField
+                  label="Decision maker"
+                  value={decisionMakerPick}
+                  onChange={(v) => v === 'new' ? openCreateSheet('dm') : setDecisionMakerPick(v)}
+                  options={[{ label: '+ Create new contact', value: 'new' }, ...contacts]}
+                />
+
+                {/* Billing contact */}
+                <SelectField
+                  label="Billing contact"
+                  value={billingContactPick}
+                  onChange={(v) => v === 'new' ? openCreateSheet('bc') : setBillingContactPick(v)}
+                  options={[{ label: '+ Create new contact', value: 'new' }, ...contacts]}
+                />
+              </Stack>
+            </Collapse>
+          </Box>
+
+          {/* ── Contract & dates ── */}
+          <Box>
+            <SectionHeader title="Contract & dates" open={openContractDates} onToggle={() => setOpenContractDates((v) => !v)} />
+            <Collapse in={openContractDates}>
+              <Stack sx={{ gap: 1.5, pt: 1.5 }}>
+                <Field label="Contract start date" placeholder="MM/DD/YYYY" type="date" value={contractStartDate} onChange={setContractStartDate} required />
+                <Stack sx={{ gap: 0.5 }}>
+                  <Typography sx={{ fontSize: 12, fontWeight: 500, color: C.grey700 }}>Service starting date</Typography>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        size="small"
+                        checked={sameAsContract}
+                        onChange={(e) => {
+                          setSameAsContract(e.target.checked);
+                          if (e.target.checked) setServiceStartDate(contractStartDate);
+                        }}
+                        sx={{ color: '#1A9E4A', '&.Mui-checked': { color: '#1A9E4A' } }}
+                      />
+                    }
+                    label={<Typography sx={{ fontSize: 13, color: C.grey700 }}>Same as contract start date</Typography>}
+                  />
+                  <Field label="" placeholder="MM/DD/YYYY" type="date" value={serviceStartDate} onChange={setServiceStartDate} />
+                </Stack>
+                <Stack sx={{ gap: 0.75 }}>
+                  <Typography sx={{ fontSize: 12, fontWeight: 500, color: C.grey700 }}>Service occurrence</Typography>
+                  <Stack direction="row" sx={{ gap: 1 }}>
+                    {(['one-time', 'recurring'] as const).map((t) => {
+                      const isActive = occurrenceType === t;
+                      const activeColor = '#1A9E4A';
+                      const activeBg    = '#EDFAF3';
+                      return (
+                        <Button
+                          key={t}
+                          variant="outlined"
+                          onClick={() => setOccurrenceType(t)}
+                          sx={{
+                            flex: 1,
+                            height: 36,
+                            borderRadius: '8px',
+                            textTransform: 'none',
+                            fontSize: 13,
+                            fontWeight: 500,
+                            color: isActive ? activeColor : C.grey700,
+                            bgcolor: isActive ? activeBg : C.white,
+                            borderWidth: isActive ? '1.5px' : '1px',
+                            borderColor: isActive ? activeColor : C.border,
+                            '&:hover': { bgcolor: isActive ? activeBg : C.bg },
+                          }}
+                        >
+                          {t === 'one-time' ? 'Repeat every month' : 'Repeat after'}
+                        </Button>
+                      );
+                    })}
+                  </Stack>
+                </Stack>
+                {occurrenceType === 'recurring' && (
+                  <Stack direction="row" sx={{ gap: 1 }}>
+                    <Box sx={{ flex: 1 }}>
+                      <Field label="Every" placeholder="e.g. 01" value={occurrenceEvery} onChange={setOccurrenceEvery} />
+                    </Box>
+                    <Box sx={{ flex: 2 }}>
+                      <SelectField label="Unit" value={occurrenceUnit} onChange={setOccurrenceUnit} options={OCCURRENCE_UNIT_OPTIONS} />
+                    </Box>
+                  </Stack>
+                )}
+              </Stack>
+            </Collapse>
+          </Box>
+
+          {/* ── Products ── */}
+          <Box>
+            <SectionHeader title="Products" open={openProducts} onToggle={() => setOpenProducts((v) => !v)} />
+            <Collapse in={openProducts}>
+              <Stack sx={{ gap: 1.5, pt: 1.5 }}>
+                {products.map((p, idx) => (
+                  <Box
+                    key={p.id}
+                    sx={{ bgcolor: C.bg, border: `1px solid ${C.border}`, borderRadius: '10px', p: 1.5, display: 'flex', flexDirection: 'column', gap: 1.25 }}
+                  >
+                    <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Typography sx={{ fontSize: 13, fontWeight: 600, color: C.grey700 }}>Product {idx + 1}</Typography>
+                      {products.length > 1 && (
+                        <IconButton size="small" onClick={() => removeProduct(p.id)} sx={{ color: C.red, p: 0.25 }}>
+                          <CancelOutlinedIcon sx={{ fontSize: 18 }} />
+                        </IconButton>
+                      )}
+                    </Stack>
+                    <SelectField label="Dimension" value={p.dimension} onChange={(v) => updateProduct(p.id, 'dimension', v)} options={PRODUCT_DIM_OPTIONS} />
+                    <Stack direction="row" sx={{ gap: 1 }}>
+                      <Box sx={{ flex: 1 }}>
+                        <Field label="Rate ($)" placeholder="35.00" value={p.rate} onChange={(v) => updateProduct(p.id, 'rate', v)} />
+                      </Box>
+                      <Box sx={{ flex: 1 }}>
+                        <Field label="Quantity" placeholder="1" value={p.quantity} onChange={(v) => updateProduct(p.id, 'quantity', v)} />
+                      </Box>
+                    </Stack>
+                  </Box>
+                ))}
+                <Button
+                  startIcon={<AddIcon />}
+                  onClick={addProduct}
+                  variant="outlined"
+                  sx={{ borderRadius: '8px', borderColor: '#1A9E4A', color: '#1A9E4A', textTransform: 'none', fontSize: 14, fontWeight: 500, py: 0.75, '&:hover': { borderColor: '#1A9E4A', bgcolor: '#EDFAF3' } }}
+                >
+                  Add product
+                </Button>
+                <Box
+                  sx={{ bgcolor: C.bg, border: `1px solid ${C.border}`, borderRadius: '8px', px: 2, py: 1.25, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                >
+                  <Typography sx={{ fontSize: 14, fontWeight: 500, color: C.grey700 }}>Subtotal</Typography>
+                  <Typography sx={{ fontSize: 15, fontWeight: 700, color: C.black }}>
+                    ${subtotal.toFixed(2)}
+                  </Typography>
+                </Box>
+              </Stack>
+            </Collapse>
+          </Box>
+
+          {/* ── Billing info ── */}
+          <Box>
+            <SectionHeader title="Billing info" open={openBilling} onToggle={() => setOpenBilling((v) => !v)} />
+            <Collapse in={openBilling}>
+              <Stack sx={{ gap: 1.5, pt: 1.5 }}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      size="small"
+                      checked={sameAsContact}
+                      onChange={(e) => setSameAsContact(e.target.checked)}
+                      sx={{ color: '#1A9E4A', '&.Mui-checked': { color: '#1A9E4A' } }}
+                    />
+                  }
+                  label={<Typography sx={{ fontSize: 13, color: C.grey700 }}>Same as contact details</Typography>}
+                />
+                <>
+                  <Stack direction="row" sx={{ gap: 1 }}>
+                    <Box sx={{ flex: 1 }}><Field label="First name" placeholder="Add first name" value={billFirstName} onChange={setBillFirstName} required /></Box>
+                    <Box sx={{ flex: 1 }}><Field label="Last name" placeholder="Add last name" value={billLastName} onChange={setBillLastName} required /></Box>
+                  </Stack>
+                  <Field label="Email" placeholder="name@company.com" value={billEmail} onChange={setBillEmail} required />
+                  <Field label="Phone" placeholder="+1 (555) 000-0000" value={billPhone} onChange={setBillPhone} />
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        size="small"
+                        checked={billAddressSameAsProperty}
+                        onChange={(e) => setBillAddressSameAsProperty(e.target.checked)}
+                        sx={{ color: '#1A9E4A', '&.Mui-checked': { color: '#1A9E4A' } }}
+                      />
+                    }
+                    label={<Typography sx={{ fontSize: 13, color: C.grey700 }}>Billing address same as property</Typography>}
+                  />
+                  <Field label="Address" placeholder="Enter billing street, city, state, ZIP" value={billAddress} onChange={setBillAddress} />
+                  <SelectField label="Country" value={billCountry} onChange={setBillCountry} options={COUNTRY_OPTIONS} required />
+                  <Stack direction="row" sx={{ gap: 1 }}>
+                    <Box sx={{ flex: 1 }}><SelectField label="City" value={billCity} onChange={setBillCity} options={CITY_OPTIONS} required /></Box>
+                    <Box sx={{ flex: 1 }}><SelectField label="State" value={billState} onChange={setBillState} options={STATE_OPTIONS} required /></Box>
+                  </Stack>
+                  <Field label="Zipcode" placeholder="Enter ZIP or postal code" value={billZip} onChange={setBillZip} />
+                </>
+              </Stack>
+            </Collapse>
+          </Box>
+
+          {/* ── Payment ── */}
+          <Box>
+            <SectionHeader title="Payment" open={openPayment} onToggle={() => setOpenPayment((v) => !v)} />
+            <Collapse in={openPayment}>
+              <Stack sx={{ gap: 1.5, pt: 1.5 }}>
+                <Field label="Cycle reference date" placeholder="Enter cycle reference date" value={cycleRefDate} onChange={setCycleRefDate} />
+                <SelectField label="Billing type" value={billingType} onChange={setBillingType} options={BILLING_TYPE_OPTIONS} />
+                <SelectField label="Payment method" value={paymentMethod} onChange={setPaymentMethod} options={PAYMENT_METHOD_OPTIONS} />
+                <SelectField label="Payment terms" value={paymentTerms} onChange={setPaymentTerms} options={PAYMENT_TERMS_OPTIONS} />
+              </Stack>
+            </Collapse>
+          </Box>
+
+          {/* ── Signees ── */}
+          <Box>
+            <SectionHeader title="Signee" open={openSignee} onToggle={() => setOpenSignee((v) => !v)} />
+            <Collapse in={openSignee}>
+              <Stack sx={{ gap: 1.5, pt: 1.5 }}>
+                {signees.map((s, idx) => (
+                  <Box
+                    key={s.id}
+                    sx={{ bgcolor: C.white, border: `1px solid ${C.border}`, borderRadius: '8px', p: 2, display: 'flex', flexDirection: 'column', gap: 1.5 }}
+                  >
+                    {/* Card header */}
+                    <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Typography sx={{ fontSize: 16, fontWeight: 600, color: '#262527' }}>Signee {idx + 1}</Typography>
+                      <Stack direction="row" sx={{ gap: 1.5 }}>
+                        <IconButton size="small" onClick={() => removeSignee(s.id)} sx={{ color: '#E43F32', p: 0.25 }}>
+                          <DeleteOutlineOutlinedIcon sx={{ fontSize: 22 }} />
+                        </IconButton>
+                        <IconButton size="small" onClick={() => openEditSigneeSheet(s)} sx={{ color: '#146DFF', p: 0.25 }}>
+                          <EditOutlinedIcon sx={{ fontSize: 22 }} />
+                        </IconButton>
+                      </Stack>
+                    </Stack>
+                    {/* Avatar + info */}
+                    <Stack direction="row" sx={{ gap: 1.5, alignItems: 'center' }}>
+                      <Box sx={{ width: 62, height: 62, borderRadius: '50%', bgcolor: '#E5F6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <PersonIcon sx={{ fontSize: 34, color: '#146DFF' }} />
+                      </Box>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75, alignItems: 'flex-start' }}>
+                        <Typography sx={{ fontSize: 16, fontWeight: 500, color: '#262527', lineHeight: '20px' }}>
+                          {s.name || '—'}
+                        </Typography>
+                        <Typography sx={{ fontSize: 12, fontWeight: 400, color: '#262527', lineHeight: '20px' }}>
+                          {s.title || '—'}
+                        </Typography>
+                        <Button
+                          variant="outlined"
+                          sx={{ borderRadius: '8px', borderColor: '#1A9E4A', color: '#1A9E4A', textTransform: 'none', fontSize: 12, fontWeight: 600, px: 1.25, py: 0.25, minHeight: 28, '&:hover': { borderColor: '#1A9E4A', bgcolor: '#EDFAF3' } }}
+                        >
+                          Add Sign
+                        </Button>
+                      </Box>
+                    </Stack>
+                  </Box>
+                ))}
+                <Button
+                  startIcon={<AddIcon />}
+                  onClick={openAddSigneeSheet}
+                  variant="outlined"
+                  sx={{ borderRadius: '8px', borderColor: '#1A9E4A', color: '#1A9E4A', textTransform: 'none', fontSize: 14, fontWeight: 500, py: 0.75, '&:hover': { borderColor: '#1A9E4A', bgcolor: '#EDFAF3' } }}
+                >
+                  Add signee
+                </Button>
+              </Stack>
+            </Collapse>
+          </Box>
+        </Box>
+
+        {/* Submit bar */}
+        <Box
+          sx={{
+            flexShrink: 0,
+            bgcolor: C.white,
+            borderTop: `0.5px solid ${C.border}`,
+            px: 2,
+            pt: 1.5,
+          }}
+        >
+          <Button
+            fullWidth
+            variant="contained"
+            disableElevation
+            sx={{
+              bgcolor: '#1A9E4A',
+              color: C.white,
+              borderRadius: '12px',
+              height: 48,
+              fontSize: 16,
+              fontWeight: 600,
+              textTransform: 'none',
+              '&:hover': { bgcolor: '#158040' },
+            }}
+          >
+            Submit Contract
+          </Button>
+          <Box sx={{ height: 34, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', pb: 1, mt: 0.5 }}>
+            <Box sx={{ width: 134, height: 5, bgcolor: C.black, borderRadius: '100px' }} />
+          </Box>
+        </Box>
+
+        {/* ── Create contact bottom sheet ── */}
+        {createSheetOpen && (
+          <>
+            {/* Backdrop */}
+            <Box
+              onClick={() => setCreateSheetOpen(false)}
+              sx={{ position: 'absolute', inset: 0, bgcolor: 'rgba(0,0,0,0.35)', zIndex: 20, borderRadius: '40px' }}
+            />
+            {/* Sheet */}
+            <Box
+              sx={{
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                bgcolor: C.white,
+                borderRadius: '20px 20px 0 0',
+                zIndex: 21,
+                px: 2.5,
+                pt: 2,
+                pb: 4,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 0,
+              }}
+            >
+              {/* Handle */}
+              <Box sx={{ width: 36, height: 4, bgcolor: C.border, borderRadius: '2px', mx: 'auto', mb: 2 }} />
+              <Typography sx={{ fontSize: 16, fontWeight: 700, color: C.black, mb: 2 }}>New contact</Typography>
+              <Stack sx={{ gap: 1.5 }}>
+                <Stack direction="row" sx={{ gap: 1 }}>
+                  <Box sx={{ flex: 1 }}>
+                    <Field label="First name" placeholder="John" value={newFirstName} onChange={setNewFirstName} required />
+                  </Box>
+                  <Box sx={{ flex: 1 }}>
+                    <Field label="Last name" placeholder="Smith" value={newLastName} onChange={setNewLastName} required />
+                  </Box>
+                </Stack>
+                <Field label="Email" placeholder="name@example.com" value={newEmail} onChange={setNewEmail} />
+                <Field label="Phone" placeholder="+1 (555) 000-0000" value={newPhone} onChange={setNewPhone} />
+                <Button
+                  fullWidth
+                  variant="contained"
+                  disableElevation
+                  onClick={handleCreateContact}
+                  sx={{ bgcolor: '#1A9E4A', color: C.white, borderRadius: '12px', height: 44, fontSize: 15, fontWeight: 600, textTransform: 'none', mt: 0.5, '&:hover': { bgcolor: '#158040' } }}
+                >
+                  Create contact
+                </Button>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  onClick={() => setCreateSheetOpen(false)}
+                  sx={{ borderColor: C.border, color: C.grey700, borderRadius: '12px', height: 44, fontSize: 15, fontWeight: 500, textTransform: 'none', '&:hover': { bgcolor: C.bg, borderColor: C.border } }}
+                >
+                  Cancel
+                </Button>
+              </Stack>
+            </Box>
+          </>
+        )}
+
+        {/* ── Signee bottom sheet ── */}
+        {signeeSheetOpen && (
+          <>
+            <Box
+              onClick={() => setSigneeSheetOpen(false)}
+              sx={{ position: 'absolute', inset: 0, bgcolor: 'rgba(0,0,0,0.35)', zIndex: 20, borderRadius: '40px' }}
+            />
+            <Box
+              sx={{
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                bgcolor: C.white,
+                borderRadius: '20px 20px 0 0',
+                zIndex: 21,
+                px: 2.5,
+                pt: 2,
+                pb: 4,
+              }}
+            >
+              <Box sx={{ width: 36, height: 4, bgcolor: C.border, borderRadius: '2px', mx: 'auto', mb: 2 }} />
+              <Typography sx={{ fontSize: 16, fontWeight: 700, color: C.black, mb: 2 }}>
+                {editingSigneeId !== null ? 'Edit signee' : 'New signee'}
+              </Typography>
+              <Stack sx={{ gap: 1.5 }}>
+                <Field label="Name" placeholder="Full name" value={signeeNewName} onChange={setSigneeNewName} required />
+                <Field label="Title" placeholder="Job title" value={signeeNewTitle} onChange={setSigneeNewTitle} />
+                <Field label="Email" placeholder="name@example.com" value={signeeNewEmail} onChange={setSigneeNewEmail} />
+                <Button
+                  fullWidth
+                  variant="contained"
+                  disableElevation
+                  onClick={handleSaveSignee}
+                  sx={{ bgcolor: '#1A9E4A', color: C.white, borderRadius: '12px', height: 44, fontSize: 15, fontWeight: 600, textTransform: 'none', mt: 0.5, '&:hover': { bgcolor: '#158040' } }}
+                >
+                  {editingSigneeId !== null ? 'Save changes' : 'Add signee'}
+                </Button>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  onClick={() => setSigneeSheetOpen(false)}
+                  sx={{ borderColor: C.border, color: C.grey700, borderRadius: '12px', height: 44, fontSize: 15, fontWeight: 500, textTransform: 'none', '&:hover': { bgcolor: C.bg, borderColor: C.border } }}
+                >
+                  Cancel
+                </Button>
+              </Stack>
+            </Box>
+          </>
+        )}
+      </Box>
+    </Box>
+  );
+}
