@@ -8,6 +8,8 @@ import {
   IconButton,
   InputBase,
   MenuItem,
+  Radio,
+  RadioGroup,
   Select,
   Stack,
   Typography,
@@ -45,6 +47,7 @@ function Field({
   onChange,
   required,
   type = 'text',
+  disabled = false,
 }: {
   label: string;
   placeholder?: string;
@@ -52,6 +55,7 @@ function Field({
   onChange: (v: string) => void;
   required?: boolean;
   type?: string;
+  disabled?: boolean;
 }) {
   return (
     <Stack sx={{ gap: 0.5 }}>
@@ -61,7 +65,7 @@ function Field({
       </Typography>
       <Box
         sx={{
-          bgcolor: C.white,
+          bgcolor: disabled ? C.bg : C.white,
           border: `1px solid ${C.border}`,
           borderRadius: '8px',
           px: 1.5,
@@ -75,6 +79,7 @@ function Field({
           type={type}
           placeholder={placeholder}
           value={value}
+          disabled={disabled}
           onChange={(e) => onChange(e.target.value)}
           sx={{ fontSize: 14, color: C.black, '& input': { p: 0 } }}
         />
@@ -190,11 +195,6 @@ const FRANCHISE_OPTIONS = [
   { label: 'IFA / Franchisee network', value: 'IFA / Franchisee network' },
   { label: 'Regional co-op', value: 'Regional co-op' },
 ];
-const OCCURRENCE_UNIT_OPTIONS = [
-  { label: 'Select week or month', value: '' },
-  { label: 'Week', value: 'Week' },
-  { label: 'Month', value: 'Month' },
-];
 const PRODUCT_DIM_OPTIONS = [
   { label: 'Select product size', value: '' },
   { label: '20*20*12', value: '20*20*12' },
@@ -214,11 +214,6 @@ const PAYMENT_TERMS_OPTIONS = [
   { label: 'Select payment terms', value: '' },
   { label: 'Due upon invoice', value: 'Due upon invoice' },
   { label: 'Net 30', value: 'Net 30' },
-];
-const DEFAULT_CONTACTS = [
-  { label: 'John Smith', value: 'john-smith' },
-  { label: 'Sarah Johnson', value: 'sarah-johnson' },
-  { label: 'Michael Lee', value: 'michael-lee' },
 ];
 const COUNTRY_OPTIONS = [
   { label: 'Select country', value: '' },
@@ -257,40 +252,16 @@ export function MobileContractPage() {
   }
 
   /* ── Contact ── */
-  const [contacts, setContacts] = useState(DEFAULT_CONTACTS);
-  const [decisionMakerPick, setDecisionMakerPick]   = useState('');
-  const [billingContactPick, setBillingContactPick] = useState('');
-
-  /* Create contact bottom sheet */
-  const [createSheetOpen, setCreateSheetOpen]       = useState(false);
-  const [createSheetFor, setCreateSheetFor]         = useState<'dm' | 'bc'>('dm');
-  const [newFirstName, setNewFirstName]             = useState('');
-  const [newLastName, setNewLastName]               = useState('');
-  const [newEmail, setNewEmail]                     = useState('');
-  const [newPhone, setNewPhone]                     = useState('');
-
-  function openCreateSheet(target: 'dm' | 'bc') {
-    setCreateSheetFor(target);
-    setNewFirstName(''); setNewLastName(''); setNewEmail(''); setNewPhone('');
-    setCreateSheetOpen(true);
-  }
-
-  function handleCreateContact() {
-    const fullName = `${newFirstName} ${newLastName}`.trim() || 'New Contact';
-    const id = `contact-${Date.now()}`;
-    setContacts((prev) => [...prev, { label: fullName, value: id }]);
-    if (createSheetFor === 'dm') setDecisionMakerPick(id);
-    if (createSheetFor === 'bc') setBillingContactPick(id);
-    setCreateSheetOpen(false);
-  }
+  const [contactFirstName, setContactFirstName]     = useState('');
+  const [contactLastName, setContactLastName]       = useState('');
+  const [contactEmail, setContactEmail]             = useState('');
+  const [contactPhone, setContactPhone]             = useState('');
 
   /* ── Contract & dates ── */
   const [contractStartDate, setContractStartDate]   = useState('');
   const [serviceStartDate, setServiceStartDate]     = useState('');
   const [sameAsContract, setSameAsContract]         = useState(false);
-  const [occurrenceType, setOccurrenceType]         = useState<'one-time' | 'recurring'>('recurring');
   const [occurrenceEvery, setOccurrenceEvery]       = useState('01');
-  const [occurrenceUnit, setOccurrenceUnit]         = useState('Month');
 
   /* ── Products ── */
   const [products, setProducts] = useState<Product[]>([
@@ -317,7 +288,7 @@ export function MobileContractPage() {
 
   /* ── Billing info ── */
   const [sameAsContact, setSameAsContact]               = useState(false);
-  const [billAddressSameAsProperty, setBillAddressSameAsProperty] = useState(false);
+  const [billingAddressType, setBillingAddressType] = useState<'property' | 'company' | 'other'>('other');
   const [billFirstName, setBillFirstName]               = useState('');
   const [billLastName, setBillLastName]                 = useState('');
   const [billEmail, setBillEmail]                       = useState('');
@@ -357,7 +328,6 @@ export function MobileContractPage() {
   const [openContractDates, setOpenContractDates] = useState(true);
   const [openProducts, setOpenProducts]         = useState(true);
   const [openBilling, setOpenBilling]           = useState(true);
-  const [openPayment, setOpenPayment]           = useState(true);
   const [openSignee, setOpenSignee]             = useState(true);
 
   function openAddSigneeSheet() {
@@ -581,21 +551,11 @@ export function MobileContractPage() {
             <SectionHeader title="Contact details" open={openContact} onToggle={() => setOpenContact((v) => !v)} />
             <Collapse in={openContact}>
               <Stack sx={{ gap: 1.5, pt: 1.5 }}>
-                {/* Decision maker */}
-                <SelectField
-                  label="Decision maker"
-                  value={decisionMakerPick}
-                  onChange={(v) => v === 'new' ? openCreateSheet('dm') : setDecisionMakerPick(v)}
-                  options={[{ label: '+ Create new contact', value: 'new' }, ...contacts]}
-                />
-
-                {/* Billing contact */}
-                <SelectField
-                  label="Billing contact"
-                  value={billingContactPick}
-                  onChange={(v) => v === 'new' ? openCreateSheet('bc') : setBillingContactPick(v)}
-                  options={[{ label: '+ Create new contact', value: 'new' }, ...contacts]}
-                />
+                <Field label="First Name" placeholder="Enter first name" value={contactFirstName} onChange={setContactFirstName} />
+                <Field label="Last Name" placeholder="Enter last name" value={contactLastName} onChange={setContactLastName} />
+                <Field label="Email" placeholder="Enter email address" value={contactEmail} onChange={setContactEmail} type="email" />
+                <Field label="Phone number" placeholder="Enter phone number" value={contactPhone} onChange={setContactPhone} type="tel" />
+                <Field label="Title" value="Decision Maker" onChange={() => {}} disabled />
               </Stack>
             </Collapse>
           </Box>
@@ -625,47 +585,46 @@ export function MobileContractPage() {
                   <Field label="" placeholder="MM/DD/YYYY" type="date" value={serviceStartDate} onChange={setServiceStartDate} />
                 </Stack>
                 <Stack sx={{ gap: 0.75 }}>
-                  <Typography sx={{ fontSize: 12, fontWeight: 500, color: C.grey700 }}>Service occurrence</Typography>
-                  <Stack direction="row" sx={{ gap: 1 }}>
-                    {(['one-time', 'recurring'] as const).map((t) => {
-                      const isActive = occurrenceType === t;
-                      const activeColor = '#1A9E4A';
-                      const activeBg    = '#EDFAF3';
-                      return (
-                        <Button
-                          key={t}
-                          variant="outlined"
-                          onClick={() => setOccurrenceType(t)}
-                          sx={{
-                            flex: 1,
-                            height: 36,
-                            borderRadius: '8px',
-                            textTransform: 'none',
-                            fontSize: 13,
-                            fontWeight: 500,
-                            color: isActive ? activeColor : C.grey700,
-                            bgcolor: isActive ? activeBg : C.white,
-                            borderWidth: isActive ? '1.5px' : '1px',
-                            borderColor: isActive ? activeColor : C.border,
-                            '&:hover': { bgcolor: isActive ? activeBg : C.bg },
-                          }}
-                        >
-                          {t === 'one-time' ? 'Repeat every month' : 'Repeat after'}
-                        </Button>
-                      );
-                    })}
+                  <Typography sx={{ fontSize: 12, fontWeight: 500, color: C.grey700 }}>Service Reoccurrence</Typography>
+                  <Typography sx={{ fontSize: 12, fontWeight: 500, color: C.grey700 }}>Repeat after every</Typography>
+                  <Stack direction="row" sx={{ gap: 1, alignItems: 'center' }}>
+                    <Box
+                      sx={{
+                        bgcolor: C.white,
+                        border: `1px solid ${C.border}`,
+                        borderRadius: '8px',
+                        px: 1.5,
+                        minHeight: 42,
+                        flex: 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <InputBase
+                        fullWidth
+                        type="number"
+                        placeholder="e.g. 1"
+                        value={occurrenceEvery}
+                        onChange={(e) => setOccurrenceEvery(e.target.value)}
+                        inputProps={{ min: 1 }}
+                        sx={{ fontSize: 14, color: C.black, '& input': { p: 0 } }}
+                      />
+                    </Box>
+                    <Box
+                      sx={{
+                        bgcolor: C.white,
+                        border: `1px solid ${C.border}`,
+                        borderRadius: '8px',
+                        px: 2,
+                        minHeight: 42,
+                        display: 'flex',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <Typography sx={{ fontSize: 14, color: C.grey700 }}>Month</Typography>
+                    </Box>
                   </Stack>
                 </Stack>
-                {occurrenceType === 'recurring' && (
-                  <Stack direction="row" sx={{ gap: 1 }}>
-                    <Box sx={{ flex: 1 }}>
-                      <Field label="Every" placeholder="e.g. 01" value={occurrenceEvery} onChange={setOccurrenceEvery} />
-                    </Box>
-                    <Box sx={{ flex: 2 }}>
-                      <SelectField label="Unit" value={occurrenceUnit} onChange={setOccurrenceUnit} options={OCCURRENCE_UNIT_OPTIONS} />
-                    </Box>
-                  </Stack>
-                )}
               </Stack>
             </Collapse>
           </Box>
@@ -719,9 +678,9 @@ export function MobileContractPage() {
             </Collapse>
           </Box>
 
-          {/* ── Billing info ── */}
+          {/* ── Billing & Payment Details ── */}
           <Box>
-            <SectionHeader title="Billing info" open={openBilling} onToggle={() => setOpenBilling((v) => !v)} />
+            <SectionHeader title="Billing & Payment Details" open={openBilling} onToggle={() => setOpenBilling((v) => !v)} />
             <Collapse in={openBilling}>
               <Stack sx={{ gap: 1.5, pt: 1.5 }}>
                 <FormControlLabel
@@ -742,17 +701,46 @@ export function MobileContractPage() {
                   </Stack>
                   <Field label="Email" placeholder="name@company.com" value={billEmail} onChange={setBillEmail} required />
                   <Field label="Phone" placeholder="+1 (555) 000-0000" value={billPhone} onChange={setBillPhone} />
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        size="small"
-                        checked={billAddressSameAsProperty}
-                        onChange={(e) => setBillAddressSameAsProperty(e.target.checked)}
-                        sx={{ color: '#1A9E4A', '&.Mui-checked': { color: '#1A9E4A' } }}
-                      />
-                    }
-                    label={<Typography sx={{ fontSize: 13, color: C.grey700 }}>Billing address same as property</Typography>}
-                  />
+                  <Field label="Cycle reference date" placeholder="Enter cycle reference date" value={cycleRefDate} onChange={setCycleRefDate} />
+                  <SelectField label="Billing type" value={billingType} onChange={setBillingType} options={BILLING_TYPE_OPTIONS} />
+                  <SelectField label="Payment method" value={paymentMethod} onChange={setPaymentMethod} options={PAYMENT_METHOD_OPTIONS} />
+                  <SelectField label="Payment terms" value={paymentTerms} onChange={setPaymentTerms} options={PAYMENT_TERMS_OPTIONS} />
+                  <Button
+                    variant="outlined"
+                    startIcon={<AddIcon />}
+                    sx={{
+                      borderRadius: '8px',
+                      borderColor: C.border,
+                      color: C.grey700,
+                      textTransform: 'none',
+                      fontSize: 14,
+                      fontWeight: 500,
+                      height: 42,
+                      minHeight: 42,
+                    }}
+                  >
+                    Add payment method
+                  </Button>
+                  <Stack sx={{ gap: 0.5 }}>
+                    <Typography sx={{ fontSize: 12, fontWeight: 500, color: C.grey700 }}>Billing Address</Typography>
+                    <RadioGroup
+                      value={billingAddressType}
+                      onChange={(e) => setBillingAddressType(e.target.value as 'property' | 'company' | 'other')}
+                    >
+                      {[
+                        { value: 'property', label: 'Same as Property Address' },
+                        { value: 'company',  label: 'Same as Company Address' },
+                        { value: 'other',    label: 'Other' },
+                      ].map((opt) => (
+                        <FormControlLabel
+                          key={opt.value}
+                          value={opt.value}
+                          control={<Radio size="small" sx={{ color: '#1A9E4A', '&.Mui-checked': { color: '#1A9E4A' }, py: 0.5 }} />}
+                          label={<Typography sx={{ fontSize: 13, color: C.grey700 }}>{opt.label}</Typography>}
+                        />
+                      ))}
+                    </RadioGroup>
+                  </Stack>
                   <Field label="Address" placeholder="Enter billing street, city, state, ZIP" value={billAddress} onChange={setBillAddress} />
                   <SelectField label="Country" value={billCountry} onChange={setBillCountry} options={COUNTRY_OPTIONS} required />
                   <Stack direction="row" sx={{ gap: 1 }}>
@@ -761,35 +749,6 @@ export function MobileContractPage() {
                   </Stack>
                   <Field label="Zipcode" placeholder="Enter ZIP or postal code" value={billZip} onChange={setBillZip} />
                 </>
-              </Stack>
-            </Collapse>
-          </Box>
-
-          {/* ── Payment ── */}
-          <Box>
-            <SectionHeader title="Payment" open={openPayment} onToggle={() => setOpenPayment((v) => !v)} />
-            <Collapse in={openPayment}>
-              <Stack sx={{ gap: 1.5, pt: 1.5 }}>
-                <Field label="Cycle reference date" placeholder="Enter cycle reference date" value={cycleRefDate} onChange={setCycleRefDate} />
-                <SelectField label="Billing type" value={billingType} onChange={setBillingType} options={BILLING_TYPE_OPTIONS} />
-                <SelectField label="Payment method" value={paymentMethod} onChange={setPaymentMethod} options={PAYMENT_METHOD_OPTIONS} />
-                <SelectField label="Payment terms" value={paymentTerms} onChange={setPaymentTerms} options={PAYMENT_TERMS_OPTIONS} />
-                <Button
-                  variant="outlined"
-                  startIcon={<AddIcon />}
-                  sx={{
-                    borderRadius: '8px',
-                    borderColor: C.border,
-                    color: C.grey700,
-                    textTransform: 'none',
-                    fontSize: 14,
-                    fontWeight: 500,
-                    height: 42,
-                    minHeight: 42,
-                  }}
-                >
-                  Add payment method
-                </Button>
               </Stack>
             </Collapse>
           </Box>
@@ -915,67 +874,6 @@ export function MobileContractPage() {
           </Box>
         </Box>
 
-        {/* ── Create contact bottom sheet ── */}
-        {createSheetOpen && (
-          <>
-            {/* Backdrop */}
-            <Box
-              onClick={() => setCreateSheetOpen(false)}
-              sx={{ position: 'absolute', inset: 0, bgcolor: 'rgba(0,0,0,0.35)', zIndex: 20, borderRadius: '40px' }}
-            />
-            {/* Sheet */}
-            <Box
-              sx={{
-                position: 'absolute',
-                bottom: 0,
-                left: 0,
-                right: 0,
-                bgcolor: C.white,
-                borderRadius: '20px 20px 0 0',
-                zIndex: 21,
-                px: 2.5,
-                pt: 2,
-                pb: 4,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 0,
-              }}
-            >
-              {/* Handle */}
-              <Box sx={{ width: 36, height: 4, bgcolor: C.border, borderRadius: '2px', mx: 'auto', mb: 2 }} />
-              <Typography sx={{ fontSize: 16, fontWeight: 700, color: C.black, mb: 2 }}>New contact</Typography>
-              <Stack sx={{ gap: 1.5 }}>
-                <Stack direction="row" sx={{ gap: 1 }}>
-                  <Box sx={{ flex: 1 }}>
-                    <Field label="First name" placeholder="John" value={newFirstName} onChange={setNewFirstName} required />
-                  </Box>
-                  <Box sx={{ flex: 1 }}>
-                    <Field label="Last name" placeholder="Smith" value={newLastName} onChange={setNewLastName} required />
-                  </Box>
-                </Stack>
-                <Field label="Email" placeholder="name@example.com" value={newEmail} onChange={setNewEmail} />
-                <Field label="Phone" placeholder="+1 (555) 000-0000" value={newPhone} onChange={setNewPhone} />
-                <Button
-                  fullWidth
-                  variant="contained"
-                  disableElevation
-                  onClick={handleCreateContact}
-                  sx={{ bgcolor: '#1A9E4A', color: C.white, borderRadius: '12px', height: 44, fontSize: 15, fontWeight: 600, textTransform: 'none', mt: 0.5, '&:hover': { bgcolor: '#158040' } }}
-                >
-                  Create contact
-                </Button>
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  onClick={() => setCreateSheetOpen(false)}
-                  sx={{ borderColor: C.border, color: C.grey700, borderRadius: '12px', height: 44, fontSize: 15, fontWeight: 500, textTransform: 'none', '&:hover': { bgcolor: C.bg, borderColor: C.border } }}
-                >
-                  Cancel
-                </Button>
-              </Stack>
-            </Box>
-          </>
-        )}
 
         {/* ── Signee bottom sheet ── */}
         {signeeSheetOpen && (

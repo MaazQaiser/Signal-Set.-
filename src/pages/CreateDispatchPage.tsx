@@ -359,14 +359,6 @@ export function CreateDispatchPage() {
     [],
   );
 
-  const occurrenceUnitOptions = useMemo<UiOption[]>(
-    () => [
-      { label: 'Select week or month', value: '' },
-      { label: 'Week', value: 'Week' },
-      { label: 'Month', value: 'Month' },
-    ],
-    [],
-  );
 
   const [companyName, setCompanyName] = useState('');
   const [companyAddress, setCompanyAddress] = useState('');
@@ -375,9 +367,17 @@ export function CreateDispatchPage() {
   const [franchiseAssociation, setFranchiseAssociation] = useState('');
   const [companyAffiliations, setCompanyAffiliations] = useState<string[]>([]);
 
-  const [contactName, setContactName] = useState('');
+  const [contactFirstName, setContactFirstName] = useState('');
+  const [contactLastName, setContactLastName] = useState('');
+  const contactName = `${contactFirstName} ${contactLastName}`.trim();
+  const setContactName = (v: string) => {
+    const parts = v.trim().split(/\s+/);
+    setContactFirstName(parts[0] ?? '');
+    setContactLastName(parts.slice(1).join(' ') || '');
+  };
   const [contactEmail, setContactEmail] = useState('');
   const [contactPhone, setContactPhone] = useState('');
+  const [contactPhoneCountryCode, setContactPhoneCountryCode] = useState('+1');
   const [contactUserByRole, setContactUserByRole] = useState<Record<string, string>>(() => ({
     decision_maker: '',
     billing: '',
@@ -427,7 +427,7 @@ export function CreateDispatchPage() {
   );
 
   const [billingType, setBillingType] = useState('');
-  const [cycleReferenceDateInput, setCycleReferenceDateInput] = useState('');
+  const [cycleReferenceDateInput, setCycleReferenceDateInput] = useState<Dayjs | null>(null);
   const [paymentMethod, setPaymentMethod] = useState('Credit Card');
   const [paymentTerms, setPaymentTerms] = useState('');
   const billingTypeOptions = useMemo<UiOption[]>(
@@ -467,6 +467,7 @@ export function CreateDispatchPage() {
   const [billAddress, setBillAddress] = useState('');
   const [billingSameAsContactDetails, setBillingSameAsContactDetails] = useState(false);
   const [billingAddressSameAsProperty, setBillingAddressSameAsProperty] = useState(false);
+  const [billingAddressOption, setBillingAddressOption] = useState<'property' | 'company' | 'other'>('other');
   const countryOptions = useMemo<UiOption[]>(
     () => [
       { label: 'Select country', value: '' },
@@ -548,10 +549,11 @@ export function CreateDispatchPage() {
   }, [billingSameAsContactDetails, contactName, contactEmail, contactPhone]);
 
   useEffect(() => {
-    if (!billingAddressSameAsProperty) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- billing address mirrors property when enabled
-    setBillAddress(propertyAddress);
-  }, [billingAddressSameAsProperty, propertyAddress]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- billing address mirrors selection
+    if (billingAddressOption === 'property') setBillAddress(propertyAddress);
+    else if (billingAddressOption === 'company') setBillAddress(companyAddress);
+    setBillingAddressSameAsProperty(billingAddressOption !== 'other');
+  }, [billingAddressOption, propertyAddress, companyAddress]);
 
   const clearFieldError = useCallback((key: string) => {
     setFieldErrors((prev) => {
@@ -641,7 +643,7 @@ export function CreateDispatchPage() {
     setPreferredEndTime(null);
     setServiceProducts(DEFAULT_SERVICE_PRODUCTS.map((p) => ({ ...p })));
     setBillingType('');
-    setCycleReferenceDateInput('');
+    setCycleReferenceDateInput(null);
     setPaymentMethod('Credit Card');
     setPaymentTerms('');
     setBillFirstName('');
@@ -736,7 +738,7 @@ export function CreateDispatchPage() {
         address: billAddress,
       },
       payment: {
-        cycleReferenceDate: cycleReferenceDateInput,
+        cycleReferenceDate: cycleReferenceDateInput?.format('YYYY-MM-DD') ?? '',
         billingType,
         paymentMethod,
         paymentTerms,
@@ -1238,7 +1240,108 @@ export function CreateDispatchPage() {
               </FormSection>
 
               <FormSection title="Contact details">
-                <Box
+                <Grid container spacing={2}>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <LabeledField
+                      name="contactFirstName"
+                      label="First name"
+                      required
+                      placeholder="Add first name"
+                      value={contactFirstName}
+                      onChange={(v) => { setContactFirstName(v); clearFieldError('contactName'); }}
+                      error={Boolean(fieldErrors.contactName)}
+                      helperText={fieldErrors.contactName}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <LabeledField
+                      name="contactLastName"
+                      label="Last name"
+                      placeholder="Add last name"
+                      value={contactLastName}
+                      onChange={setContactLastName}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <LabeledField
+                      name="contactEmail"
+                      label="Email"
+                      required
+                      placeholder="Add email (e.g. name@company.com)"
+                      value={contactEmail}
+                      onChange={(v) => { setContactEmail(v); clearFieldError('contactEmail'); }}
+                      error={Boolean(fieldErrors.contactEmail)}
+                      helperText={fieldErrors.contactEmail}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <Stack spacing={0.75} sx={{ width: '100%' }}>
+                      <Typography sx={figmaLabelSx}>
+                        Phone number
+                        <Box component="span" sx={{ color: '#B32318' }}> *</Box>
+                      </Typography>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        variant="outlined"
+                        placeholder="Phone number"
+                        value={contactPhone}
+                        onChange={(e) => { setContactPhone(e.target.value); clearFieldError('contactPhone'); }}
+                        error={Boolean(fieldErrors.contactPhone)}
+                        helperText={fieldErrors.contactPhone}
+                        sx={[
+                          figmaTextFieldSx,
+                          {
+                            '& .MuiOutlinedInput-root': { minHeight: 36, height: 36 },
+                            '& .MuiInputAdornment-root': { mr: 0.75 },
+                          },
+                        ]}
+                        slotProps={{
+                          input: {
+                            startAdornment: (
+                              <InputAdornment position="start" sx={{ mr: 0.75 }}>
+                                <TextField
+                                  select
+                                  variant="standard"
+                                  value={contactPhoneCountryCode}
+                                  onChange={(e) => setContactPhoneCountryCode(e.target.value)}
+                                  sx={{
+                                    minWidth: 54,
+                                    '& .MuiInputBase-root': { fontSize: 14, lineHeight: '24px' },
+                                    '& .MuiInput-underline:before': { borderBottom: 'none' },
+                                    '& .MuiInput-underline:after': { borderBottom: 'none' },
+                                    '& .MuiInput-underline:hover:not(.Mui-disabled):before': { borderBottom: 'none' },
+                                    '& .MuiSelect-nativeInput': { width: 54 },
+                                    '& .MuiSelect-select': { display: 'flex', alignItems: 'center', gap: 0.75, pr: '20px' },
+                                    '& .MuiSelect-icon': { right: 4 },
+                                  }}
+                                  slotProps={{ select: { IconComponent: FieldSelectChevronIcon } }}
+                                >
+                                  <MenuItem value="+1">🇺🇸 +1</MenuItem>
+                                  <MenuItem value="+44">🇬🇧 +44</MenuItem>
+                                  <MenuItem value="+92">🇵🇰 +92</MenuItem>
+                                  <MenuItem value="+91">🇮🇳 +91</MenuItem>
+                                </TextField>
+                              </InputAdornment>
+                            ),
+                          },
+                          htmlInput: { inputMode: 'tel', autoComplete: 'tel' },
+                        }}
+                      />
+                    </Stack>
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <LabeledField
+                      name="contactTitle"
+                      label="Title"
+                      value="Decision Maker"
+                      onChange={() => {}}
+                      disabled
+                    />
+                  </Grid>
+                </Grid>
+                {/* preserved for billing-sync logic */}
+                {false && <Box
                   sx={{
                     width: '100%',
                     overflowX: 'auto',
@@ -1434,7 +1537,7 @@ export function CreateDispatchPage() {
                       })}
                     </Box>
                   </Box>
-                </Box>
+                </Box>}
               </FormSection>
 
               <FormSection title="Contract & dates">
@@ -1505,22 +1608,7 @@ export function CreateDispatchPage() {
                     Service Occurrence<Box component="span" sx={{ color: '#B32318' }}> *</Box>
                   </Typography>
                   <Stack direction="row" spacing={1} useFlexGap sx={{ flex: 1, minWidth: 0, flexWrap: 'wrap', alignItems: 'center' }}>
-                    <FormControlLabel
-                      control={
-                        <Radio
-                          size="small"
-                          checked
-                          onChange={() => undefined}
-                          value="repeat"
-                          name="serviceOccurrenceType"
-                          sx={{ p: 0.5, color: 'primary.main' }}
-                        />
-                      }
-                      label={
-                        <Typography sx={{ fontSize: 14, lineHeight: '20px', color: '#262527' }}>Repeat Every</Typography>
-                      }
-                      sx={{ m: 0, mr: 0, gap: 0.5, alignItems: 'center' }}
-                    />
+                    <Typography sx={{ fontSize: 14, lineHeight: '20px', color: '#262527' }}>Repeat Every</Typography>
                     <TextField
                       size="small"
                       name="occurrenceEvery"
@@ -1535,27 +1623,7 @@ export function CreateDispatchPage() {
                       sx={{ width: 64, minWidth: 64, ...figmaTextFieldSx }}
                       slotProps={{ htmlInput: { inputMode: 'numeric', 'aria-label': 'Occurrence interval' } }}
                     />
-                    <TextField
-                      size="small"
-                      name="occurrenceUnit"
-                      value={occurrenceUnit}
-                      onChange={(ev) => {
-                        setOccurrenceUnit(ev.target.value);
-                        clearFieldError('occurrenceEvery');
-                        clearFieldError('occurrenceUnit');
-                      }}
-                      select
-                      error={Boolean(fieldErrors.occurrenceUnit)}
-                      helperText={fieldErrors.occurrenceUnit}
-                      sx={{ width: 128, ...figmaTextFieldSx }}
-                      slotProps={{ select: { IconComponent: FieldSelectChevronIcon } }}
-                    >
-                      {occurrenceUnitOptions.map((o) => (
-                        <MenuItem key={o.value || 'empty'} value={o.value}>
-                          {o.label}
-                        </MenuItem>
-                      ))}
-                    </TextField>
+                    <Typography sx={{ fontSize: 14, lineHeight: '20px', color: '#262527' }}>Month</Typography>
                   </Stack>
                 </Stack>
               </FormSection>
@@ -1853,7 +1921,7 @@ export function CreateDispatchPage() {
               </FormSection>
 
               <FormSection
-                title="Billing info"
+                title="Billing and Payment details"
                 titleEnd={
                   <FormControlLabel
                     sx={{ m: 0, alignItems: 'center', flexShrink: 0 }}
@@ -1981,30 +2049,105 @@ export function CreateDispatchPage() {
                     </Stack>
                   </Grid>
 
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <LabeledDatePicker
+                      name="cycleReferenceDate"
+                      label="Cycle Reference Date"
+                      placeholder="Select cycle reference date"
+                      value={cycleReferenceDateInput}
+                      onChange={setCycleReferenceDateInput}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <LabeledField
+                      name="billingType"
+                      label="Billing type"
+                      required
+                      value={billingType}
+                      onChange={setBillingType}
+                      select
+                      options={billingTypeOptions}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <LabeledField
+                      name="paymentMethod"
+                      label="Payment method"
+                      required
+                      value={paymentMethod}
+                      onChange={(v) => { setPaymentMethod(v); }}
+                      select
+                      options={paymentMethodOptions}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <LabeledField
+                      name="paymentTerms"
+                      label="Payment terms"
+                      required
+                      value={paymentTerms}
+                      onChange={setPaymentTerms}
+                      select
+                      options={paymentTermsOptions}
+                    />
+                  </Grid>
+                  {paymentMethod === 'Credit Card' ? (
+                    <Grid size={12}>
+                      <Button
+                        type="button"
+                        variant="outlined"
+                        fullWidth
+                        startIcon={<AddOutlined />}
+                        sx={{
+                          height: 36,
+                          minHeight: 36,
+                          px: '14px',
+                          py: 0,
+                          fontSize: 14,
+                          fontWeight: 500,
+                          lineHeight: '20px',
+                          color: '#444446',
+                          textTransform: 'none',
+                          borderRadius: '8px',
+                          borderColor: '#E6E6E7',
+                          gap: 1,
+                          '&:hover': { backgroundColor: 'rgba(0,0,0,0.04)', borderColor: '#E6E6E7' },
+                        }}
+                      >
+                        Add Payment Method
+                      </Button>
+                    </Grid>
+                  ) : null}
+
                   <Grid size={12}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
-                      <Typography sx={{ fontSize: 14, fontWeight: 600, lineHeight: '20px', color: '#262527' }}>
-                        Billing address
-                      </Typography>
-                      <FormControlLabel
-                        sx={{ m: 0, alignItems: 'center', flexShrink: 0 }}
-                        control={
-                          <Checkbox
-                            size="small"
-                            checked={billingAddressSameAsProperty}
-                            onChange={(_, checked) => {
-                              setBillingAddressSameAsProperty(checked);
-                              if (checked) setBillAddress(propertyAddress);
-                            }}
-                          />
-                        }
-                        label={
-                          <Typography sx={{ fontSize: 14, lineHeight: '20px', color: '#262527' }}>
-                            Same as property address
-                          </Typography>
-                        }
-                      />
-                    </Box>
+                    <Typography sx={{ fontSize: 14, fontWeight: 600, lineHeight: '20px', color: '#262527', mb: 1 }}>
+                      Billing address
+                    </Typography>
+                    <Stack direction="row" sx={{ gap: 2, flexWrap: 'wrap' }}>
+                      {([
+                        { value: 'property', label: 'Same as Property Address' },
+                        { value: 'company', label: 'Same as Company Address' },
+                        { value: 'other', label: 'Other' },
+                      ] as const).map((opt) => (
+                        <FormControlLabel
+                          key={opt.value}
+                          sx={{ m: 0, alignItems: 'center' }}
+                          control={
+                            <Radio
+                              size="small"
+                              checked={billingAddressOption === opt.value}
+                              onChange={() => setBillingAddressOption(opt.value)}
+                              sx={{ color: '#86868B', '&.Mui-checked': { color: '#1A9E4A' } }}
+                            />
+                          }
+                          label={
+                            <Typography sx={{ fontSize: 14, lineHeight: '20px', color: '#262527' }}>
+                              {opt.label}
+                            </Typography>
+                          }
+                        />
+                      ))}
+                    </Stack>
                   </Grid>
 
                   <Grid size={12}>
@@ -2037,83 +2180,6 @@ export function CreateDispatchPage() {
                       onChange={setBillZip}
                     />
                   </Grid>
-                </Grid>
-              </FormSection>
-
-              <FormSection title="Payment">
-                <Grid container spacing={2}>
-                  <Grid size={{ xs: 12, md: 3 }}>
-                    <LabeledField
-                      name="cycleReferenceDate"
-                      label="Cycle Reference Date"
-                      placeholder="Enter cycle reference date"
-                      value={cycleReferenceDateInput}
-                      onChange={setCycleReferenceDateInput}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 3 }}>
-                    <LabeledField
-                      name="billingType"
-                      label="Billing type"
-                      required
-                      value={billingType}
-                      onChange={setBillingType}
-                      select
-                      options={billingTypeOptions}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 3 }}>
-                    <LabeledField
-                      name="paymentMethod"
-                      label="Payment method"
-                      required
-                      value={paymentMethod}
-                      onChange={(v) => {
-                        setPaymentMethod(v);
-                      }}
-                      select
-                      options={paymentMethodOptions}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 3 }}>
-                    <LabeledField
-                      name="paymentTerms"
-                      label="Payment terms"
-                      required
-                      value={paymentTerms}
-                      onChange={setPaymentTerms}
-                      select
-                      options={paymentTermsOptions}
-                    />
-                  </Grid>
-                  {paymentMethod === 'Credit Card' ? (
-                    <>
-                      <Grid size={{ xs: 12 }}>
-                        <Button
-                          type="button"
-                          variant="text"
-                          fullWidth
-                          startIcon={<AddOutlined />}
-                          sx={{
-                            height: 36,
-                            minHeight: 36,
-                            px: '14px',
-                            py: 0,
-                            fontSize: 14,
-                            fontWeight: 500,
-                            lineHeight: '20px',
-                            color: '#444446',
-                            textTransform: 'none',
-                            borderRadius: '8px',
-                            gap: 1,
-                            '&:hover': { backgroundColor: 'rgba(0,0,0,0.04)' },
-                          }}
-                        >
-                          Add Payment Method
-                        </Button>
-                      </Grid>
-                    </>
-                  ) : null}
                 </Grid>
               </FormSection>
 
