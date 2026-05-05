@@ -701,26 +701,6 @@ export function MobileContractPage() {
                   </Stack>
                   <Field label="Email" placeholder="name@company.com" value={billEmail} onChange={setBillEmail} required />
                   <Field label="Phone" placeholder="+1 (555) 000-0000" value={billPhone} onChange={setBillPhone} />
-                  <Field label="Cycle reference date" placeholder="Enter cycle reference date" value={cycleRefDate} onChange={setCycleRefDate} />
-                  <SelectField label="Billing type" value={billingType} onChange={setBillingType} options={BILLING_TYPE_OPTIONS} />
-                  <SelectField label="Payment method" value={paymentMethod} onChange={setPaymentMethod} options={PAYMENT_METHOD_OPTIONS} />
-                  <SelectField label="Payment terms" value={paymentTerms} onChange={setPaymentTerms} options={PAYMENT_TERMS_OPTIONS} />
-                  <Button
-                    variant="outlined"
-                    startIcon={<AddIcon />}
-                    sx={{
-                      borderRadius: '8px',
-                      borderColor: C.border,
-                      color: C.grey700,
-                      textTransform: 'none',
-                      fontSize: 14,
-                      fontWeight: 500,
-                      height: 42,
-                      minHeight: 42,
-                    }}
-                  >
-                    Add payment method
-                  </Button>
                   <Stack sx={{ gap: 0.5 }}>
                     <Typography sx={{ fontSize: 12, fontWeight: 500, color: C.grey700 }}>Billing Address</Typography>
                     <RadioGroup
@@ -748,6 +728,26 @@ export function MobileContractPage() {
                     <Box sx={{ flex: 1 }}><SelectField label="State" value={billState} onChange={setBillState} options={STATE_OPTIONS} required /></Box>
                   </Stack>
                   <Field label="Zipcode" placeholder="Enter ZIP or postal code" value={billZip} onChange={setBillZip} />
+                  <Field label="Cycle reference date" placeholder="Enter cycle reference date" value={cycleRefDate} onChange={setCycleRefDate} />
+                  <SelectField label="Billing type" value={billingType} onChange={setBillingType} options={BILLING_TYPE_OPTIONS} />
+                  <SelectField label="Payment method" value={paymentMethod} onChange={setPaymentMethod} options={PAYMENT_METHOD_OPTIONS} />
+                  <SelectField label="Payment terms" value={paymentTerms} onChange={setPaymentTerms} options={PAYMENT_TERMS_OPTIONS} />
+                  <Button
+                    variant="outlined"
+                    startIcon={<AddIcon />}
+                    sx={{
+                      borderRadius: '8px',
+                      borderColor: C.border,
+                      color: C.grey700,
+                      textTransform: 'none',
+                      fontSize: 14,
+                      fontWeight: 500,
+                      height: 42,
+                      minHeight: 42,
+                    }}
+                  >
+                    Add payment method
+                  </Button>
                 </>
               </Stack>
             </Collapse>

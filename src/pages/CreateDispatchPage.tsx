@@ -25,18 +25,27 @@ import {
 import Grid from '@mui/material/Grid';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import AddOutlined from '@mui/icons-material/AddOutlined';
+import ApartmentOutlined from '@mui/icons-material/ApartmentOutlined';
 import CheckOutlined from '@mui/icons-material/CheckOutlined';
 import CalendarTodayOutlined from '@mui/icons-material/CalendarTodayOutlined';
 import CloseOutlined from '@mui/icons-material/CloseOutlined';
+import DashboardOutlined from '@mui/icons-material/DashboardOutlined';
 import DeleteOutlineOutlined from '@mui/icons-material/DeleteOutlineOutlined';
 import DescriptionOutlined from '@mui/icons-material/DescriptionOutlined';
 import EditOutlined from '@mui/icons-material/EditOutlined';
+import ExploreOutlined from '@mui/icons-material/ExploreOutlined';
+import GroupsOutlined from '@mui/icons-material/GroupsOutlined';
 import KeyboardArrowDown from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowDownOutlined from '@mui/icons-material/KeyboardArrowDownOutlined';
 import NotificationsNoneOutlined from '@mui/icons-material/NotificationsNoneOutlined';
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded';
+import PlaceOutlined from '@mui/icons-material/PlaceOutlined';
 import PersonOutlineOutlined from '@mui/icons-material/PersonOutlineOutlined';
+import PublicOutlined from '@mui/icons-material/PublicOutlined';
 import Refresh from '@mui/icons-material/Refresh';
+import SettingsOutlined from '@mui/icons-material/SettingsOutlined';
+import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined';
+import ViewKanbanOutlined from '@mui/icons-material/ViewKanbanOutlined';
 import { AddressAutocompleteField } from '../components/createContract/AddressAutocompleteField';
 import { FormSection } from '../components/createContract/FormSection';
 import { useTheme } from '@mui/material/styles';
@@ -275,10 +284,28 @@ function LabeledDatePicker(props: {
 
 function SidebarContent(props: { showCollapseChevron?: boolean; activeIconAlt?: string }) {
   const { showCollapseChevron = true, activeIconAlt } = props;
+  const renderSidebarIcon = (alt: string) => {
+    const iconSx = { fontSize: 20, color: '#FFFFFF' };
+    switch (alt) {
+      case 'dashboard': return <DashboardOutlined sx={iconSx} />;
+      case 'company': return <ApartmentOutlined sx={iconSx} />;
+      case 'map-pin': return <PlaceOutlined sx={iconSx} />;
+      case 'deal': return <DescriptionOutlined sx={iconSx} />;
+      case 'contact': return <PersonOutlineOutlined sx={iconSx} />;
+      case 'public': return <PublicOutlined sx={iconSx} />;
+      case 'users': return <GroupsOutlined sx={iconSx} />;
+      case 'checklist': return <TaskAltOutlined sx={iconSx} />;
+      case 'trello': return <ViewKanbanOutlined sx={iconSx} />;
+      case 'scouting': return <ExploreOutlined sx={iconSx} />;
+      case 'settings': return <SettingsOutlined sx={iconSx} />;
+      default: return <DescriptionOutlined sx={iconSx} />;
+    }
+  };
+
   return (
     <Box sx={{ width: { xs: 72, md: 76 }, height: '100vh', bgcolor: '#262527', position: 'relative', flexShrink: 0 }}>
       <Box sx={{ px: 1, py: 2, display: 'flex', justifyContent: 'center' }}>
-        <Box component="img" alt="Filtergo" src={sidebarImgAssets.wordmark} sx={{ width: 58, height: 18 }} />
+        <Typography sx={{ color: '#2DA551', fontSize: 16, fontWeight: 800, lineHeight: 1 }}>Filtergo</Typography>
       </Box>
 
       <Stack spacing={0} sx={{ px: 1, pt: 2 }}>
@@ -295,14 +322,7 @@ function SidebarContent(props: { showCollapseChevron?: boolean; activeIconAlt?: 
               bgcolor: ic.alt === activeIconAlt ? '#2DA551' : 'transparent',
             }}
           >
-            {'dual' in ic ? (
-              <Box sx={{ position: 'relative', width: 20, height: 20 }}>
-                <Box component="img" alt="" src={ic.src} sx={{ position: 'absolute', inset: 0, width: 20, height: 20 }} />
-                <Box component="img" alt="" src={ic.dual} sx={{ position: 'absolute', inset: 0, width: 20, height: 20 }} />
-              </Box>
-            ) : (
-              <Box component="img" alt="" src={ic.src} sx={{ width: 20, height: 20 }} />
-            )}
+            {renderSidebarIcon(ic.alt)}
           </Box>
         ))}
       </Stack>
@@ -321,11 +341,10 @@ function SidebarContent(props: { showCollapseChevron?: boolean; activeIconAlt?: 
         >
           <Box sx={{ width: 28, height: 28, transform: 'rotate(180deg)' }}>
             <Box
-              component="img"
-              alt=""
-              src={sidebarImgAssets.lastPage}
-              sx={{ width: 28, height: 28, display: 'block' }}
-            />
+              sx={{ width: 28, height: 28, display: 'grid', placeItems: 'center', color: '#6A6A70' }}
+            >
+              <KeyboardArrowDownOutlined sx={{ fontSize: 18, transform: 'rotate(90deg)' }} />
+            </Box>
           </Box>
         </Box>
       ) : null}
@@ -1951,6 +1970,11 @@ export function CreateDispatchPage() {
                 }
               >
                 <Grid container spacing={2}>
+                  <Grid size={12}>
+                    <Typography sx={{ fontSize: 14, fontWeight: 600, lineHeight: '20px', color: '#262527' }}>
+                      Billing details
+                    </Typography>
+                  </Grid>
                   <Grid size={{ xs: 12, md: 4 }}>
                     <LabeledField
                       name="billFirstName"
@@ -2049,6 +2073,72 @@ export function CreateDispatchPage() {
                     </Stack>
                   </Grid>
 
+                  <Grid size={12}>
+                    <Typography sx={{ fontSize: 14, fontWeight: 600, lineHeight: '20px', color: '#262527', mb: 1 }}>
+                      Billing address
+                    </Typography>
+                    <Stack direction="row" sx={{ gap: 2, flexWrap: 'wrap' }}>
+                      {([
+                        { value: 'property', label: 'Same as Property Address' },
+                        { value: 'company', label: 'Same as Company Address' },
+                        { value: 'other', label: 'Other' },
+                      ] as const).map((opt) => (
+                        <FormControlLabel
+                          key={opt.value}
+                          sx={{ m: 0, alignItems: 'center' }}
+                          control={
+                            <Radio
+                              size="small"
+                              checked={billingAddressOption === opt.value}
+                              onChange={() => setBillingAddressOption(opt.value)}
+                              sx={{ color: '#86868B', '&.Mui-checked': { color: '#1A9E4A' } }}
+                            />
+                          }
+                          label={
+                            <Typography sx={{ fontSize: 14, lineHeight: '20px', color: '#262527' }}>
+                              {opt.label}
+                            </Typography>
+                          }
+                        />
+                      ))}
+                    </Stack>
+                  </Grid>
+
+                  <Grid size={12}>
+                    <LabeledField
+                      name="billAddress"
+                      label="Address"
+                      required
+                      placeholder="Enter billing street, city, state, ZIP"
+                      value={billAddress}
+                      onChange={setBillAddress}
+                      disabled={billingAddressSameAsProperty}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <LabeledField name="billCountry" label="Country" required value={billCountry} onChange={setBillCountry} select options={countryOptions} />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <LabeledField name="billCity" label="City" required value={billCity} onChange={setBillCity} select options={cityOptions} />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <LabeledField name="billState" label="State" required value={billState} onChange={setBillState} select options={stateOptions} />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <LabeledField
+                      name="billZip"
+                      label="Zipcode"
+                      required
+                      placeholder="Enter ZIP or postal code"
+                      value={billZip}
+                      onChange={setBillZip}
+                    />
+                  </Grid>
+                  <Grid size={12}>
+                    <Typography sx={{ fontSize: 14, fontWeight: 600, lineHeight: '20px', color: '#262527' }}>
+                      Payment details
+                    </Typography>
+                  </Grid>
                   <Grid size={{ xs: 12, md: 4 }}>
                     <LabeledDatePicker
                       name="cycleReferenceDate"
@@ -2118,68 +2208,6 @@ export function CreateDispatchPage() {
                       </Button>
                     </Grid>
                   ) : null}
-
-                  <Grid size={12}>
-                    <Typography sx={{ fontSize: 14, fontWeight: 600, lineHeight: '20px', color: '#262527', mb: 1 }}>
-                      Billing address
-                    </Typography>
-                    <Stack direction="row" sx={{ gap: 2, flexWrap: 'wrap' }}>
-                      {([
-                        { value: 'property', label: 'Same as Property Address' },
-                        { value: 'company', label: 'Same as Company Address' },
-                        { value: 'other', label: 'Other' },
-                      ] as const).map((opt) => (
-                        <FormControlLabel
-                          key={opt.value}
-                          sx={{ m: 0, alignItems: 'center' }}
-                          control={
-                            <Radio
-                              size="small"
-                              checked={billingAddressOption === opt.value}
-                              onChange={() => setBillingAddressOption(opt.value)}
-                              sx={{ color: '#86868B', '&.Mui-checked': { color: '#1A9E4A' } }}
-                            />
-                          }
-                          label={
-                            <Typography sx={{ fontSize: 14, lineHeight: '20px', color: '#262527' }}>
-                              {opt.label}
-                            </Typography>
-                          }
-                        />
-                      ))}
-                    </Stack>
-                  </Grid>
-
-                  <Grid size={12}>
-                    <LabeledField
-                      name="billAddress"
-                      label="Address"
-                      required
-                      placeholder="Enter billing street, city, state, ZIP"
-                      value={billAddress}
-                      onChange={setBillAddress}
-                      disabled={billingAddressSameAsProperty}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <LabeledField name="billCountry" label="Country" required value={billCountry} onChange={setBillCountry} select options={countryOptions} />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <LabeledField name="billCity" label="City" required value={billCity} onChange={setBillCity} select options={cityOptions} />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <LabeledField name="billState" label="State" required value={billState} onChange={setBillState} select options={stateOptions} />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <LabeledField
-                      name="billZip"
-                      label="Zipcode"
-                      required
-                      placeholder="Enter ZIP or postal code"
-                      value={billZip}
-                      onChange={setBillZip}
-                    />
-                  </Grid>
                 </Grid>
               </FormSection>
 

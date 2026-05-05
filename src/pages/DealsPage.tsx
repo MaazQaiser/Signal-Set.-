@@ -1,8 +1,22 @@
 import Add from '@mui/icons-material/Add';
+import ApartmentOutlined from '@mui/icons-material/ApartmentOutlined';
 import ChevronLeft from '@mui/icons-material/ChevronLeft';
 import ChevronRight from '@mui/icons-material/ChevronRight';
+import DashboardOutlined from '@mui/icons-material/DashboardOutlined';
+import DescriptionOutlined from '@mui/icons-material/DescriptionOutlined';
+import ExploreOutlined from '@mui/icons-material/ExploreOutlined';
+import FilterListOutlined from '@mui/icons-material/FilterListOutlined';
+import GroupsOutlined from '@mui/icons-material/GroupsOutlined';
 import KeyboardArrowDown from '@mui/icons-material/KeyboardArrowDown';
+import NotificationsNoneOutlined from '@mui/icons-material/NotificationsNoneOutlined';
+import PersonOutlineOutlined from '@mui/icons-material/PersonOutlineOutlined';
+import PlaceOutlined from '@mui/icons-material/PlaceOutlined';
+import PublicOutlined from '@mui/icons-material/PublicOutlined';
 import Repeat from '@mui/icons-material/Repeat';
+import SearchOutlined from '@mui/icons-material/SearchOutlined';
+import SettingsOutlined from '@mui/icons-material/SettingsOutlined';
+import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined';
+import ViewKanbanOutlined from '@mui/icons-material/ViewKanbanOutlined';
 import {
   Avatar,
   Box,
@@ -59,19 +73,68 @@ const assets = {
 
 };
 
-function FigmaIcon({ src, size }: { src: string; size: [number, number] }) {
+function renderSidebarIcon(alt: string) {
+  const iconSx = { fontSize: 20, color: '#FFFFFF' };
+  switch (alt) {
+    case 'dashboard': return <DashboardOutlined sx={iconSx} />;
+    case 'company': return <ApartmentOutlined sx={iconSx} />;
+    case 'map-pin': return <PlaceOutlined sx={iconSx} />;
+    case 'deal': return <DescriptionOutlined sx={iconSx} />;
+    case 'contact': return <PersonOutlineOutlined sx={iconSx} />;
+    case 'public': return <PublicOutlined sx={iconSx} />;
+    case 'users': return <GroupsOutlined sx={iconSx} />;
+    case 'checklist': return <TaskAltOutlined sx={iconSx} />;
+    case 'trello': return <ViewKanbanOutlined sx={iconSx} />;
+    case 'scouting': return <ExploreOutlined sx={iconSx} />;
+    case 'settings': return <SettingsOutlined sx={iconSx} />;
+    default: return <DescriptionOutlined sx={iconSx} />;
+  }
+}
+
+function DonutRing(props: { size: number; gradient: string }) {
   return (
     <Box
-      component="img"
-      alt=""
-      src={src}
       sx={{
-        width: size[0],
-        height: size[1],
-        display: 'block',
+        width: props.size,
+        height: props.size,
+        borderRadius: '50%',
+        background: props.gradient,
+        position: 'relative',
         flexShrink: 0,
+        '&::after': {
+          content: '""',
+          position: 'absolute',
+          inset: props.size * 0.19,
+          borderRadius: '50%',
+          bgcolor: '#FFFFFF',
+        },
       }}
     />
+  );
+}
+
+function DealsTrendLines() {
+  return (
+    <Box sx={{ flex: 1, minWidth: 0, width: 0, height: { xs: 160, sm: 170 } }}>
+      <svg width="100%" height="100%" viewBox="0 0 1000 190" preserveAspectRatio="none">
+        <polyline
+          points="0,150 90,125 180,130 270,95 360,120 450,100 540,80 630,92 720,70 810,85 900,62 1000,55"
+          fill="none"
+          stroke="#31A150"
+          strokeWidth="4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <polyline
+          points="0,140 90,150 180,118 270,142 360,130 450,120 540,135 630,110 720,120 810,95 900,105 1000,82"
+          fill="none"
+          stroke="#E43F32"
+          strokeWidth="4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </Box>
   );
 }
 
@@ -134,7 +197,7 @@ function DealsSidebar() {
   return (
     <Box sx={{ width: 76, height: '100vh', bgcolor: '#262527', position: 'relative', flexShrink: 0 }}>
       <Box sx={{ px: 1, py: 2, display: 'flex', justifyContent: 'center' }}>
-        <Box component="img" alt="Filtergo" src={assets.wordmark} sx={{ width: 58, height: 18 }} />
+        <Typography sx={{ color: '#2DA551', fontSize: 16, fontWeight: 800, lineHeight: 1 }}>Filtergo</Typography>
       </Box>
 
       <Stack spacing={0} sx={{ px: 1, pt: 2 }}>
@@ -151,14 +214,7 @@ function DealsSidebar() {
               bgcolor: ic.selected ? '#2DA551' : 'transparent',
             }}
           >
-            {ic.dual ? (
-              <Box sx={{ position: 'relative', width: 20, height: 20 }}>
-                <Box component="img" alt="" src={ic.src} sx={{ position: 'absolute', inset: 0, width: 20, height: 20 }} />
-                <Box component="img" alt="" src={ic.dual} sx={{ position: 'absolute', inset: 0, width: 20, height: 20 }} />
-              </Box>
-            ) : (
-              <Box component="img" alt="" src={ic.src} sx={{ width: ic.size, height: ic.size }} />
-            )}
+            {renderSidebarIcon(ic.alt)}
           </Box>
         ))}
       </Stack>
@@ -175,7 +231,7 @@ function DealsSidebar() {
         }}
       >
         <Box sx={{ width: 28, height: 28, transform: 'rotate(180deg)' }}>
-          <FigmaIcon src={assets.lastPage} size={[28, 28]} />
+          <ChevronRight sx={{ fontSize: 28, color: '#86868B' }} />
         </Box>
       </Box>
     </Box>
@@ -198,7 +254,7 @@ function DealsHeader() {
     >
       <Box sx={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 1 }}>
         <Box sx={{ width: 24, height: 24, borderRadius: 1, display: 'grid', placeItems: 'center' }}>
-          <FigmaIcon src={assets.dealIcon} size={[20, 20]} />
+          <DescriptionOutlined sx={{ fontSize: 20, color: '#444446' }} />
         </Box>
         <Typography sx={{ fontSize: 14, fontWeight: 700, lineHeight: '20px', color: '#262527' }}>Deals</Typography>
       </Box>
@@ -221,7 +277,7 @@ function DealsHeader() {
       </Box>
 
       <Stack direction="row" spacing={2} sx={{ alignItems: 'center', flexShrink: 0 }}>
-        <FigmaIcon src={assets.bell} size={[20, 20]} />
+        <NotificationsNoneOutlined sx={{ fontSize: 20, color: '#444446' }} />
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
           <Avatar src={assets.profileAvatar} sx={{ width: 32, height: 32 }} />
           <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
@@ -305,11 +361,9 @@ function DealGraphs() {
                 ))}
               </Stack>
             </Stack>
-            <Box
-              component="img"
-              alt=""
-              src={assets.donutVerticles}
-              sx={{ width: 125, height: 125, flexShrink: 0, alignSelf: { xs: 'center', sm: 'auto' } }}
+            <DonutRing
+              size={125}
+              gradient="conic-gradient(#146DFF 0 50%, #A9DEFF 50% 60%, #31A150 60% 65%, #F4780B 65% 80%, #E43F32 80% 100%)"
             />
           </Stack>
         </Box>
@@ -344,12 +398,7 @@ function DealGraphs() {
                 </Stack>
               ))}
             </Stack>
-            <Box
-              component="img"
-              alt=""
-              src={assets.donutAmount}
-              sx={{ width: 130, height: 130, flexShrink: 0, alignSelf: { xs: 'center', sm: 'auto' } }}
-            />
+            <DonutRing size={130} gradient="conic-gradient(#31A150 0 42%, #146DFF 42% 78%, #F4780B 78% 100%)" />
           </Stack>
         </Box>
 
@@ -404,20 +453,7 @@ function DealGraphs() {
                 </Typography>
               ))}
             </Stack>
-            <Box
-              component="img"
-              alt="Deals won vs lost"
-              src={assets.dealsWonLostChart}
-              sx={{
-                flex: 1,
-                minWidth: 0,
-                width: 0,
-                height: { xs: 160, sm: 170 },
-                objectFit: 'contain',
-                objectPosition: 'left center',
-                display: 'block',
-              }}
-            />
+            <DealsTrendLines />
           </Stack>
           <Stack
             direction="row"
@@ -489,7 +525,7 @@ function DealsFiltersRow() {
               boxSizing: 'border-box',
             }}
           >
-            <FigmaIcon src={assets.search} size={[20, 20]} />
+            <SearchOutlined sx={{ fontSize: 20, color: '#6A6A70' }} />
             <InputBase
               placeholder="Search by ID, location..."
               sx={{ fontSize: 12, lineHeight: '18px', color: '#86868B', width: '100%' }}
@@ -522,7 +558,7 @@ function DealsFiltersRow() {
           <Button
             variant="text"
             disableRipple
-            endIcon={<FigmaIcon src={assets.filterList} size={[16, 16]} />}
+            endIcon={<FilterListOutlined sx={{ fontSize: 16, color: '#86868B' }} />}
             sx={{
               height: 36,
               minHeight: 36,
