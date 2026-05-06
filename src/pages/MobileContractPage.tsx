@@ -510,7 +510,7 @@ export function MobileContractPage() {
                 <Field label="Company address" placeholder="Enter company street, city, state, ZIP" value={companyAddress} onChange={setCompanyAddress} />
                 <Field label="Property" placeholder="Enter property street, city, state, ZIP" value={propertyAddress} onChange={setPropertyAddress} required />
                 <SelectField label="Industry vertical" value={industryVertical} onChange={setIndustryVertical} options={INDUSTRY_OPTIONS} required />
-                <SelectField label="Associated Franchise" value={franchise} onChange={setFranchise} options={FRANCHISE_OPTIONS} />
+                <SelectField label="Associated Franchise" value={franchise} onChange={setFranchise} options={FRANCHISE_OPTIONS} required />
                 <Stack sx={{ gap: 0.5 }}>
                   <Typography sx={{ fontSize: 12, fontWeight: 500, color: C.grey700 }}>Affiliation</Typography>
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>

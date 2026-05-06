@@ -1171,6 +1171,7 @@ export function CreateDispatchPage() {
                     <LabeledField
                       name="franchiseAssociation"
                       label="Associated Franchise"
+                      required
                       value={franchiseAssociation}
                       onChange={setFranchiseAssociation}
                       select

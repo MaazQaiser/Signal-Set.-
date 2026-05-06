@@ -146,7 +146,6 @@ export function HomePage() {
           {[
             { label: 'Experience SET Web', path: '/deals' },
             { label: 'Experience SET Mobile App', path: '/mobile' },
-            { label: 'Agentic experience', path: '/agentic' },
           ].map(({ label, path }) => (
             <Button
               key={label}
