@@ -2144,6 +2144,7 @@ export function CreateDispatchPage() {
                     <LabeledDatePicker
                       name="cycleReferenceDate"
                       label="Cycle Reference Date"
+                      required
                       placeholder="Select cycle reference date"
                       value={cycleReferenceDateInput}
                       onChange={setCycleReferenceDateInput}
