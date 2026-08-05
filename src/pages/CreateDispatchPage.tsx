@@ -771,7 +771,7 @@ export function CreateDispatchPage() {
 
   const handleCancel = () => {
     resetForm();
-    navigate('/deals');
+    navigate('/filtergo/deals');
   };
 
   const applyContactUserToPrimaryFields = useCallback(

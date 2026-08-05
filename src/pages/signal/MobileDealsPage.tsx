@@ -27,7 +27,7 @@ const C = {
   bg: '#F6F6F8',
   white: '#FFFFFF',
   black: '#000000',
-  blue: '#004FE3',
+  blue: '#146dff',
   grey700: '#4D4D51',
   grey400: '#86868B',
   grey100: '#E6E6E7',
@@ -127,8 +127,8 @@ function BottomTab({ icon, label, active = false }: { icon: React.ReactNode; lab
         pt: 0.5,
       }}
     >
-      <Box sx={{ color: active ? '#1A9E4A' : C.grey400, display: 'flex' }}>{icon}</Box>
-      <Typography sx={{ fontSize: 12, fontWeight: 500, color: active ? '#1A9E4A' : C.grey400, lineHeight: 'normal' }}>
+      <Box sx={{ color: active ? '#146dff' : C.grey400, display: 'flex' }}>{icon}</Box>
+      <Typography sx={{ fontSize: 12, fontWeight: 500, color: active ? '#146dff' : C.grey400, lineHeight: 'normal' }}>
         {label}
       </Typography>
     </Stack>
@@ -214,12 +214,12 @@ export function MobileDealsPage() {
               size="small"
               onClick={() => setSheetOpen(true)}
               sx={{
-                bgcolor: '#1A9E4A',
+                bgcolor: '#146dff',
                 color: C.white,
                 width: 32,
                 height: 32,
                 borderRadius: '50%',
-                '&:hover': { bgcolor: '#158040' },
+                '&:hover': { bgcolor: '#0f5ad6' },
               }}
             >
               <AddIcon sx={{ fontSize: 20 }} />
@@ -366,7 +366,7 @@ export function MobileDealsPage() {
               cursor: 'pointer',
             }}
           >
-            <AddCircleOutlineOutlinedIcon sx={{ color: '#1A9E4A', fontSize: 22 }} />
+            <AddCircleOutlineOutlinedIcon sx={{ color: '#146dff', fontSize: 22 }} />
             <Typography sx={{ fontSize: 16, fontWeight: 500, color: C.black }}>
               Create Deal
             </Typography>
@@ -375,7 +375,7 @@ export function MobileDealsPage() {
           {/* Create Smart Contract */}
           <Stack
             direction="row"
-            onClick={() => { setSheetOpen(false); navigate('/filtergo/mobile-contract'); }}
+            onClick={() => { setSheetOpen(false); navigate('/signal/mobile-contract'); }}
             sx={{
               alignItems: 'center',
               gap: 1.5,
@@ -384,7 +384,7 @@ export function MobileDealsPage() {
               cursor: 'pointer',
             }}
           >
-            <ArticleOutlinedIcon sx={{ color: '#1A9E4A', fontSize: 22 }} />
+            <ArticleOutlinedIcon sx={{ color: '#146dff', fontSize: 22 }} />
             <Typography sx={{ fontSize: 16, fontWeight: 500, color: C.black }}>
               Create Smart Contract
             </Typography>

@@ -1,6 +1,6 @@
 import { Box, Button, Chip, Divider, Stack, Typography } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { TenantSwitcher } from '../components/TenantSwitcher';
+import { TenantSwitcher } from '../../components/TenantSwitcher';
 
 declare const __BUILD_DATE__: string;
 
@@ -12,9 +12,9 @@ const lastUpdated = new Date(__BUILD_DATE__).toLocaleDateString('en-US', {
 
 const COLORS = {
   white: '#FFFFFF',
-  primaryMint: '#2DA551',
+  primaryMint: '#146dff',
   primarySoot: '#323631',
-  primaryEucalyptus: '#8BEE68',
+  primaryEucalyptus: '#146dff',
   primaryBlack: '#141414',
   textPrimary: '#262527',
   slate300: '#CBD5E1',
@@ -82,9 +82,12 @@ export function HomePage() {
           boxSizing: 'border-box',
         }}
       >
-        <Typography sx={{ fontSize: 20, fontWeight: 800, lineHeight: 1, color: COLORS.primaryMint }}>
-          Filtergo
-        </Typography>
+        <Box
+          component="img"
+          src="/signal-logo.png"
+          alt="Signal"
+          sx={{ height: 28, width: 'auto', display: 'block', objectFit: 'contain' }}
+        />
         <TenantSwitcher />
       </Box>
 
@@ -146,8 +149,8 @@ export function HomePage() {
         {/* CTA buttons */}
         <Stack direction="row" sx={{ mt: 3, gap: 1.5, flexWrap: 'wrap' }}>
           {[
-            { label: 'Experience SET Web', path: '/filtergo/deals' },
-            { label: 'Experience SET Mobile App', path: '/filtergo/mobile' },
+            { label: 'Experience SET Web', path: '/signal/deals' },
+            { label: 'Experience SET Mobile App', path: '/signal/mobile' },
           ].map(({ label, path }) => (
             <Button
               key={label}
@@ -156,14 +159,14 @@ export function HomePage() {
               onClick={() => navigate(path)}
               sx={{
                 bgcolor: COLORS.primaryEucalyptus,
-                color: COLORS.primarySoot,
+                color: COLORS.white,
                 textTransform: 'none',
                 borderRadius: '5px',
                 px: 2.625,
                 py: 1.625,
                 fontSize: 15,
                 lineHeight: '21px',
-                '&:hover': { bgcolor: COLORS.primaryEucalyptus },
+                '&:hover': { bgcolor: '#0f5ad6' },
               }}
             >
               {label}

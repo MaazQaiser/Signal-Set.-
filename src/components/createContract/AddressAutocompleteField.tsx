@@ -27,12 +27,28 @@ type AddressAutocompleteFieldProps = {
   placeholder?: string;
   value: string;
   onChange: (v: string) => void;
+  /** Fired when the user picks a suggestion from the dropdown (not while typing). */
+  onSelect?: (v: string) => void;
+  /** Fired when the clear (×) control empties the field. */
+  onClear?: () => void;
   error?: boolean;
   helperText?: string;
+  /** Extra suggestion labels always available (e.g. mock known addresses). */
+  extraOptions?: string[];
 };
 
 export function AddressAutocompleteField(props: AddressAutocompleteFieldProps) {
   const { options, loading } = useAddressSearchSuggestions(props.value);
+  const mergedOptions = (() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const o of [...(props.extraOptions ?? []), ...options]) {
+      if (!o || seen.has(o)) continue;
+      seen.add(o);
+      out.push(o);
+    }
+    return out;
+  })();
 
   return (
     <Stack spacing={0.75} sx={{ width: '100%' }}>
@@ -43,16 +59,31 @@ export function AddressAutocompleteField(props: AddressAutocompleteFieldProps) {
       <Autocomplete
         size="small"
         freeSolo
-        options={options}
+        openOnFocus
+        options={mergedOptions}
         loading={loading}
         value={props.value}
         inputValue={props.value}
-        onInputChange={(_, v) => props.onChange(v)}
+        onInputChange={(_, v, reason) => {
+          if (reason === 'clear') {
+            props.onChange('');
+            props.onClear?.();
+            return;
+          }
+          if (reason === 'input') props.onChange(v);
+        }}
         onChange={(_, v) => {
           const next = typeof v === 'string' ? v : '';
           props.onChange(next);
+          if (next) props.onSelect?.(next);
+          else props.onClear?.();
         }}
-        filterOptions={(o) => o}
+        filterOptions={(opts, { inputValue }) => {
+          const q = inputValue.trim().toLowerCase();
+          // Always keep seeded mock addresses visible when the field is empty/focused
+          if (!q) return opts;
+          return opts.filter((o) => o.toLowerCase().includes(q));
+        }}
         noOptionsText="No matches"
         loadingText="Searching…"
         slotProps={{

@@ -30,7 +30,7 @@ const C = {
   bg: '#F6F6F8',
   white: '#FFFFFF',
   black: '#000000',
-  blue: '#004FE3',
+  blue: '#146dff',
   grey700: '#4D4D51',
   grey400: '#86868B',
   grey100: '#E6E6E7',
@@ -132,7 +132,7 @@ function SelectField({
             sx={{
               fontSize: 14,
               ...(o.value === 'new' && {
-                color: '#1A9E4A',
+                color: '#146dff',
                 fontWeight: 600,
                 justifyContent: 'center',
               }),
@@ -478,7 +478,7 @@ export function MobileContractPage() {
             gap: 1,
           }}
         >
-          <IconButton size="small" onClick={() => navigate('/filtergo/mobile')} sx={{ color: 'rgba(41, 41, 41, 1)' }}>
+          <IconButton size="small" onClick={() => navigate('/signal/mobile')} sx={{ color: 'rgba(41, 41, 41, 1)' }}>
             <ArrowBackIosNewIcon sx={{ fontSize: 18 }} />
           </IconButton>
           <Typography sx={{ fontSize: 16, fontWeight: 600, color: C.black, flex: 1 }}>
@@ -529,11 +529,11 @@ export function MobileContractPage() {
                             textTransform: 'none',
                             fontSize: 12,
                             fontWeight: 400,
-                            color: selected ? '#1A9E4A' : C.black,
+                            color: selected ? '#146dff' : C.black,
                             bgcolor: selected ? '#EDFAF3' : C.white,
                             borderWidth: selected ? '1.5px' : '1px',
-                            borderColor: selected ? '#1A9E4A' : C.border,
-                            '&:hover': { bgcolor: selected ? '#EDFAF3' : C.white, borderColor: selected ? '#1A9E4A' : '#C0C0C5' },
+                            borderColor: selected ? '#146dff' : C.border,
+                            '&:hover': { bgcolor: selected ? '#EDFAF3' : C.white, borderColor: selected ? '#146dff' : '#C0C0C5' },
                           }}
                         >
                           {opt.label}
@@ -577,7 +577,7 @@ export function MobileContractPage() {
                           setSameAsContract(e.target.checked);
                           if (e.target.checked) setServiceStartDate(contractStartDate);
                         }}
-                        sx={{ color: '#1A9E4A', '&.Mui-checked': { color: '#1A9E4A' } }}
+                        sx={{ color: '#146dff', '&.Mui-checked': { color: '#146dff' } }}
                       />
                     }
                     label={<Typography sx={{ fontSize: 13, color: C.grey700 }}>Same as contract start date</Typography>}
@@ -662,7 +662,7 @@ export function MobileContractPage() {
                   startIcon={<AddIcon />}
                   onClick={addProduct}
                   variant="outlined"
-                  sx={{ borderRadius: '8px', borderColor: '#1A9E4A', color: '#1A9E4A', textTransform: 'none', fontSize: 14, fontWeight: 500, py: 0.75, '&:hover': { borderColor: '#1A9E4A', bgcolor: '#EDFAF3' } }}
+                  sx={{ borderRadius: '8px', borderColor: '#146dff', color: '#146dff', textTransform: 'none', fontSize: 14, fontWeight: 500, py: 0.75, '&:hover': { borderColor: '#146dff', bgcolor: '#EDFAF3' } }}
                 >
                   Add product
                 </Button>
@@ -689,7 +689,7 @@ export function MobileContractPage() {
                       size="small"
                       checked={sameAsContact}
                       onChange={(e) => setSameAsContact(e.target.checked)}
-                      sx={{ color: '#1A9E4A', '&.Mui-checked': { color: '#1A9E4A' } }}
+                      sx={{ color: '#146dff', '&.Mui-checked': { color: '#146dff' } }}
                     />
                   }
                   label={<Typography sx={{ fontSize: 13, color: C.grey700 }}>Same as contact details</Typography>}
@@ -715,7 +715,7 @@ export function MobileContractPage() {
                         <FormControlLabel
                           key={opt.value}
                           value={opt.value}
-                          control={<Radio size="small" sx={{ color: '#1A9E4A', '&.Mui-checked': { color: '#1A9E4A' }, py: 0.5 }} />}
+                          control={<Radio size="small" sx={{ color: '#146dff', '&.Mui-checked': { color: '#146dff' }, py: 0.5 }} />}
                           label={<Typography sx={{ fontSize: 13, color: C.grey700 }}>{opt.label}</Typography>}
                         />
                       ))}
@@ -770,7 +770,7 @@ export function MobileContractPage() {
                         <IconButton size="small" onClick={() => removeSignee(s.id)} sx={{ color: '#E43F32', p: 0.25 }}>
                           <DeleteOutlineOutlinedIcon sx={{ fontSize: 22 }} />
                         </IconButton>
-                        <IconButton size="small" onClick={() => openEditSigneeSheet(s)} sx={{ color: '#146DFF', p: 0.25 }}>
+                        <IconButton size="small" onClick={() => openEditSigneeSheet(s)} sx={{ color: '#146dff', p: 0.25 }}>
                           <EditOutlinedIcon sx={{ fontSize: 22 }} />
                         </IconButton>
                       </Stack>
@@ -779,7 +779,7 @@ export function MobileContractPage() {
                     <Stack direction="row" sx={{ gap: 1.5, alignItems: 'center', justifyContent: 'space-between' }}>
                       <Stack direction="row" sx={{ gap: 1.5, alignItems: 'center' }}>
                         <Box sx={{ width: 42, height: 42, borderRadius: '50%', bgcolor: '#E5F6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <PersonIcon sx={{ fontSize: 24, color: '#146DFF' }} />
+                          <PersonIcon sx={{ fontSize: 24, color: '#146dff' }} />
                         </Box>
                         <Box>
                           <Typography sx={{ fontSize: 16, fontWeight: 500, color: '#262527', lineHeight: '20px' }}>
@@ -792,8 +792,8 @@ export function MobileContractPage() {
                       </Stack>
                       {s.signature ? (
                         <Stack direction="row" sx={{ alignItems: 'center', gap: 0.5 }}>
-                          <CheckCircleIcon sx={{ fontSize: 16, color: '#1A9E4A' }} />
-                          <Typography sx={{ fontSize: 12, color: '#1A9E4A', fontWeight: 500 }}>Signed</Typography>
+                          <CheckCircleIcon sx={{ fontSize: 16, color: '#146dff' }} />
+                          <Typography sx={{ fontSize: 12, color: '#146dff', fontWeight: 500 }}>Signed</Typography>
                         </Stack>
                       ) : (
                         <Button
@@ -812,7 +812,7 @@ export function MobileContractPage() {
                   startIcon={<AddIcon />}
                   onClick={openAddSigneeSheet}
                   variant="outlined"
-                  sx={{ borderRadius: '8px', borderColor: '#1A9E4A', color: '#1A9E4A', textTransform: 'none', fontSize: 14, fontWeight: 500, height: 48, minHeight: 48, '&:hover': { borderColor: '#1A9E4A', bgcolor: '#EDFAF3' } }}
+                  sx={{ borderRadius: '8px', borderColor: '#146dff', color: '#146dff', textTransform: 'none', fontSize: 14, fontWeight: 500, height: 48, minHeight: 48, '&:hover': { borderColor: '#146dff', bgcolor: '#EDFAF3' } }}
                 >
                   Add signee
                 </Button>
@@ -837,7 +837,7 @@ export function MobileContractPage() {
               disableElevation
               sx={{
                 flex: 1,
-                bgcolor: '#1A9E4A',
+                bgcolor: '#146dff',
                 color: C.white,
                 borderRadius: '12px',
                 height: 48,
@@ -845,14 +845,14 @@ export function MobileContractPage() {
                 fontSize: 15,
                 fontWeight: 600,
                 textTransform: 'none',
-                '&:hover': { bgcolor: '#158040' },
+                '&:hover': { bgcolor: '#0f5ad6' },
               }}
             >
               Submit Contract
             </Button>
             <Button
               variant="outlined"
-              onClick={() => navigate('/filtergo/mobile')}
+              onClick={() => navigate('/signal/mobile')}
               sx={{
                 flex: 1,
                 border: 'none',
@@ -909,7 +909,7 @@ export function MobileContractPage() {
                   variant="contained"
                   disableElevation
                   onClick={handleSaveSignee}
-                  sx={{ bgcolor: '#1A9E4A', color: C.white, borderRadius: '12px', height: 44, fontSize: 15, fontWeight: 600, textTransform: 'none', mt: 0.5, '&:hover': { bgcolor: '#158040' } }}
+                  sx={{ bgcolor: '#146dff', color: C.white, borderRadius: '12px', height: 44, fontSize: 15, fontWeight: 600, textTransform: 'none', mt: 0.5, '&:hover': { bgcolor: '#0f5ad6' } }}
                 >
                   {editingSigneeId !== null ? 'Save changes' : 'Add signee'}
                 </Button>
@@ -962,7 +962,7 @@ export function MobileContractPage() {
                 {signee && (
                   <Stack direction="row" sx={{ alignItems: 'center', gap: 1.5, mb: 2 }}>
                     <Box sx={{ width: 42, height: 42, borderRadius: '50%', bgcolor: '#EDFAF3', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <PersonIcon sx={{ fontSize: 22, color: '#1A9E4A' }} />
+                      <PersonIcon sx={{ fontSize: 22, color: '#146dff' }} />
                     </Box>
                     <Box>
                       <Typography sx={{ fontSize: 12, fontWeight: 700, color: C.black, lineHeight: '20px' }}>
@@ -1015,7 +1015,7 @@ export function MobileContractPage() {
                     variant="contained"
                     disableElevation
                     onClick={handleAddSignature}
-                    sx={{ borderRadius: '10px', bgcolor: '#1A9E4A', color: C.white, textTransform: 'none', fontSize: 14, fontWeight: 600, height: 44, flex: 1, '&:hover': { bgcolor: '#158040' } }}
+                    sx={{ borderRadius: '10px', bgcolor: '#146dff', color: C.white, textTransform: 'none', fontSize: 14, fontWeight: 600, height: 44, flex: 1, '&:hover': { bgcolor: '#0f5ad6' } }}
                   >
                     Add Signature
                   </Button>

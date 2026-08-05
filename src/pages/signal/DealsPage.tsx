@@ -157,7 +157,7 @@ type DealRow = {
 
 function toneChipSx(tone: DealRow['stage']['tone']) {
   const map: Record<DealRow['stage']['tone'], { bg: string; fg: string }> = {
-    blue: { bg: '#E5F6FF', fg: '#146DFF' },
+    blue: { bg: '#E5F6FF', fg: '#146dff' },
     orange: { bg: '#FEF0C7', fg: '#DC6803' },
     red: { bg: '#FBEEED', fg: '#B32318' },
     green: { bg: '#EFF8EF', fg: '#2E964B' },
@@ -197,7 +197,12 @@ function DealsSidebar() {
   return (
     <Box sx={{ width: 76, height: '100vh', bgcolor: '#262527', position: 'relative', flexShrink: 0 }}>
       <Box sx={{ px: 1, py: 2, display: 'flex', justifyContent: 'center' }}>
-        <Typography sx={{ color: '#2DA551', fontSize: 16, fontWeight: 800, lineHeight: 1 }}>Filtergo</Typography>
+        <Box
+          component="img"
+          src="/signal-icon.png"
+          alt="Signal"
+          sx={{ width: 40, height: 'auto', display: 'block', objectFit: 'contain' }}
+        />
       </Box>
 
       <Stack spacing={0} sx={{ px: 1, pt: 2 }}>
@@ -211,7 +216,7 @@ function DealsSidebar() {
               borderRadius: 2,
               display: 'grid',
               placeItems: 'center',
-              bgcolor: ic.selected ? '#2DA551' : 'transparent',
+              bgcolor: ic.selected ? '#146dff' : 'transparent',
             }}
           >
             {renderSidebarIcon(ic.alt)}
@@ -330,7 +335,7 @@ function DealGraphs() {
           >
             <Stack spacing={1.5} sx={{ flex: 1, minWidth: 0 }}>
               <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                <Box sx={{ width: 10, height: 10, bgcolor: '#146DFF', borderRadius: 0.5 }} />
+                <Box sx={{ width: 10, height: 10, bgcolor: '#146dff', borderRadius: 0.5 }} />
                 <Typography sx={{ fontSize: 10, lineHeight: '14px', color: '#5B5B5F' }}>
                   <Box component="span" sx={{ color: '#5B5B5F', fontWeight: 500 }}>
                     50%
@@ -363,7 +368,7 @@ function DealGraphs() {
             </Stack>
             <DonutRing
               size={125}
-              gradient="conic-gradient(#146DFF 0 50%, #A9DEFF 50% 60%, #31A150 60% 65%, #F4780B 65% 80%, #E43F32 80% 100%)"
+              gradient="conic-gradient(#146dff 0 50%, #A9DEFF 50% 60%, #31A150 60% 65%, #F4780B 65% 80%, #E43F32 80% 100%)"
             />
           </Stack>
         </Box>
@@ -389,7 +394,7 @@ function DealGraphs() {
             <Stack spacing={1.25} sx={{ flex: 1, minWidth: 0 }}>
               {[
                 { c: '#31A150', label: 'Closed Won' },
-                { c: '#146DFF', label: 'Contract Creation' },
+                { c: '#146dff', label: 'Contract Creation' },
                 { c: '#F4780B', label: 'Contract Delivered', o: 0.8 },
               ].map((x) => (
                 <Stack key={x.label} direction="row" spacing={1} sx={{ alignItems: 'center' }}>
@@ -398,7 +403,7 @@ function DealGraphs() {
                 </Stack>
               ))}
             </Stack>
-            <DonutRing size={130} gradient="conic-gradient(#31A150 0 42%, #146DFF 42% 78%, #F4780B 78% 100%)" />
+            <DonutRing size={130} gradient="conic-gradient(#31A150 0 42%, #146dff 42% 78%, #F4780B 78% 100%)" />
           </Stack>
         </Box>
 
@@ -626,6 +631,7 @@ function DealsFiltersRow() {
               fontWeight: 500,
               overflow: 'hidden',
               '&, &:hover, &:active': { borderRadius: '8px' },
+              '&:hover': { bgcolor: '#0059FF' },
               '& .MuiButton-startIcon': { marginLeft: 0, marginRight: 0.5, display: 'inline-flex' },
               '& .MuiButton-endIcon': { marginLeft: 0.5, marginRight: 0, display: 'inline-flex' },
             }}
@@ -661,7 +667,7 @@ function DealsFiltersRow() {
             <MenuItem
               onClick={() => {
                 setCreateMenuAnchor(null);
-                navigate('/filtergo/contract');
+                navigate('/signal/contract');
               }}
               sx={{ fontSize: 14, py: 1.25, color: '#262527' }}
             >
@@ -922,7 +928,7 @@ function DealsTable() {
                                 width: 16,
                                 height: 16,
                                 borderRadius: 1,
-                                bgcolor: '#146DFF',
+                                bgcolor: '#146dff',
                                 display: 'grid',
                                 placeItems: 'center',
                                 flexShrink: 0,
