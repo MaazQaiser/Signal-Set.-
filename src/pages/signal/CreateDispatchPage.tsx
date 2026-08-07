@@ -16,6 +16,8 @@ import {
   IconButton,
   InputAdornment,
   MenuItem,
+  Paper,
+  type PaperProps,
   Snackbar,
   Stack,
   TextField,
@@ -43,6 +45,7 @@ import EastOutlined from '@mui/icons-material/EastOutlined';
 import NotificationsNoneOutlined from '@mui/icons-material/NotificationsNoneOutlined';
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded';
 import PlaceOutlined from '@mui/icons-material/PlaceOutlined';
+import MapOutlined from '@mui/icons-material/MapOutlined';
 import DirectionsCarOutlined from '@mui/icons-material/DirectionsCarOutlined';
 import PersonOutlineOutlined from '@mui/icons-material/PersonOutlineOutlined';
 import PublicOutlined from '@mui/icons-material/PublicOutlined';
@@ -50,8 +53,8 @@ import Security from '@mui/icons-material/Security';
 import SettingsOutlined from '@mui/icons-material/SettingsOutlined';
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined';
 import ViewKanbanOutlined from '@mui/icons-material/ViewKanbanOutlined';
-import { AddressAutocompleteField } from '../../components/createContract/AddressAutocompleteField';
 import { FormSection } from '../../components/createContract/FormSection';
+import { AddressMapPickerModal } from '../../components/createContract/AddressMapPickerModal';
 import { useTheme } from '@mui/material/styles';
 import type { Dayjs } from 'dayjs';
 import { forwardRef, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type InputHTMLAttributes, type KeyboardEvent, type ReactNode } from 'react';
@@ -173,27 +176,280 @@ const COMPANY_AFFILIATION_OPTIONS = [
   { id: 'tenant', label: 'Tenant' },
 ] as const;
 
+type ProfitMetricRow = {
+  label: string;
+  amount: string;
+  percent: string;
+  bold?: boolean;
+};
+
+const PROFITABILITY_METRIC_ROWS: ProfitMetricRow[] = [
+  { label: 'Total Revenue', amount: '$ 22,094', percent: '67%', bold: true },
+  { label: 'Payroll', amount: '$ 12,834', percent: '12.83%' },
+  { label: 'Overtime', amount: '--', percent: '--' },
+  { label: 'Payroll Taxes', amount: '$ 1,283', percent: '1.28%' },
+  { label: 'Total Officer Payroll', amount: '$ 14,117', percent: '14.12%' },
+  { label: 'Overhead Payroll', amount: '$ 3,535', percent: '3.54%' },
+  { label: 'Total Payroll', amount: '$ 31,720', percent: '31.72%', bold: true },
+  { label: 'Gross profit', amount: '$ 26,983', percent: '26.98%', bold: true },
+  { label: 'FAS Charges', amount: '$ 5,083', percent: '5.08%' },
+  { label: 'Remaining Balances for Expenses', amount: '$ 3,883', percent: '3.88%', bold: true },
+  { label: 'Vehicle Expenses', amount: '--', percent: '--' },
+  { label: 'Administration Expenses', amount: '$ 983', percent: '0.98%' },
+  { label: 'Payment Terms Adjustment', amount: '$ 362.24', percent: '0.36%' },
+  { label: 'Net Profit', amount: '$ 2,559', percent: '2.56%', bold: true },
+];
+
+function ProfitabilityOverviewDrawer(props: {
+  open: boolean;
+  onClose: () => void;
+  hourlyRate: string;
+  onHourlyRateChange: (v: string) => void;
+}) {
+  const [billingCycle, setBillingCycle] = useState('Bi-Weekly');
+
+  return (
+    <Drawer
+      anchor="right"
+      open={props.open}
+      onClose={props.onClose}
+      slotProps={{
+        backdrop: {
+          sx: { backgroundColor: 'rgba(0, 0, 0, 0.5)' },
+        },
+        paper: {
+          sx: {
+            width: { xs: '100%', sm: 440 },
+            maxWidth: '100%',
+            boxSizing: 'border-box',
+            bgcolor: '#FFFFFF',
+            boxShadow: '-8px 0 24px rgba(15, 23, 42, 0.12)',
+          },
+        },
+      }}
+    >
+      <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+        <Box
+          sx={{
+            px: 3,
+            pt: 2.5,
+            pb: 2,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 2,
+            flexShrink: 0,
+          }}
+        >
+          <Typography sx={{ fontSize: 18, fontWeight: 700, lineHeight: '24px', color: '#262527' }}>
+            Profitability Overview
+          </Typography>
+          <IconButton aria-label="Close profitability overview" onClick={props.onClose} sx={{ color: '#5B5B5F' }}>
+            <CloseOutlined sx={{ fontSize: 20 }} />
+          </IconButton>
+        </Box>
+
+        <Box sx={{ px: 3, pb: 2, flexShrink: 0 }}>
+          <LabeledField
+            name="profitabilityHourlyRate"
+            label="Hourly Rate ($)"
+            required
+            placeholder="Enter hourly rate"
+            value={props.hourlyRate}
+            onChange={props.onHourlyRateChange}
+            htmlInput={{ inputMode: 'decimal' }}
+          />
+        </Box>
+
+        <Box sx={{ px: 3, pb: 3, flexShrink: 0 }}>
+          <Stack direction="row" spacing={3} sx={{ justifyContent: 'space-around' }}>
+            <Stack spacing={1} sx={{ alignItems: 'center', flex: 1, minWidth: 0 }}>
+              <Box
+                sx={{
+                  width: 120,
+                  height: 120,
+                  borderRadius: '50%',
+                  position: 'relative',
+                  background: 'conic-gradient(#B32318 0 10%, #E6E6E7 10% 100%)',
+                  display: 'grid',
+                  placeItems: 'center',
+                }}
+              >
+                <Box
+                  sx={{
+                    width: 88,
+                    height: 88,
+                    borderRadius: '50%',
+                    bgcolor: '#FFFFFF',
+                    display: 'grid',
+                    placeItems: 'center',
+                  }}
+                >
+                  <Typography sx={{ fontSize: 22, fontWeight: 700, lineHeight: '28px', color: '#262527' }}>
+                    10%
+                  </Typography>
+                </Box>
+              </Box>
+              <Typography sx={{ fontSize: 14, fontWeight: 600, lineHeight: '20px', color: '#262527' }}>
+                Net Profit
+              </Typography>
+              <Typography sx={{ fontSize: 12, fontWeight: 400, lineHeight: '16px', color: '#86868B' }}>
+                Required &gt; 12%
+              </Typography>
+            </Stack>
+
+            <Stack spacing={1} sx={{ alignItems: 'center', flex: 1, minWidth: 0 }}>
+              <Box
+                sx={{
+                  width: 120,
+                  height: 120,
+                  borderRadius: '50%',
+                  position: 'relative',
+                  background: 'conic-gradient(#B32318 0 67%, #E6E6E7 67% 100%)',
+                  display: 'grid',
+                  placeItems: 'center',
+                }}
+              >
+                <Box
+                  sx={{
+                    width: 88,
+                    height: 88,
+                    borderRadius: '50%',
+                    bgcolor: '#FFFFFF',
+                    display: 'grid',
+                    placeItems: 'center',
+                  }}
+                >
+                  <Typography sx={{ fontSize: 22, fontWeight: 700, lineHeight: '28px', color: '#262527' }}>
+                    67%
+                  </Typography>
+                </Box>
+              </Box>
+              <Typography sx={{ fontSize: 14, fontWeight: 600, lineHeight: '20px', color: '#262527' }}>
+                Labor Efficiency
+              </Typography>
+              <Typography sx={{ fontSize: 12, fontWeight: 400, lineHeight: '16px', color: '#86868B' }}>
+                Required =&lt; 64%
+              </Typography>
+            </Stack>
+          </Stack>
+        </Box>
+
+        <Box sx={{ px: 3, pb: 1.5, flexShrink: 0 }}>
+          <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+            <Typography sx={{ fontSize: 14, fontWeight: 600, lineHeight: '20px', color: '#262527' }}>
+              Financial Metrics
+            </Typography>
+            <TextField
+              select
+              size="small"
+              value={billingCycle}
+              onChange={(e) => setBillingCycle(e.target.value)}
+              variant="standard"
+              sx={{
+                minWidth: 150,
+                '& .MuiInputBase-root': { fontSize: 12, color: '#6A6A70' },
+                '& .MuiInput-underline:before': { borderBottom: 'none' },
+                '& .MuiInput-underline:after': { borderBottom: 'none' },
+                '& .MuiInput-underline:hover:not(.Mui-disabled):before': { borderBottom: 'none' },
+                '& .MuiSelect-select': { py: 0.5, pr: '24px !important' },
+              }}
+              slotProps={{
+                select: {
+                  IconComponent: FieldSelectChevronIcon,
+                  renderValue: (selected) => `Billing cycle: ${String(selected)}`,
+                },
+              }}
+            >
+              <MenuItem value="Weekly">Weekly</MenuItem>
+              <MenuItem value="Bi-Weekly">Bi-Weekly</MenuItem>
+              <MenuItem value="Monthly">Monthly</MenuItem>
+            </TextField>
+          </Stack>
+        </Box>
+
+        <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', px: 3, pb: 3 }}>
+          <Box
+            sx={{
+              border: '1px solid #E6E6E7',
+              borderRadius: '8px',
+              overflow: 'hidden',
+            }}
+          >
+            {PROFITABILITY_METRIC_ROWS.map((row, idx) => (
+              <Box
+                key={row.label}
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: 'minmax(0, 1.6fr) minmax(0, 0.9fr) minmax(0, 0.7fr)',
+                  columnGap: 1,
+                  alignItems: 'center',
+                  px: 1.5,
+                  py: 1.25,
+                  bgcolor: idx % 2 === 0 ? '#F8F8F9' : '#FFFFFF',
+                  borderTop: idx === 0 ? 'none' : '1px solid #EFEFF0',
+                }}
+              >
+                <Typography
+                  sx={{
+                    fontSize: 12,
+                    fontWeight: row.bold ? 600 : 400,
+                    lineHeight: '18px',
+                    color: '#262527',
+                    minWidth: 0,
+                  }}
+                >
+                  {row.label}
+                </Typography>
+                <Typography
+                  sx={{
+                    fontSize: 12,
+                    fontWeight: row.bold ? 600 : 400,
+                    lineHeight: '18px',
+                    color: '#262527',
+                    textAlign: 'right',
+                  }}
+                >
+                  {row.amount}
+                </Typography>
+                <Typography
+                  sx={{
+                    fontSize: 12,
+                    fontWeight: row.bold ? 600 : 400,
+                    lineHeight: '18px',
+                    color: '#6A6A70',
+                    textAlign: 'right',
+                  }}
+                >
+                  {row.percent}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+        </Box>
+      </Box>
+    </Drawer>
+  );
+}
+
 type MockCompany = {
   name: string;
   address: string;
   industryVertical: string;
   propertyAddress: string;
+  propertyName: string;
   franchiseAssociation: string;
   affiliations: string[];
 };
-
-/** Company Address dropdown mocks — 1st autofills section; 2nd leaves empty placeholders. */
-const MOCK_COMPANY_ADDRESS_AUTOFILL = 'Fulton Street, 10048 New York New York, United States';
-const MOCK_COMPANY_ADDRESS_MANUAL = 'Broadway, 10007 New York New York, United States';
-const MOCK_COMPANY_ADDRESS_OPTIONS = [MOCK_COMPANY_ADDRESS_AUTOFILL, MOCK_COMPANY_ADDRESS_MANUAL];
 
 /** Existing companies for Company Name autocomplete (mock). */
 const MOCK_EXISTING_COMPANIES: MockCompany[] = [
   {
     name: 'Tkxel One World',
-    address: MOCK_COMPANY_ADDRESS_AUTOFILL,
+    address: 'Fulton Street, 10048 New York New York, United States',
     industryVertical: 'Commercial',
     propertyAddress: '1 World Trade Center, New York, NY 10007',
+    propertyName: 'One World Trade Center',
     franchiseAssociation: '#402 Nebraska, NB',
     affiliations: ['headquarters', 'owned'],
   },
@@ -202,6 +458,7 @@ const MOCK_EXISTING_COMPANIES: MockCompany[] = [
     address: '500 Capitol Ave, Omaha, NE 68102',
     industryVertical: 'Industrial',
     propertyAddress: '88 Industrial Park Rd, Omaha, NE 68107',
+    propertyName: 'Industrial Park Facility',
     franchiseAssociation: 'IFA / Franchisee network',
     affiliations: ['regional_office', 'managed'],
   },
@@ -210,6 +467,7 @@ const MOCK_EXISTING_COMPANIES: MockCompany[] = [
     address: '2200 Cornhusker Hwy, Lincoln, NE 68521',
     industryVertical: 'Distribution',
     propertyAddress: '150 Warehouse Blvd, Lincoln, NE 68508',
+    propertyName: 'Lincoln Warehouse',
     franchiseAssociation: 'Regional co-op',
     affiliations: ['shared', 'tenant'],
   },
@@ -218,22 +476,75 @@ const MOCK_EXISTING_COMPANIES: MockCompany[] = [
     address: '310 S 15th St, Omaha, NE 68102',
     industryVertical: 'Housing',
     propertyAddress: '901 Maple Ave, Bloomfield, NE 68718',
+    propertyName: 'Maple Avenue Residences',
     franchiseAssociation: 'None',
     affiliations: ['managed'],
   },
 ];
 
-function isAutofillCompanyAddress(address: string): boolean {
-  const normalized = address.trim().toLowerCase();
-  return (
-    normalized === MOCK_COMPANY_ADDRESS_AUTOFILL.toLowerCase() ||
-    (normalized.includes('fulton street') && normalized.includes('10048'))
-  );
-}
+type CompanyNamePaperProps = PaperProps & {
+  onCreateCompany?: () => void;
+};
 
-function isManualOnlyCompanyAddress(address: string): boolean {
-  return address.trim().toLowerCase() === MOCK_COMPANY_ADDRESS_MANUAL.toLowerCase();
-}
+const CompanyNameDropdownPaper = forwardRef<HTMLDivElement, CompanyNamePaperProps>(
+  function CompanyNameDropdownPaper(props, ref) {
+    const { children, onCreateCompany, sx, ...other } = props;
+    return (
+      <Paper
+        ref={ref}
+        {...other}
+        sx={[
+          {
+            borderRadius: '8px',
+            mt: 0.5,
+            boxShadow: '0px 8px 24px rgba(15, 23, 42, 0.12)',
+            overflow: 'hidden',
+          },
+          ...(Array.isArray(sx) ? sx : sx ? [sx] : []),
+        ]}
+      >
+        {children}
+        <Box
+          sx={{
+            position: 'sticky',
+            bottom: 0,
+            zIndex: 1,
+            borderTop: '1px solid #E6E6E7',
+            bgcolor: '#FFFFFF',
+            px: 1,
+            py: 0.75,
+          }}
+        >
+          <Button
+            type="button"
+            fullWidth
+            disableRipple
+            startIcon={<AddOutlined sx={{ fontSize: 16, color: '#146dff' }} />}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onCreateCompany?.();
+            }}
+            sx={{
+              justifyContent: 'flex-start',
+              textTransform: 'none',
+              fontSize: 13,
+              fontWeight: 500,
+              lineHeight: '20px',
+              color: '#146dff',
+              px: 1,
+              py: 0.75,
+              minHeight: 36,
+              '&:hover': { bgcolor: '#F5F8FF' },
+            }}
+          >
+            Create new company
+          </Button>
+        </Box>
+      </Paper>
+    );
+  },
+);
 
 /** Default Signal service cards (Dedicated / Patrol). */
 type ServiceKind = 'dedicated' | 'patrol';
@@ -791,12 +1102,45 @@ export function CreateDispatchPage() {
   );
 
 
+  const [companyDirectory, setCompanyDirectory] = useState<MockCompany[]>(() =>
+    MOCK_EXISTING_COMPANIES.map((c) => ({ ...c, affiliations: [...c.affiliations] })),
+  );
   const [companyName, setCompanyName] = useState('');
   const [companyAddress, setCompanyAddress] = useState('');
   const [industryVertical, setIndustryVertical] = useState('');
   const [propertyAddress, setPropertyAddress] = useState('');
+  const [propertyName, setPropertyName] = useState('');
+  const [addressMapModalOpen, setAddressMapModalOpen] = useState(false);
   const [franchiseAssociation, setFranchiseAssociation] = useState('');
+  const [propertySource, setPropertySource] = useState('');
   const [companyAffiliations, setCompanyAffiliations] = useState<string[]>([]);
+  const [createCompanyModalOpen, setCreateCompanyModalOpen] = useState(false);
+  const [createCompanyDomain, setCreateCompanyDomain] = useState('');
+  const [createCompanyName, setCreateCompanyName] = useState('');
+  const [createCompanyMarketVertical, setCreateCompanyMarketVertical] = useState('');
+  const [createCompanyPartnershipStatus, setCreateCompanyPartnershipStatus] = useState('');
+  const [createCompanyEmployees, setCreateCompanyEmployees] = useState('');
+  const [createCompanyRevenue, setCreateCompanyRevenue] = useState('');
+  const [profitabilityServiceId, setProfitabilityServiceId] = useState<string | null>(null);
+
+  const partnershipStatusOptions = useMemo<UiOption[]>(
+    () => [
+      { label: 'Owner', value: 'Owner' },
+      { label: 'Strategic Partner', value: 'Strategic Partner' },
+      { label: 'Prospect', value: 'Prospect' },
+      { label: 'Customer', value: 'Customer' },
+    ],
+    [],
+  );
+
+  const resetCreateCompanyForm = useCallback(() => {
+    setCreateCompanyDomain('');
+    setCreateCompanyName('');
+    setCreateCompanyMarketVertical('');
+    setCreateCompanyPartnershipStatus('');
+    setCreateCompanyEmployees('');
+    setCreateCompanyRevenue('');
+  }, []);
 
   const [contactFirstName, setContactFirstName] = useState('');
   const [contactLastName, setContactLastName] = useState('');
@@ -972,6 +1316,14 @@ export function CreateDispatchPage() {
     ],
     [],
   );
+  const propertySourceOptions = useMemo<UiOption[]>(
+    () => [
+      { label: 'ALN', value: 'ALN' },
+      { label: 'Costar', value: 'Costar' },
+      { label: 'Referral', value: 'Referral' },
+    ],
+    [],
+  );
   const timeZoneOptions = useMemo<UiOption[]>(() => {
     const common = [
       'UTC',
@@ -1061,36 +1413,37 @@ export function CreateDispatchPage() {
     });
   }, []);
 
+  const clearCompanyDetails = useCallback(() => {
+    setCompanyName('');
+    setCompanyAddress('');
+    setIndustryVertical('');
+    setPropertyAddress('');
+    setPropertyName('');
+    setFranchiseAssociation('');
+    setPropertySource('');
+    setCompanyAffiliations([]);
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      delete next.companyName;
+      delete next.propertyAddress;
+      delete next.propertyName;
+      return next;
+    });
+  }, []);
+
   const applyMockCompany = useCallback((company: MockCompany) => {
     setCompanyName(company.name);
     setCompanyAddress(company.address);
     setIndustryVertical(company.industryVertical);
     setPropertyAddress(company.propertyAddress);
+    setPropertyName(company.propertyName);
     setFranchiseAssociation(company.franchiseAssociation);
     setCompanyAffiliations([...company.affiliations]);
     setFieldErrors((prev) => {
       const next = { ...prev };
       delete next.companyName;
-      delete next.companyAddress;
-      delete next.industryVertical;
       delete next.propertyAddress;
-      return next;
-    });
-  }, []);
-
-  const clearCompanyDetailsKeepAddress = useCallback((address: string) => {
-    setCompanyAddress(address);
-    setCompanyName('');
-    setIndustryVertical('');
-    setPropertyAddress('');
-    setFranchiseAssociation('');
-    setCompanyAffiliations([]);
-    setFieldErrors((prev) => {
-      const next = { ...prev };
-      delete next.companyName;
-      delete next.companyAddress;
-      delete next.industryVertical;
-      delete next.propertyAddress;
+      delete next.propertyName;
       return next;
     });
   }, []);
@@ -1104,9 +1457,8 @@ export function CreateDispatchPage() {
   const validate = useCallback((): boolean => {
     const e: Record<string, string> = {};
     if (!companyName.trim()) e.companyName = 'Company name is required.';
-    if (!companyAddress.trim()) e.companyAddress = 'Company address is required.';
-    if (!industryVertical) e.industryVertical = 'Industry vertical is required.';
-    if (!propertyAddress.trim()) e.propertyAddress = 'Property address is required.';
+    if (!propertyAddress.trim()) e.propertyAddress = 'Address is required.';
+    if (!propertyName.trim()) e.propertyName = 'Property name is required.';
     if ((contactUserByRole.decision_maker ?? []).length === 0) {
       e.decisionMakerContacts = 'Select at least one Decision Maker.';
     }
@@ -1130,9 +1482,8 @@ export function CreateDispatchPage() {
     return Object.keys(e).length === 0;
   }, [
     companyName,
-    companyAddress,
-    industryVertical,
     propertyAddress,
+    propertyName,
     contactUserByRole,
     contactName,
     contactEmail,
@@ -1146,7 +1497,9 @@ export function CreateDispatchPage() {
     setCompanyAddress('');
     setIndustryVertical('');
     setPropertyAddress('');
+    setPropertyName('');
     setFranchiseAssociation('');
+    setPropertySource('');
     setCompanyAffiliations([]);
     setContactName('');
     setContactEmail('');
@@ -1189,10 +1542,6 @@ export function CreateDispatchPage() {
     setNewSigneeName('');
     setNewSigneeEmail('');
     setNewSigneeTitle('');
-    setEditingSigneeId(null);
-    setEditingSigneeName('');
-    setEditingSigneeEmail('');
-    setEditingSigneeTitle('');
     setCreateContactModalOpen(false);
     setCreateContactEmail('');
     setCreateContactFirstName('');
@@ -1201,8 +1550,11 @@ export function CreateDispatchPage() {
     setCreateContactCountryCode('+1');
     setCreateContactPhoneNumber('');
     setContactDirectory([...CONTACT_DIRECTORY_USERS]);
+    setCompanyDirectory(MOCK_EXISTING_COMPANIES.map((c) => ({ ...c, affiliations: [...c.affiliations] })));
+    setCreateCompanyModalOpen(false);
+    resetCreateCompanyForm();
     setOnDemandItems(DEFAULT_ON_DEMAND_ITEMS.map((item) => ({ ...item })));
-  }, []);
+  }, [resetCreateCompanyForm]);
 
   const handleSubmit = (ev: React.FormEvent) => {
     ev.preventDefault();
@@ -1216,7 +1568,9 @@ export function CreateDispatchPage() {
         address: companyAddress.trim(),
         industryVertical,
         propertyAddress: propertyAddress.trim(),
+        propertyName: propertyName.trim(),
         franchiseAssociation: franchiseAssociation.trim(),
+        propertySource: propertySource.trim(),
         affiliations: [...companyAffiliations],
       },
       contact: {
@@ -1843,75 +2197,144 @@ export function CreateDispatchPage() {
               <FormSection title="Company & Property Details">
                 <Grid container spacing={2}>
                   <Grid size={{ xs: 12, md: 4 }}>
-                    <AddressAutocompleteField
-                      name="companyAddress"
-                      label="Company Address"
-                      required
-                      placeholder="Enter company street, city, state, ZIP"
-                      value={companyAddress}
-                      extraOptions={MOCK_COMPANY_ADDRESS_OPTIONS}
-                      onChange={(v) => {
-                        setCompanyAddress(v);
-                        clearFieldError('companyAddress');
-                      }}
-                      onClear={() => clearCompanyDetailsKeepAddress('')}
-                      onSelect={(v) => {
-                        if (isAutofillCompanyAddress(v)) {
-                          const company = MOCK_EXISTING_COMPANIES.find((c) => c.name === 'Tkxel One World');
-                          if (company) {
-                            applyMockCompany({ ...company, address: MOCK_COMPANY_ADDRESS_AUTOFILL });
+                    <Stack spacing={0.75} sx={{ width: '100%' }}>
+                      <Typography sx={figmaLabelSx}>
+                        Company
+                        <RequiredAsterisk />
+                      </Typography>
+                      <Autocomplete
+                        options={companyDirectory}
+                        getOptionLabel={(o) => o.name}
+                        isOptionEqualToValue={(a, b) => a.name === b.name}
+                        openOnFocus
+                        filterOptions={(options, { inputValue }) => {
+                          const q = inputValue.trim().toLowerCase();
+                          if (!q) return options;
+                          return options.filter((o) => o.name.toLowerCase().includes(q));
+                        }}
+                        value={companyDirectory.find((c) => c.name === companyName) ?? null}
+                        onChange={(_, next) => {
+                          if (next) {
+                            applyMockCompany(next);
                             return;
                           }
-                        }
-                        if (isManualOnlyCompanyAddress(v)) {
-                          clearCompanyDetailsKeepAddress(MOCK_COMPANY_ADDRESS_MANUAL);
-                          return;
-                        }
-                        setCompanyAddress(v);
-                        clearFieldError('companyAddress');
+                          clearCompanyDetails();
+                        }}
+                        popupIcon={<KeyboardArrowDownOutlined sx={{ fontSize: 16, color: '#6A6A70' }} />}
+                        slots={{ paper: CompanyNameDropdownPaper }}
+                        slotProps={{
+                          paper: {
+                            onCreateCompany: () => setCreateCompanyModalOpen(true),
+                          } as CompanyNamePaperProps,
+                          listbox: {
+                            sx: {
+                              py: 0.5,
+                              maxHeight: 220,
+                              '& .MuiAutocomplete-option': {
+                                fontSize: 12,
+                                lineHeight: '18px',
+                                minHeight: 36,
+                                py: 1,
+                                px: 1.5,
+                              },
+                            },
+                          },
+                        }}
+                        renderOption={(props, option) => {
+                          const { key, ...optionProps } = props;
+                          return (
+                            <Box
+                              component="li"
+                              key={key}
+                              {...optionProps}
+                              sx={{
+                                px: 1.5,
+                                py: 1,
+                                fontSize: 12,
+                                lineHeight: '18px',
+                                color: '#262527',
+                              }}
+                            >
+                              {option.name}
+                            </Box>
+                          );
+                        }}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            name="companyName"
+                            size="small"
+                            placeholder="Select company"
+                            error={Boolean(fieldErrors.companyName)}
+                            helperText={fieldErrors.companyName}
+                            sx={figmaTextFieldSx}
+                          />
+                        )}
+                      />
+                    </Stack>
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <LabeledField
+                      name="propertyAddress"
+                      label="Property Address"
+                      required
+                      placeholder="Enter address"
+                      value={propertyAddress}
+                      onChange={(v) => {
+                        setPropertyAddress(v);
+                        clearFieldError('propertyAddress');
                       }}
-                      error={Boolean(fieldErrors.companyAddress)}
-                      helperText={fieldErrors.companyAddress}
+                      error={Boolean(fieldErrors.propertyAddress)}
+                      helperText={fieldErrors.propertyAddress}
+                      endIcon={
+                        <IconButton
+                          type="button"
+                          size="small"
+                          aria-label="Open address map"
+                          edge="end"
+                          onClick={() => setAddressMapModalOpen(true)}
+                          sx={{ color: '#6A6A70', p: 0.5 }}
+                        >
+                          <MapOutlined sx={{ fontSize: 18 }} />
+                        </IconButton>
+                      }
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <LabeledField
+                      name="propertyName"
+                      label="Property Name"
+                      required
+                      placeholder="Enter property name"
+                      value={propertyName}
+                      onChange={(v) => {
+                        setPropertyName(v);
+                        clearFieldError('propertyName');
+                      }}
+                      error={Boolean(fieldErrors.propertyName)}
+                      helperText={fieldErrors.propertyName}
                     />
                   </Grid>
                   <Grid size={{ xs: 12, md: 4 }}>
                     <Stack spacing={0.75} sx={{ width: '100%' }}>
                       <Typography sx={figmaLabelSx}>
-                        Company Name
+                        Associated Franchise
                         <RequiredAsterisk />
                       </Typography>
                       <Autocomplete
-                        freeSolo
-                        options={MOCK_EXISTING_COMPANIES}
-                        getOptionLabel={(o) => (typeof o === 'string' ? o : o.name)}
+                        options={franchiseAssociationOptions}
+                        value={franchiseAssociationOptions.find((o) => o.value === franchiseAssociation) ?? null}
+                        onChange={(_, next) => setFranchiseAssociation(next?.value ?? '')}
+                        getOptionLabel={(o) => o.label}
+                        isOptionEqualToValue={(a, b) => a.value === b.value}
                         filterOptions={(options, { inputValue }) => {
                           const q = inputValue.trim().toLowerCase();
                           if (!q) return options;
                           return options.filter(
                             (o) =>
-                              o.name.toLowerCase().includes(q) ||
-                              o.address.toLowerCase().includes(q),
+                              o.label.toLowerCase().includes(q) ||
+                              o.value.toLowerCase().includes(q),
                           );
-                        }}
-                        value={
-                          MOCK_EXISTING_COMPANIES.find((c) => c.name === companyName) ??
-                          (companyName ? companyName : null)
-                        }
-                        inputValue={companyName}
-                        onChange={(_, next) => {
-                          if (next && typeof next !== 'string') {
-                            applyMockCompany(next);
-                            return;
-                          }
-                          setCompanyName(typeof next === 'string' ? next : '');
-                          clearFieldError('companyName');
-                        }}
-                        onInputChange={(_, v, reason) => {
-                          // Ignore 'reset' so MUI can't write a stale label back after parent clears state
-                          if (reason === 'input' || reason === 'clear') {
-                            setCompanyName(v);
-                            clearFieldError('companyName');
-                          }
                         }}
                         popupIcon={<KeyboardArrowDownOutlined sx={{ fontSize: 16, color: '#6A6A70' }} />}
                         slotProps={{
@@ -1935,39 +2358,12 @@ export function CreateDispatchPage() {
                             },
                           },
                         }}
-                        renderOption={(props, option) => {
-                          const { key, ...optionProps } = props;
-                          return (
-                            <Box
-                              component="li"
-                              key={key}
-                              {...optionProps}
-                              sx={{
-                                display: 'flex !important',
-                                flexDirection: 'column',
-                                alignItems: 'flex-start !important',
-                                gap: 0.25,
-                                px: 1.5,
-                                py: 1,
-                              }}
-                            >
-                              <Typography sx={{ fontSize: 12, fontWeight: 600, color: '#262527', lineHeight: '18px' }}>
-                                {option.name}
-                              </Typography>
-                              <Typography sx={{ fontSize: 11, color: '#86868B', lineHeight: '16px' }}>
-                                {option.address}
-                              </Typography>
-                            </Box>
-                          );
-                        }}
                         renderInput={(params) => (
                           <TextField
                             {...params}
-                            name="companyName"
+                            name="franchiseAssociation"
                             size="small"
-                            placeholder="Search existing company"
-                            error={Boolean(fieldErrors.companyName)}
-                            helperText={fieldErrors.companyName}
+                            placeholder="Select associated franchise"
                             sx={figmaTextFieldSx}
                           />
                         )}
@@ -1975,46 +2371,59 @@ export function CreateDispatchPage() {
                     </Stack>
                   </Grid>
                   <Grid size={{ xs: 12, md: 4 }}>
-                    <LabeledField
-                      name="industryVertical"
-                      label="Industry Vertical"
-                      required
-                      value={industryVertical}
-                      onChange={(v) => {
-                        setIndustryVertical(v);
-                        clearFieldError('industryVertical');
-                      }}
-                      select
-                      options={industryVerticalOptions}
-                      error={Boolean(fieldErrors.industryVertical)}
-                      helperText={fieldErrors.industryVertical}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <LabeledField
-                      name="propertyAddress"
-                      label="Property"
-                      required
-                      placeholder="Enter property street, city, state, ZIP"
-                      value={propertyAddress}
-                      onChange={(v) => {
-                        setPropertyAddress(v);
-                        clearFieldError('propertyAddress');
-                      }}
-                      error={Boolean(fieldErrors.propertyAddress)}
-                      helperText={fieldErrors.propertyAddress}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <LabeledField
-                      name="franchiseAssociation"
-                      label="Associated Franchise"
-                      required
-                      value={franchiseAssociation}
-                      onChange={setFranchiseAssociation}
-                      select
-                      options={franchiseAssociationOptions}
-                    />
+                    <Stack spacing={0.75} sx={{ width: '100%' }}>
+                      <Typography sx={figmaLabelSx}>
+                        Property Source
+                        <RequiredAsterisk />
+                      </Typography>
+                      <Autocomplete
+                        options={propertySourceOptions}
+                        value={propertySourceOptions.find((o) => o.value === propertySource) ?? null}
+                        onChange={(_, next) => setPropertySource(next?.value ?? '')}
+                        getOptionLabel={(o) => o.label}
+                        isOptionEqualToValue={(a, b) => a.value === b.value}
+                        filterOptions={(options, { inputValue }) => {
+                          const q = inputValue.trim().toLowerCase();
+                          if (!q) return options;
+                          return options.filter(
+                            (o) =>
+                              o.label.toLowerCase().includes(q) ||
+                              o.value.toLowerCase().includes(q),
+                          );
+                        }}
+                        popupIcon={<KeyboardArrowDownOutlined sx={{ fontSize: 16, color: '#6A6A70' }} />}
+                        slotProps={{
+                          paper: {
+                            sx: {
+                              borderRadius: '8px',
+                              mt: 0.5,
+                              boxShadow: '0px 8px 24px rgba(15, 23, 42, 0.12)',
+                            },
+                          },
+                          listbox: {
+                            sx: {
+                              py: 0.5,
+                              '& .MuiAutocomplete-option': {
+                                fontSize: 12,
+                                lineHeight: '18px',
+                                minHeight: 36,
+                                py: 1,
+                                px: 1.5,
+                              },
+                            },
+                          },
+                        }}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            name="propertySource"
+                            size="small"
+                            placeholder="Select property source"
+                            sx={figmaTextFieldSx}
+                          />
+                        )}
+                      />
+                    </Stack>
                   </Grid>
                 </Grid>
                 <Stack spacing={0.75} sx={{ width: '100%', mt: 2 }}>
@@ -2419,12 +2828,30 @@ export function CreateDispatchPage() {
                                     onChange={(v) => updateSignalService(svc.id, { hourlyRate: v })}
                                     htmlInput={{ inputMode: 'decimal' }}
                                   />
-                                  <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-                                    <Typography sx={{ fontSize: 11, color: '#B32318', lineHeight: '16px' }}>
-                                      Suggested Rate $ 16.84, NPM 12.00%
-                                    </Typography>
-                                    <InfoOutlined sx={{ fontSize: 14, color: '#B32318' }} />
-                                  </Stack>
+                                  {svc.resourceType.trim() &&
+                                  svc.officerCount.trim() &&
+                                  svc.hoursPerWeek.trim() &&
+                                  svc.hourlyRate.trim() ? (
+                                    <Stack
+                                      direction="row"
+                                      spacing={0.5}
+                                      onClick={() => setProfitabilityServiceId(svc.id)}
+                                      sx={{
+                                        alignItems: 'center',
+                                        cursor: 'pointer',
+                                        width: 'fit-content',
+                                        '&:hover .suggested-rate-text': { textDecoration: 'underline' },
+                                      }}
+                                    >
+                                      <InfoOutlined sx={{ fontSize: 14, color: '#B32318' }} />
+                                      <Typography
+                                        className="suggested-rate-text"
+                                        sx={{ fontSize: 11, color: '#B32318', lineHeight: '16px' }}
+                                      >
+                                        Suggested Rate $ 16.84, NPM 12.00%
+                                      </Typography>
+                                    </Stack>
+                                  ) : null}
                                 </Stack>
                               </Grid>
                               <Grid size={{ xs: 12, sm: 6, md: 4 }}>
@@ -2538,11 +2965,24 @@ export function CreateDispatchPage() {
                                     placeholder="Enter price per visit"
                                     htmlInput={{ inputMode: 'decimal' }}
                                   />
-                                  <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-                                    <Typography sx={{ fontSize: 11, color: '#B32318', lineHeight: '16px' }}>
+                                  <Stack
+                                    direction="row"
+                                    spacing={0.5}
+                                    onClick={() => setProfitabilityServiceId(svc.id)}
+                                    sx={{
+                                      alignItems: 'center',
+                                      cursor: 'pointer',
+                                      width: 'fit-content',
+                                      '&:hover .suggested-rate-text': { textDecoration: 'underline' },
+                                    }}
+                                  >
+                                    <InfoOutlined sx={{ fontSize: 14, color: '#B32318' }} />
+                                    <Typography
+                                      className="suggested-rate-text"
+                                      sx={{ fontSize: 11, color: '#B32318', lineHeight: '16px' }}
+                                    >
                                       Suggested Rate $ 16.84, NPM 12.00%
                                     </Typography>
-                                    <InfoOutlined sx={{ fontSize: 14, color: '#B32318' }} />
                                   </Stack>
                                 </Stack>
                               </Grid>
@@ -3979,10 +4419,10 @@ export function CreateDispatchPage() {
                 <Box sx={{ px: 4, pt: 3, pb: 2 }}>
                   <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 2 }}>
                     <Stack sx={{ gap: 0.5, minWidth: 0 }}>
-                      <Typography sx={{ fontSize: 20, fontWeight: 700, lineHeight: '28px', color: '#262527' }}>
+                      <Typography sx={{ fontSize: 16, fontWeight: 700, lineHeight: '24px', color: '#262527' }}>
                         Create a New Contact
                       </Typography>
-                      <Typography sx={{ fontSize: 14, fontWeight: 400, lineHeight: '20px', color: '#5B5B5F' }}>
+                      <Typography sx={{ fontSize: 12, fontWeight: 400, lineHeight: '18px', color: '#5B5B5F' }}>
                         Add the following information to create a new contact
                       </Typography>
                     </Stack>
@@ -4163,6 +4603,202 @@ export function CreateDispatchPage() {
                 </Box>
               </DialogContent>
             </Dialog>
+
+            <Dialog
+              open={createCompanyModalOpen}
+              onClose={() => {
+                setCreateCompanyModalOpen(false);
+                resetCreateCompanyForm();
+              }}
+              maxWidth="md"
+              fullWidth
+              slotProps={{
+                backdrop: {
+                  sx: { backgroundColor: 'rgba(0, 0, 0, 0.5)' },
+                },
+                paper: {
+                  sx: {
+                    borderRadius: '12px',
+                    border: '1px solid #E6E6E7',
+                    boxShadow:
+                      '0px 20px 24px -4px rgba(16, 24, 40, 0.10), 0px 8px 8px -4px rgba(16, 24, 40, 0.04)',
+                    maxWidth: 780,
+                  },
+                },
+              }}
+            >
+              <DialogContent sx={{ p: 0 }}>
+                <Box sx={{ px: 4, pt: 3, pb: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 2 }}>
+                    <Stack sx={{ gap: 0.5, minWidth: 0 }}>
+                      <Typography sx={{ fontSize: 16, fontWeight: 700, lineHeight: '24px', color: '#262527' }}>
+                        Create a New Company
+                      </Typography>
+                      <Typography sx={{ fontSize: 12, fontWeight: 400, lineHeight: '18px', color: '#5B5B5F' }}>
+                        Add the following information to create a new company
+                      </Typography>
+                    </Stack>
+                    <IconButton
+                      aria-label="Close"
+                      onClick={() => {
+                        setCreateCompanyModalOpen(false);
+                        resetCreateCompanyForm();
+                      }}
+                      sx={{ color: '#5B5B5F' }}
+                    >
+                      <CloseOutlined sx={{ fontSize: 20 }} />
+                    </IconButton>
+                  </Box>
+                </Box>
+
+                <Divider />
+
+                <Box sx={{ px: 4, py: 3 }}>
+                  <Grid container spacing={2}>
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <LabeledField
+                        name="newCompanyDomain"
+                        label="Company Domain"
+                        required={false}
+                        placeholder="e.g., www.teamsignal.com"
+                        value={createCompanyDomain}
+                        onChange={setCreateCompanyDomain}
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <LabeledField
+                        name="newCompanyName"
+                        label="Company Name"
+                        required
+                        placeholder="Add company name"
+                        value={createCompanyName}
+                        onChange={setCreateCompanyName}
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <LabeledField
+                        name="newCompanyMarketVertical"
+                        label="Market Vertical"
+                        required
+                        select
+                        options={industryVerticalOptions}
+                        placeholder="Select market vertical"
+                        value={createCompanyMarketVertical}
+                        onChange={setCreateCompanyMarketVertical}
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <LabeledField
+                        name="newCompanyPartnershipStatus"
+                        label="Strategic Partnership Status"
+                        required={false}
+                        select
+                        options={partnershipStatusOptions}
+                        placeholder="Select owner"
+                        value={createCompanyPartnershipStatus}
+                        onChange={setCreateCompanyPartnershipStatus}
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <LabeledField
+                        name="newCompanyEmployees"
+                        label="No. of Employees"
+                        required={false}
+                        placeholder="No. of employees"
+                        value={createCompanyEmployees}
+                        onChange={setCreateCompanyEmployees}
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <LabeledField
+                        name="newCompanyRevenue"
+                        label="Revenue"
+                        required={false}
+                        placeholder="Add revenue"
+                        value={createCompanyRevenue}
+                        onChange={setCreateCompanyRevenue}
+                      />
+                    </Grid>
+                  </Grid>
+                </Box>
+
+                <Divider />
+
+                <Box sx={{ px: 4, py: 2.5, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+                  <Button
+                    type="button"
+                    variant="outlined"
+                    size="medium"
+                    onClick={() => {
+                      setCreateCompanyModalOpen(false);
+                      resetCreateCompanyForm();
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="contained"
+                    color="primary"
+                    size="medium"
+                    onClick={() => {
+                      const name = createCompanyName.trim();
+                      const market = createCompanyMarketVertical.trim();
+                      if (!name || !market) {
+                        setSnackbar({ open: true, message: 'Please fill all required fields.', severity: 'error' });
+                        return;
+                      }
+                      const company: MockCompany = {
+                        name,
+                        address: createCompanyDomain.trim() || 'Address pending',
+                        industryVertical: market,
+                        propertyAddress: '',
+                        propertyName: '',
+                        franchiseAssociation: '',
+                        affiliations: [],
+                      };
+                      setCompanyDirectory((prev) => [...prev, company]);
+                      applyMockCompany(company);
+                      setCreateCompanyModalOpen(false);
+                      resetCreateCompanyForm();
+                      setSnackbar({ open: true, message: 'Company created.', severity: 'success' });
+                    }}
+                  >
+                    Create Company
+                  </Button>
+                </Box>
+              </DialogContent>
+            </Dialog>
+
+            <ProfitabilityOverviewDrawer
+              open={Boolean(profitabilityServiceId)}
+              onClose={() => setProfitabilityServiceId(null)}
+              hourlyRate={
+                serviceProducts.find((s) => s.id === profitabilityServiceId)?.kind === 'patrol'
+                  ? (serviceProducts.find((s) => s.id === profitabilityServiceId)?.pricePerVisit ?? '')
+                  : (serviceProducts.find((s) => s.id === profitabilityServiceId)?.hourlyRate ?? '')
+              }
+              onHourlyRateChange={(v) => {
+                if (!profitabilityServiceId) return;
+                const svc = serviceProducts.find((s) => s.id === profitabilityServiceId);
+                if (!svc) return;
+                if (svc.kind === 'patrol') {
+                  updateSignalService(profitabilityServiceId, { pricePerVisit: v });
+                } else {
+                  updateSignalService(profitabilityServiceId, { hourlyRate: v });
+                }
+              }}
+            />
+
+            <AddressMapPickerModal
+              open={addressMapModalOpen}
+              value={propertyAddress}
+              onClose={() => setAddressMapModalOpen(false)}
+              onConfirm={(address) => {
+                setPropertyAddress(address);
+                clearFieldError('propertyAddress');
+              }}
+            />
       </Box>
     </Box>
   );
