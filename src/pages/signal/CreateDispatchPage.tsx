@@ -2554,7 +2554,11 @@ export function CreateDispatchPage({
                       <Autocomplete
                         options={propertyOptionsForCompany}
                         getOptionLabel={(o) => (typeof o === 'string' ? o : o.address)}
-                        isOptionEqualToValue={(a, b) => a.address === b.address}
+                        isOptionEqualToValue={(a, b) => {
+                          const addrA = typeof a === 'string' ? a : a.address;
+                          const addrB = typeof b === 'string' ? b : b.address;
+                          return addrA === addrB;
+                        }}
                         openOnFocus
                         freeSolo
                         forcePopupIcon
