@@ -51,6 +51,8 @@ import PersonOutlineOutlined from '@mui/icons-material/PersonOutlineOutlined';
 import PublicOutlined from '@mui/icons-material/PublicOutlined';
 import Security from '@mui/icons-material/Security';
 import SettingsOutlined from '@mui/icons-material/SettingsOutlined';
+import CheckCircle from '@mui/icons-material/CheckCircle';
+import RadioButtonUnchecked from '@mui/icons-material/RadioButtonUnchecked';
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined';
 import ViewKanbanOutlined from '@mui/icons-material/ViewKanbanOutlined';
 import { FormSection } from '../../components/createContract/FormSection';
@@ -122,14 +124,55 @@ const figmaTextFieldSx = {
     '&.Mui-disabled .MuiPickersOutlinedInput-notchedOutline': { borderColor: FIELD_STROKE },
     '&.Mui-disabled': { backgroundColor: '#F5F5F6' },
   },
-  '& .MuiInputBase-input': { fontSize: 12, lineHeight: '18px' },
-  '& .MuiPickersInputBase-sectionsContainer': { fontSize: 12, lineHeight: '18px' },
+  '& .MuiInputBase-input': { fontSize: 12, lineHeight: '18px', fontWeight: 400 },
+  '& .MuiPickersInputBase-sectionsContainer': { fontSize: 12, lineHeight: '18px', fontWeight: 400 },
+  '& .MuiPickersInputBase-sectionContent': {
+    fontSize: 12,
+    lineHeight: '18px',
+    fontWeight: 400,
+  },
+  '& .MuiPickersInputBase-sectionContent[aria-valuetext="Empty"]': {
+    color: '#CCCCCC',
+  },
   '& .MuiInputBase-input::placeholder': { color: '#CCCCCC', opacity: 1, fontSize: 12 },
   '& .MuiInputBase-input.Mui-disabled': { WebkitTextFillColor: '#86868B', color: '#86868B' },
   '& .MuiSelect-icon .MuiSvgIcon-root': { fontSize: 16 },
 } as const;
 
 const figmaLabelSx = { color: '#86868B', fontSize: 12, fontWeight: 500, lineHeight: '18px' } as const;
+
+/** Default proposal time zone — Central Time (US & Canada). */
+const DEFAULT_TIME_ZONE = 'America/Chicago';
+
+const TIME_ZONE_LABELS: Record<string, string> = {
+  UTC: '(UTC+00:00) Coordinated Universal Time',
+  'America/New_York': '(UTC-05:00) Eastern Time (US & Canada)',
+  'America/Chicago': '(UTC-06:00) Central Time (US & Canada)',
+  'America/Denver': '(UTC-07:00) Mountain Time (US & Canada)',
+  'America/Los_Angeles': '(UTC-08:00) Pacific Time (US & Canada)',
+  'America/Phoenix': '(UTC-07:00) Arizona',
+  'America/Anchorage': '(UTC-09:00) Alaska',
+  'Pacific/Honolulu': '(UTC-10:00) Hawaii',
+  'America/Toronto': '(UTC-05:00) Eastern Time - Toronto',
+  'America/Mexico_City': '(UTC-06:00) Central Time - Mexico City',
+  'America/Sao_Paulo': '(UTC-03:00) Brasilia',
+  'Europe/London': '(UTC+00:00) Dublin, Edinburgh, Lisbon, London',
+  'Europe/Paris': '(UTC+01:00) Brussels, Copenhagen, Madrid, Paris',
+  'Europe/Berlin': '(UTC+01:00) Amsterdam, Berlin, Bern, Rome, Stockholm, Vienna',
+  'Europe/Madrid': '(UTC+01:00) Madrid',
+  'Asia/Dubai': '(UTC+04:00) Abu Dhabi, Muscat',
+  'Asia/Karachi': '(UTC+05:00) Islamabad, Karachi',
+  'Asia/Kolkata': '(UTC+05:30) Chennai, Kolkata, Mumbai, New Delhi',
+  'Asia/Singapore': '(UTC+08:00) Kuala Lumpur, Singapore',
+  'Asia/Tokyo': '(UTC+09:00) Osaka, Sapporo, Tokyo',
+  'Asia/Shanghai': '(UTC+08:00) Beijing, Chongqing, Hong Kong, Urumqi',
+  'Australia/Sydney': '(UTC+10:00) Canberra, Melbourne, Sydney',
+  'Pacific/Auckland': '(UTC+12:00) Auckland, Wellington',
+};
+
+function formatTimeZoneLabel(zone: string): string {
+  return TIME_ZONE_LABELS[zone] ?? zone.replace(/_/g, ' ');
+}
 
 function RequiredAsterisk() {
   return (
@@ -165,6 +208,16 @@ const EMPTY_CONTACT_ROLE_SELECTIONS: Record<string, string[]> = {
   end_user: [],
   billing: [],
 };
+
+const FORM_PROGRESS_SECTIONS = [
+  { id: 'section-company-property', label: 'Company & Property Details' },
+  { id: 'section-proposal', label: 'Proposal Details' },
+  { id: 'section-contacts', label: 'Contact Details' },
+  { id: 'section-services', label: 'Services' },
+  { id: 'section-on-demand', label: 'On Demand' },
+  { id: 'section-billing', label: 'Billing & Payment Details' },
+  { id: 'section-signee', label: 'Signee' },
+] as const;
 
 /** Figma 44329:162823 — Affiliation (multi-select pills). */
 const COMPANY_AFFILIATION_OPTIONS = [
@@ -219,7 +272,7 @@ function ProfitabilityOverviewDrawer(props: {
         },
         paper: {
           sx: {
-            width: { xs: '100%', sm: 440 },
+            width: { xs: '100%', sm: 560 },
             maxWidth: '100%',
             boxSizing: 'border-box',
             bgcolor: '#FFFFFF',
@@ -436,10 +489,15 @@ type MockCompany = {
   name: string;
   address: string;
   industryVertical: string;
-  propertyAddress: string;
+};
+
+type MockProperty = {
+  address: string;
   propertyName: string;
   franchiseAssociation: string;
+  propertySource: string;
   affiliations: string[];
+  companyName: string;
 };
 
 /** Existing companies for Company Name autocomplete (mock). */
@@ -448,37 +506,75 @@ const MOCK_EXISTING_COMPANIES: MockCompany[] = [
     name: 'Tkxel One World',
     address: 'Fulton Street, 10048 New York New York, United States',
     industryVertical: 'Commercial',
-    propertyAddress: '1 World Trade Center, New York, NY 10007',
-    propertyName: 'One World Trade Center',
-    franchiseAssociation: '#402 Nebraska, NB',
-    affiliations: ['headquarters', 'owned'],
   },
   {
     name: 'Signal Security Partners',
-    address: '500 Capitol Ave, Omaha, NE 68102',
-    industryVertical: 'Industrial',
-    propertyAddress: '88 Industrial Park Rd, Omaha, NE 68107',
-    propertyName: 'Industrial Park Facility',
-    franchiseAssociation: 'IFA / Franchisee network',
-    affiliations: ['regional_office', 'managed'],
+    address: '',
+    industryVertical: '',
   },
   {
     name: 'Midwest Distribution Co',
     address: '2200 Cornhusker Hwy, Lincoln, NE 68521',
     industryVertical: 'Distribution',
-    propertyAddress: '150 Warehouse Blvd, Lincoln, NE 68508',
-    propertyName: 'Lincoln Warehouse',
-    franchiseAssociation: 'Regional co-op',
-    affiliations: ['shared', 'tenant'],
   },
   {
     name: 'Prairie Housing Group',
     address: '310 S 15th St, Omaha, NE 68102',
     industryVertical: 'Housing',
-    propertyAddress: '901 Maple Ave, Bloomfield, NE 68718',
+  },
+];
+
+/** Address applied when user confirms a new location from the map picker. */
+const MOCK_MAP_NEW_PROPERTY_ADDRESS = '412 N Broadway St, Bloomfield, NE 68718';
+
+const MOCK_EXISTING_PROPERTIES: MockProperty[] = [
+  {
+    companyName: 'Tkxel One World',
+    address: '1 World Trade Center, New York, NY 10007',
+    propertyName: 'One World Trade Center',
+    franchiseAssociation: '#402 Nebraska, NB',
+    propertySource: 'ALN',
+    affiliations: ['headquarters', 'owned'],
+  },
+  {
+    companyName: 'Tkxel One World',
+    address: '4 World Trade Center, New York, NY 10007',
+    propertyName: 'Four World Trade Center',
+    franchiseAssociation: '#402 Nebraska, NB',
+    propertySource: 'Costar',
+    affiliations: ['managed'],
+  },
+  {
+    companyName: 'Midwest Distribution Co',
+    address: '150 Warehouse Blvd, Lincoln, NE 68508',
+    propertyName: 'Lincoln Warehouse',
+    franchiseAssociation: 'Regional co-op',
+    propertySource: 'Referral',
+    affiliations: ['shared', 'tenant'],
+  },
+  {
+    companyName: 'Midwest Distribution Co',
+    address: '200 Logistics Way, Omaha, NE 68102',
+    propertyName: 'Omaha Distribution Hub',
+    franchiseAssociation: 'Regional co-op',
+    propertySource: 'ALN',
+    affiliations: ['owned'],
+  },
+  {
+    companyName: 'Prairie Housing Group',
+    address: '901 Maple Ave, Bloomfield, NE 68718',
     propertyName: 'Maple Avenue Residences',
     franchiseAssociation: 'None',
+    propertySource: 'Costar',
     affiliations: ['managed'],
+  },
+  {
+    companyName: 'Prairie Housing Group',
+    address: '220 Oak Street, Norfolk, NE 68701',
+    propertyName: 'Oak Street Apartments',
+    franchiseAssociation: 'None',
+    propertySource: 'Referral',
+    affiliations: ['tenant'],
   },
 ];
 
@@ -867,6 +963,7 @@ function LabeledField(props: {
   required?: boolean;
   width?: number | string;
   placeholder?: string;
+  placeholderSx?: object;
   endIcon?: React.ReactNode;
   disabled?: boolean;
   value: string;
@@ -882,6 +979,13 @@ function LabeledField(props: {
   const selectOptions = (props.options ?? []).filter((o) => o.value !== '');
   const selectPlaceholder =
     props.placeholder ?? (props.label ? `Select ${props.label.toLowerCase()}` : 'Select');
+  const emptySelectSx = {
+    fontSize: 12,
+    lineHeight: '18px',
+    fontWeight: 400,
+    color: '#CCCCCC',
+    ...props.placeholderSx,
+  };
   const nonSelectSlotProps =
     !props.select && (props.endIcon || props.htmlInput)
       ? {
@@ -922,9 +1026,9 @@ function LabeledField(props: {
                     const v = typeof selected === 'string' ? selected : '';
                     if (!v) {
                       return (
-                        <Typography component="span" sx={{ fontSize: 12, lineHeight: '18px', color: '#CCCCCC' }}>
+                        <Box component="span" sx={emptySelectSx}>
                           {selectPlaceholder}
-                        </Typography>
+                        </Box>
                       );
                     }
                     const opt = selectOptions.find((o) => o.value === v);
@@ -1076,12 +1180,17 @@ function SidebarContent(props: { showCollapseChevron?: boolean; activeIconAlt?: 
   );
 }
 
-export function CreateDispatchPage() {
+export function CreateDispatchPage({
+  variant = 'desktop',
+}: {
+  variant?: 'desktop' | 'mobile';
+} = {}) {
   const theme = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
-  const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
-  const isSmUp = useMediaQuery(theme.breakpoints.up('sm'));
+  const isMobileVariant = variant === 'mobile';
+  const isDesktop = useMediaQuery(theme.breakpoints.up('md')) && !isMobileVariant;
+  const isSmUp = useMediaQuery(theme.breakpoints.up('sm')) && !isMobileVariant;
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   // Sidebar icon highlight for this screen.
@@ -1103,7 +1212,10 @@ export function CreateDispatchPage() {
 
 
   const [companyDirectory, setCompanyDirectory] = useState<MockCompany[]>(() =>
-    MOCK_EXISTING_COMPANIES.map((c) => ({ ...c, affiliations: [...c.affiliations] })),
+    MOCK_EXISTING_COMPANIES.map((c) => ({ ...c })),
+  );
+  const [propertyDirectory, setPropertyDirectory] = useState<MockProperty[]>(() =>
+    MOCK_EXISTING_PROPERTIES.map((p) => ({ ...p, affiliations: [...p.affiliations] })),
   );
   const [companyName, setCompanyName] = useState('');
   const [companyAddress, setCompanyAddress] = useState('');
@@ -1161,9 +1273,7 @@ export function CreateDispatchPage() {
   const [serviceStartDate, setServiceStartDate] = useState<Dayjs | null>(null);
   const [sameAsContractDate, setSameAsContractDate] = useState(false);
   const [proposalName, setProposalName] = useState('');
-  const [timeZone, setTimeZone] = useState(
-    () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Chicago',
-  );
+  const [timeZone, setTimeZone] = useState(DEFAULT_TIME_ZONE);
 
   const [occurrenceEvery, setOccurrenceEvery] = useState('01');
   const [occurrenceUnit, setOccurrenceUnit] = useState('Month');
@@ -1200,6 +1310,7 @@ export function CreateDispatchPage() {
   const [annualRateIncrease, setAnnualRateIncrease] = useState('');
   const [contractType, setContractType] = useState('');
   const [billingFrequency, setBillingFrequency] = useState('');
+  const [paymentMode, setPaymentMode] = useState('');
   const [billingOccurrence, setBillingOccurrence] = useState<'monthly' | 'biweekly' | 'weekly' | 'event' | 'flat'>('weekly');
   const [billingTaxRate, setBillingTaxRate] = useState('0');
   const [flatBillingAmount, setFlatBillingAmount] = useState('');
@@ -1271,6 +1382,28 @@ export function CreateDispatchPage() {
     ],
     [],
   );
+  const paymentModeOptions = useMemo<UiOption[]>(
+    () =>
+      [
+        'Aramark',
+        'Ariba',
+        'Bill.com',
+        'CiraNet',
+        'Coupa',
+        'Entrata (VendorAccess)',
+        'IRT',
+        'OpsTechnology (OpsMerchant)',
+        'Paymode (Bottom Technologies)',
+        'Payup',
+        'Retail Link',
+        'Tipalti',
+        'VendorCafe',
+        'VendorCafe (CBRE properties only)',
+        'Workday',
+        'Others',
+      ].map((label) => ({ label, value: label })),
+    [],
+  );
 
   const [billFirstName, setBillFirstName] = useState('');
   const [billLastName, setBillLastName] = useState('');
@@ -1324,37 +1457,18 @@ export function CreateDispatchPage() {
     ],
     [],
   );
+  const propertyOptionsForCompany = useMemo(() => {
+    const selected = companyName.trim();
+    if (!selected) return propertyDirectory;
+    return propertyDirectory.filter((p) => p.companyName === selected);
+  }, [propertyDirectory, companyName]);
   const timeZoneOptions = useMemo<UiOption[]>(() => {
-    const common = [
-      'UTC',
-      'America/New_York',
-      'America/Chicago',
-      'America/Denver',
-      'America/Los_Angeles',
-      'America/Phoenix',
-      'America/Anchorage',
-      'Pacific/Honolulu',
-      'America/Toronto',
-      'America/Mexico_City',
-      'America/Sao_Paulo',
-      'Europe/London',
-      'Europe/Paris',
-      'Europe/Berlin',
-      'Europe/Madrid',
-      'Asia/Dubai',
-      'Asia/Karachi',
-      'Asia/Kolkata',
-      'Asia/Singapore',
-      'Asia/Tokyo',
-      'Asia/Shanghai',
-      'Australia/Sydney',
-      'Pacific/Auckland',
-    ];
+    const common = Object.keys(TIME_ZONE_LABELS);
     const zones = new Set(common);
     if (timeZone) zones.add(timeZone);
     return Array.from(zones)
-      .sort((a, b) => a.localeCompare(b))
-      .map((z) => ({ label: z.replace(/_/g, ' '), value: z }));
+      .map((z) => ({ label: formatTimeZoneLabel(z), value: z }))
+      .sort((a, b) => a.label.localeCompare(b.label));
   }, [timeZone]);
 
   const [signeeCards, setSigneeCards] = useState<SigneeCard[]>([]);
@@ -1404,11 +1518,165 @@ export function CreateDispatchPage() {
     setBillZip(preset.zip);
   }, [sameAsPropertyAddress, propertyAddress]);
 
+  const sectionCompletion = useMemo(() => {
+    const isServiceComplete = (s: SignalServiceCard) => {
+      if (!s.resourceType.trim()) return false;
+      if (s.kind === 'dedicated') {
+        return (
+          Boolean(s.officerCount.trim()) &&
+          parseMoneyInput(s.hourlyRate) > 0 &&
+          parseMoneyInput(s.hoursPerWeek) > 0 &&
+          s.jobDays.length > 0 &&
+          Boolean(s.startTime.trim()) &&
+          Boolean(s.endTime.trim())
+        );
+      }
+      return (
+        parseMoneyInput(s.pricePerVisit) > 0 &&
+        s.patrolVisitSets.length > 0 &&
+        s.patrolVisitSets.every(
+          (set) =>
+            Boolean(set.startTime.trim()) &&
+            Boolean(set.endTime.trim()) &&
+            set.visitDays.length > 0 &&
+            parseMoneyInput(set.visitsPerDay) > 0,
+        )
+      );
+    };
+
+    const isOnDemandComplete = (item: OnDemandItem) => {
+      if (item.kind === 'invoice_line') {
+        if (item.isEditing) return false;
+        return (
+          Boolean(item.lineTitle.trim()) &&
+          Boolean(item.invoiceLineItem) &&
+          Boolean(item.price.trim()) &&
+          Boolean(item.quantity.trim())
+        );
+      }
+      if (item.kind === 'extra_job') {
+        return parseMoneyInput(item.pricePerHour) > 0;
+      }
+      if (!item.billingType) return false;
+      if (item.billingType === 'Flat-Rate' || item.billingType === 'Charge Per Alarm') {
+        return Boolean(item.rate.trim());
+      }
+      return true;
+    };
+
+    const billingAddressComplete = sameAsPropertyAddress
+      ? true
+      : Boolean(
+          billAddress.trim() &&
+            billCountry &&
+            billState &&
+            billCity.trim() &&
+            billZip.trim(),
+        );
+
+    return {
+      'section-company-property':
+        Boolean(companyName.trim()) &&
+        Boolean(propertyAddress.trim()) &&
+        Boolean(propertyName.trim()) &&
+        Boolean(propertySource) &&
+        companyAffiliations.length > 0,
+      'section-proposal': Boolean(proposalName.trim()) && Boolean(timeZone),
+      'section-contacts':
+        (contactUserByRole.decision_maker ?? []).length > 0 &&
+        (contactUserByRole.end_user ?? []).length > 0 &&
+        (contactUserByRole.billing ?? []).length > 0,
+      'section-services': serviceProducts.length > 0 && serviceProducts.every(isServiceComplete),
+      'section-on-demand': onDemandItems.length > 0 && onDemandItems.every(isOnDemandComplete),
+      'section-billing':
+        Boolean(billingOccurrence) &&
+        cycleReferenceDateInput != null &&
+        Boolean(paymentTerms) &&
+        Boolean(paymentMethod) &&
+        Boolean(annualRateIncrease.trim()) &&
+        Boolean(billingType) &&
+        Boolean(contractType) &&
+        Boolean(billingFrequency) &&
+        Boolean(paymentMode) &&
+        Boolean(billingContactId) &&
+        Boolean(billFirstName.trim()) &&
+        Boolean(billLastName.trim()) &&
+        Boolean(billEmail.trim()) &&
+        Boolean(billPhoneNumber.trim()) &&
+        billingAddressComplete,
+      'section-signee':
+        signeeCards.length > 0 &&
+        signeeCards.every((s) => Boolean(s.name.trim()) && Boolean((s.email ?? '').trim())),
+    } as Record<(typeof FORM_PROGRESS_SECTIONS)[number]['id'], boolean>;
+  }, [
+    companyName,
+    propertyAddress,
+    propertyName,
+    propertySource,
+    companyAffiliations,
+    proposalName,
+    timeZone,
+    contactUserByRole,
+    serviceProducts,
+    onDemandItems,
+    billingOccurrence,
+    cycleReferenceDateInput,
+    paymentTerms,
+    paymentMethod,
+    annualRateIncrease,
+    billingType,
+    contractType,
+    billingFrequency,
+    paymentMode,
+    billingContactId,
+    billFirstName,
+    billLastName,
+    billEmail,
+    billPhoneNumber,
+    sameAsPropertyAddress,
+    billAddress,
+    billCountry,
+    billState,
+    billCity,
+    billZip,
+    signeeCards,
+  ]);
+
+  const scrollToSection = useCallback((sectionId: string) => {
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
   const clearFieldError = useCallback((key: string) => {
     setFieldErrors((prev) => {
       if (!prev[key]) return prev;
       const next = { ...prev };
       delete next[key];
+      return next;
+    });
+  }, []);
+
+  const clearPropertyLinkedDetails = useCallback(() => {
+    setPropertyName('');
+    setFranchiseAssociation('');
+    setPropertySource('');
+    setCompanyAffiliations([]);
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      delete next.propertyName;
+      return next;
+    });
+  }, []);
+
+  const applyMockProperty = useCallback((property: MockProperty) => {
+    setPropertyAddress(property.address);
+    setPropertyName(property.propertyName);
+    setFranchiseAssociation(property.franchiseAssociation);
+    setPropertySource(property.propertySource);
+    setCompanyAffiliations([...property.affiliations]);
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      delete next.propertyAddress;
+      delete next.propertyName;
       return next;
     });
   }, []);
@@ -1435,10 +1703,12 @@ export function CreateDispatchPage() {
     setCompanyName(company.name);
     setCompanyAddress(company.address);
     setIndustryVertical(company.industryVertical);
-    setPropertyAddress(company.propertyAddress);
-    setPropertyName(company.propertyName);
-    setFranchiseAssociation(company.franchiseAssociation);
-    setCompanyAffiliations([...company.affiliations]);
+    // One company can have many properties — user picks property separately.
+    setPropertyAddress('');
+    setPropertyName('');
+    setFranchiseAssociation('');
+    setPropertySource('');
+    setCompanyAffiliations([]);
     setFieldErrors((prev) => {
       const next = { ...prev };
       delete next.companyName;
@@ -1510,7 +1780,7 @@ export function CreateDispatchPage() {
     setServiceStartDate(null);
     setSameAsContractDate(false);
     setProposalName('');
-    setTimeZone('');
+    setTimeZone(DEFAULT_TIME_ZONE);
     setOccurrenceEvery('01');
     setOccurrenceUnit('Month');
     setFieldErrors({});
@@ -1526,6 +1796,7 @@ export function CreateDispatchPage() {
     setPaymentTerms('');
     setContractType('');
     setBillingFrequency('');
+    setPaymentMode('');
     setBillFirstName('');
     setBillLastName('');
     setBillEmail('');
@@ -1550,7 +1821,8 @@ export function CreateDispatchPage() {
     setCreateContactCountryCode('+1');
     setCreateContactPhoneNumber('');
     setContactDirectory([...CONTACT_DIRECTORY_USERS]);
-    setCompanyDirectory(MOCK_EXISTING_COMPANIES.map((c) => ({ ...c, affiliations: [...c.affiliations] })));
+    setCompanyDirectory(MOCK_EXISTING_COMPANIES.map((c) => ({ ...c })));
+    setPropertyDirectory(MOCK_EXISTING_PROPERTIES.map((p) => ({ ...p, affiliations: [...p.affiliations] })));
     setCreateCompanyModalOpen(false);
     resetCreateCompanyForm();
     setOnDemandItems(DEFAULT_ON_DEMAND_ITEMS.map((item) => ({ ...item })));
@@ -1634,6 +1906,7 @@ export function CreateDispatchPage() {
         billingType,
         contractType,
         billingFrequency,
+        paymentMode,
       },
       signees: signeeCards,
     };
@@ -1644,7 +1917,7 @@ export function CreateDispatchPage() {
 
   const handleCancel = () => {
     resetForm();
-    navigate('/signal/deals');
+    navigate(isMobileVariant ? '/signal/mobile' : '/signal/deals');
   };
 
   const applyContactUserToPrimaryFields = useCallback(
@@ -1672,6 +1945,9 @@ export function CreateDispatchPage() {
       if (roleId === 'decision_maker') {
         applyContactUserToPrimaryFields(userIds[0] ?? '');
         clearFieldError('decisionMakerContacts');
+      }
+      if (roleId === 'billing') {
+        setBillingContactId(userIds[0] ?? null);
       }
     },
     [applyContactUserToPrimaryFields, clearFieldError],
@@ -1831,19 +2107,19 @@ export function CreateDispatchPage() {
   return (
     <Box
       sx={{
-        h: '100dvh',
-        maxHeight: '100dvh',
+        h: isMobileVariant ? '100%' : '100dvh',
+        maxHeight: isMobileVariant ? '100%' : '100dvh',
         minHeight: 0,
         width: '100%',
         maxWidth: '100%',
-        bgcolor: '#F5F5F6',
+        bgcolor: isMobileVariant ? '#FFFFFF' : '#F5F5F6',
         display: 'flex',
-        flexDirection: { xs: 'column', md: 'row' },
+        flexDirection: { xs: 'column', md: isMobileVariant ? 'column' : 'row' },
         overflow: 'hidden',
         boxSizing: 'border-box',
       }}
     >
-      {isDesktop ? (
+      {!isMobileVariant && isDesktop ? (
         <Box
           sx={{
             position: 'sticky',
@@ -1863,6 +2139,7 @@ export function CreateDispatchPage() {
         </Box>
       ) : null}
 
+      {!isMobileVariant ? (
       <Drawer
         anchor="left"
         open={!isDesktop && mobileNavOpen}
@@ -1875,6 +2152,7 @@ export function CreateDispatchPage() {
       >
         <SidebarContent showCollapseChevron={false} activeIconAlt={activeSidebarIconAlt} />
       </Drawer>
+      ) : null}
 
       <Box
         sx={{
@@ -1886,7 +2164,7 @@ export function CreateDispatchPage() {
           overflow: 'hidden',
         }}
       >
-        {isDesktop ? (
+        {!isMobileVariant && isDesktop ? (
           <Box
             component="header"
             sx={{
@@ -2043,7 +2321,7 @@ export function CreateDispatchPage() {
               </Stack>
             </Stack>
           </Box>
-        ) : (
+        ) : !isMobileVariant ? (
           <AppBar
             position="sticky"
             elevation={0}
@@ -2063,7 +2341,7 @@ export function CreateDispatchPage() {
               </Typography>
             </Toolbar>
           </AppBar>
-        )}
+        ) : null}
 
         <Box
           component="main"
@@ -2072,90 +2350,256 @@ export function CreateDispatchPage() {
             minHeight: 0,
             minWidth: 0,
             bgcolor: '#FFFFFF',
-            // Let main absorb remaining space between header and footer; height 0 + flex-1
-            // forces a definite block so the form’s overflow can scroll in all engines.
             height: 0,
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
-            px: { xs: 1.5, sm: 3, md: 4 },
-            py: { xs: 1.5, sm: 2, md: 2.5 },
+            px: isMobileVariant ? 1.5 : { xs: 1.5, sm: 3, md: 4 },
+            py: isMobileVariant ? 1.5 : { xs: 1.5, sm: 2, md: 2.5 },
           }}
         >
           <Box
-            component="form"
-            id="create-contract-form"
-            onSubmit={handleSubmit}
-            noValidate
             sx={{
-              width: '100%',
-              maxWidth: '100%',
-              mx: 'auto',
               flex: '1 1 0%',
               minHeight: 0,
+              minWidth: 0,
               display: 'flex',
-              flexDirection: 'column',
-              overflowY: 'auto',
-              overflowX: 'hidden',
-              WebkitOverflowScrolling: 'touch',
-              // Keep every text / select / autocomplete / date field on one stroke color.
-              '& .MuiOutlinedInput-notchedOutline, & .MuiPickersOutlinedInput-notchedOutline': {
-                borderColor: `${FIELD_STROKE} !important`,
-                borderWidth: '1px !important',
-              },
-              '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline, & .MuiPickersOutlinedInput-root:hover .MuiPickersOutlinedInput-notchedOutline': {
-                borderColor: `${FIELD_STROKE} !important`,
-              },
-              '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline, & .MuiPickersOutlinedInput-root.Mui-focused .MuiPickersOutlinedInput-notchedOutline': {
-                borderColor: `${FIELD_STROKE} !important`,
-                borderWidth: '1px !important',
-              },
-              '& .MuiOutlinedInput-root.Mui-disabled .MuiOutlinedInput-notchedOutline, & .MuiPickersOutlinedInput-root.Mui-disabled .MuiPickersOutlinedInput-notchedOutline': {
-                borderColor: `${FIELD_STROKE} !important`,
-              },
+              flexDirection: { xs: 'column', md: isMobileVariant ? 'column' : 'row' },
+              alignItems: 'stretch',
+              gap: { xs: 1.5, md: isMobileVariant ? 1.5 : 3 },
+              overflow: 'hidden',
             }}
           >
-            <Stack
-              spacing={4}
+            <Box
+              component="nav"
+              aria-label="Form progress"
               sx={{
-                pb: 0,
-                maxWidth: '960px',
-                width: '100%',
-                mx: 'auto',
-                flex: '0 0 auto',
+                display: 'flex',
+                flexDirection: 'column',
+                flexShrink: 0,
+                width: { xs: '100%', md: isMobileVariant ? '100%' : 220 },
+                maxHeight: { xs: 'none', md: isMobileVariant ? 'none' : '100%' },
+                overflowX: { xs: 'auto', md: isMobileVariant ? 'auto' : 'hidden' },
+                overflowY: { xs: 'hidden', md: isMobileVariant ? 'hidden' : 'auto' },
+                pr: { md: isMobileVariant ? 0 : 1 },
+                pb: { xs: 0.5, md: isMobileVariant ? 0.5 : 0 },
+                borderBottom: { xs: '1px solid #E6E6E7', md: isMobileVariant ? '1px solid #E6E6E7' : 'none' },
               }}
             >
-              <FormSection title="Proposal Details">
+              <Typography
+                sx={{
+                  fontSize: 12,
+                  fontWeight: 500,
+                  color: '#6A6A70',
+                  mb: { xs: 1.25, md: 2 },
+                  display: isMobileVariant ? 'none' : { xs: 'none', md: 'block' },
+                }}
+              >
+                {FORM_PROGRESS_SECTIONS.filter((s) => sectionCompletion[s.id]).length}/{FORM_PROGRESS_SECTIONS.length} sections complete
+              </Typography>
+              <Stack
+                spacing={0}
+                sx={{
+                  position: 'relative',
+                  flexDirection: isMobileVariant ? 'row' : { xs: 'row', md: 'column' },
+                  gap: isMobileVariant ? 1 : { xs: 1, md: 0 },
+                  minWidth: isMobileVariant ? 'max-content' : { xs: 'max-content', md: 0 },
+                }}
+              >
+                {FORM_PROGRESS_SECTIONS.map((section, index) => {
+                  const complete = sectionCompletion[section.id];
+                  const isLast = index === FORM_PROGRESS_SECTIONS.length - 1;
+                  return (
+                    <Box
+                      key={section.id}
+                      sx={{
+                        position: 'relative',
+                        display: 'flex',
+                        gap: 1.25,
+                        pb: isMobileVariant ? 0 : { xs: 0, md: isLast ? 0 : 2.25 },
+                        pr: isMobileVariant ? (isLast ? 0 : 1.5) : { xs: isLast ? 0 : 1.5, md: 0 },
+                        alignItems: 'center',
+                      }}
+                    >
+                      {!isLast ? (
+                        <Box
+                          sx={{
+                            display: isMobileVariant ? 'none' : { xs: 'none', md: 'block' },
+                            position: 'absolute',
+                            left: 9,
+                            top: 20,
+                            bottom: 0,
+                            width: 2,
+                            bgcolor: complete ? '#146dff' : '#E6E6E7',
+                          }}
+                        />
+                      ) : null}
+                      <Box
+                        sx={{
+                          width: 20,
+                          height: 20,
+                          flexShrink: 0,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          zIndex: 1,
+                          bgcolor: '#FFFFFF',
+                        }}
+                      >
+                        {complete ? (
+                          <CheckCircle sx={{ fontSize: 18, color: '#146dff' }} />
+                        ) : (
+                          <RadioButtonUnchecked sx={{ fontSize: 18, color: '#C8C8CB' }} />
+                        )}
+                      </Box>
+                      <Box
+                        component="button"
+                        type="button"
+                        onClick={() => scrollToSection(section.id)}
+                        sx={{
+                          all: 'unset',
+                          cursor: 'pointer',
+                          flex: 1,
+                          minWidth: 0,
+                          pt: '1px',
+                          '&:hover .progress-section-label': { color: '#146dff' },
+                        }}
+                      >
+                        <Typography
+                          className="progress-section-label"
+                          sx={{
+                            fontSize: { xs: 12, md: 13 },
+                            fontWeight: complete ? 600 : 500,
+                            lineHeight: '18px',
+                            color: complete ? '#262527' : '#6A6A70',
+                            transition: 'color 120ms ease',
+                            whiteSpace: { xs: 'nowrap', md: 'normal' },
+                          }}
+                        >
+                          {section.label}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  );
+                })}
+              </Stack>
+            </Box>
+
+            <Box
+              component="form"
+              id="create-contract-form"
+              onSubmit={handleSubmit}
+              noValidate
+              sx={{
+                width: '100%',
+                flex: '1 1 0%',
+                minHeight: 0,
+                minWidth: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                overflowY: 'auto',
+                overflowX: 'hidden',
+                WebkitOverflowScrolling: 'touch',
+                '& .MuiOutlinedInput-notchedOutline, & .MuiPickersOutlinedInput-notchedOutline': {
+                  borderColor: `${FIELD_STROKE} !important`,
+                  borderWidth: '1px !important',
+                },
+                '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline, & .MuiPickersOutlinedInput-root:hover .MuiPickersOutlinedInput-notchedOutline': {
+                  borderColor: `${FIELD_STROKE} !important`,
+                },
+                '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline, & .MuiPickersOutlinedInput-root.Mui-focused .MuiPickersOutlinedInput-notchedOutline': {
+                  borderColor: `${FIELD_STROKE} !important`,
+                  borderWidth: '1px !important',
+                },
+                '& .MuiOutlinedInput-root.Mui-disabled .MuiOutlinedInput-notchedOutline, & .MuiPickersOutlinedInput-root.Mui-disabled .MuiPickersOutlinedInput-notchedOutline': {
+                  borderColor: `${FIELD_STROKE} !important`,
+                },
+              }}
+            >
+            <Stack
+              spacing={{ xs: 3, md: isMobileVariant ? 3 : 4 }}
+              sx={{
+                pb: 0,
+                px: isMobileVariant ? 0 : { xs: 0, md: '200px' },
+                width: '100%',
+                maxWidth: '100%',
+                minWidth: 0,
+                flex: '0 0 auto',
+                boxSizing: 'border-box',
+              }}
+            >
+              <FormSection id="section-company-property" title="Company & Property Details" showDivider={false}>
                 <Grid container spacing={2}>
                   <Grid size={{ xs: 12, md: 4 }}>
-                    <LabeledField
-                      name="proposalName"
-                      label="Proposal Name"
-                      placeholder="Enter proposal name"
-                      value={proposalName}
-                      onChange={setProposalName}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
                     <Stack spacing={0.75} sx={{ width: '100%' }}>
-                      <Typography sx={figmaLabelSx}>
-                        Time Zone
-                        <RequiredAsterisk />
-                      </Typography>
+                      <Stack
+                        direction="row"
+                        spacing={0.5}
+                        sx={{ alignItems: 'center', justifyContent: 'space-between', width: '100%' }}
+                      >
+                        <Typography sx={figmaLabelSx}>
+                          Property Address
+                          <RequiredAsterisk />
+                        </Typography>
+                        <IconButton
+                          type="button"
+                          size="small"
+                          aria-label="Open address map to add a new property"
+                          onClick={() => setAddressMapModalOpen(true)}
+                          sx={{ color: '#6A6A70', p: 0.25, mr: -0.5 }}
+                        >
+                          <MapOutlined sx={{ fontSize: 16 }} />
+                        </IconButton>
+                      </Stack>
                       <Autocomplete
-                        options={timeZoneOptions}
-                        value={timeZoneOptions.find((o) => o.value === timeZone) ?? null}
-                        onChange={(_, next) => setTimeZone(next?.value ?? '')}
-                        getOptionLabel={(o) => o.label}
-                        isOptionEqualToValue={(a, b) => a.value === b.value}
+                        options={propertyOptionsForCompany}
+                        getOptionLabel={(o) => (typeof o === 'string' ? o : o.address)}
+                        isOptionEqualToValue={(a, b) => a.address === b.address}
+                        openOnFocus
+                        freeSolo
+                        forcePopupIcon
                         filterOptions={(options, { inputValue }) => {
                           const q = inputValue.trim().toLowerCase();
                           if (!q) return options;
                           return options.filter(
                             (o) =>
-                              o.label.toLowerCase().includes(q) ||
-                              o.value.toLowerCase().includes(q),
+                              o.address.toLowerCase().includes(q) ||
+                              o.propertyName.toLowerCase().includes(q),
                           );
+                        }}
+                        value={
+                          propertyOptionsForCompany.find((p) => p.address === propertyAddress) ??
+                          (propertyAddress.trim()
+                            ? {
+                                address: propertyAddress,
+                                propertyName: '',
+                                franchiseAssociation: '',
+                                propertySource: '',
+                                affiliations: [],
+                                companyName: companyName.trim(),
+                              }
+                            : null)
+                        }
+                        onChange={(_, next) => {
+                          if (typeof next === 'string') {
+                            setPropertyAddress(next);
+                            clearPropertyLinkedDetails();
+                            clearFieldError('propertyAddress');
+                            return;
+                          }
+                          if (next) {
+                            applyMockProperty(next);
+                            return;
+                          }
+                          setPropertyAddress('');
+                          clearPropertyLinkedDetails();
+                          clearFieldError('propertyAddress');
+                        }}
+                        onInputChange={(_, value, reason) => {
+                          if (reason === 'input') {
+                            setPropertyAddress(value);
+                            clearFieldError('propertyAddress');
+                          }
                         }}
                         popupIcon={<KeyboardArrowDownOutlined sx={{ fontSize: 16, color: '#6A6A70' }} />}
                         slotProps={{
@@ -2169,71 +2613,11 @@ export function CreateDispatchPage() {
                           listbox: {
                             sx: {
                               py: 0.5,
-                              '& .MuiAutocomplete-option': {
-                                fontSize: 12,
-                                lineHeight: '18px',
-                                minHeight: 36,
-                                py: 1,
-                                px: 1.5,
-                              },
-                            },
-                          },
-                        }}
-                        renderInput={(params) => (
-                          <TextField
-                            {...params}
-                            name="timeZone"
-                            size="small"
-                            placeholder="Select time zone"
-                            sx={figmaTextFieldSx}
-                          />
-                        )}
-                      />
-                    </Stack>
-                  </Grid>
-                </Grid>
-              </FormSection>
-
-              <FormSection title="Company & Property Details">
-                <Grid container spacing={2}>
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <Stack spacing={0.75} sx={{ width: '100%' }}>
-                      <Typography sx={figmaLabelSx}>
-                        Company
-                        <RequiredAsterisk />
-                      </Typography>
-                      <Autocomplete
-                        options={companyDirectory}
-                        getOptionLabel={(o) => o.name}
-                        isOptionEqualToValue={(a, b) => a.name === b.name}
-                        openOnFocus
-                        filterOptions={(options, { inputValue }) => {
-                          const q = inputValue.trim().toLowerCase();
-                          if (!q) return options;
-                          return options.filter((o) => o.name.toLowerCase().includes(q));
-                        }}
-                        value={companyDirectory.find((c) => c.name === companyName) ?? null}
-                        onChange={(_, next) => {
-                          if (next) {
-                            applyMockCompany(next);
-                            return;
-                          }
-                          clearCompanyDetails();
-                        }}
-                        popupIcon={<KeyboardArrowDownOutlined sx={{ fontSize: 16, color: '#6A6A70' }} />}
-                        slots={{ paper: CompanyNameDropdownPaper }}
-                        slotProps={{
-                          paper: {
-                            onCreateCompany: () => setCreateCompanyModalOpen(true),
-                          } as CompanyNamePaperProps,
-                          listbox: {
-                            sx: {
-                              py: 0.5,
                               maxHeight: 220,
                               '& .MuiAutocomplete-option': {
                                 fontSize: 12,
                                 lineHeight: '18px',
-                                minHeight: 36,
+                                minHeight: 40,
                                 py: 1,
                                 px: 1.5,
                               },
@@ -2243,30 +2627,28 @@ export function CreateDispatchPage() {
                         renderOption={(props, option) => {
                           const { key, ...optionProps } = props;
                           return (
-                            <Box
-                              component="li"
-                              key={key}
-                              {...optionProps}
-                              sx={{
-                                px: 1.5,
-                                py: 1,
-                                fontSize: 12,
-                                lineHeight: '18px',
-                                color: '#262527',
-                              }}
-                            >
-                              {option.name}
+                            <Box component="li" key={key} {...optionProps}>
+                              <Stack spacing={0.25} sx={{ minWidth: 0 }}>
+                                <Typography sx={{ fontSize: 12, fontWeight: 500, lineHeight: '18px', color: '#262527' }}>
+                                  {option.address}
+                                </Typography>
+                                {option.propertyName ? (
+                                  <Typography sx={{ fontSize: 11, lineHeight: '16px', color: '#86868B' }}>
+                                    {option.propertyName}
+                                  </Typography>
+                                ) : null}
+                              </Stack>
                             </Box>
                           );
                         }}
                         renderInput={(params) => (
                           <TextField
                             {...params}
-                            name="companyName"
+                            name="propertyAddress"
                             size="small"
-                            placeholder="Select company"
-                            error={Boolean(fieldErrors.companyName)}
-                            helperText={fieldErrors.companyName}
+                            placeholder="Select property address"
+                            error={Boolean(fieldErrors.propertyAddress)}
+                            helperText={fieldErrors.propertyAddress}
                             sx={figmaTextFieldSx}
                           />
                         )}
@@ -2275,36 +2657,9 @@ export function CreateDispatchPage() {
                   </Grid>
                   <Grid size={{ xs: 12, md: 4 }}>
                     <LabeledField
-                      name="propertyAddress"
-                      label="Property Address"
-                      required
-                      placeholder="Enter address"
-                      value={propertyAddress}
-                      onChange={(v) => {
-                        setPropertyAddress(v);
-                        clearFieldError('propertyAddress');
-                      }}
-                      error={Boolean(fieldErrors.propertyAddress)}
-                      helperText={fieldErrors.propertyAddress}
-                      endIcon={
-                        <IconButton
-                          type="button"
-                          size="small"
-                          aria-label="Open address map"
-                          edge="end"
-                          onClick={() => setAddressMapModalOpen(true)}
-                          sx={{ color: '#6A6A70', p: 0.5 }}
-                        >
-                          <MapOutlined sx={{ fontSize: 18 }} />
-                        </IconButton>
-                      }
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <LabeledField
                       name="propertyName"
                       label="Property Name"
-                      required
+                      required={false}
                       placeholder="Enter property name"
                       value={propertyName}
                       onChange={(v) => {
@@ -2319,7 +2674,6 @@ export function CreateDispatchPage() {
                     <Stack spacing={0.75} sx={{ width: '100%' }}>
                       <Typography sx={figmaLabelSx}>
                         Associated Franchise
-                        <RequiredAsterisk />
                       </Typography>
                       <Autocomplete
                         options={franchiseAssociationOptions}
@@ -2425,6 +2779,83 @@ export function CreateDispatchPage() {
                       />
                     </Stack>
                   </Grid>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <Stack spacing={0.75} sx={{ width: '100%' }}>
+                      <Typography sx={figmaLabelSx}>
+                        Company
+                        <RequiredAsterisk />
+                      </Typography>
+                      <Autocomplete
+                        options={companyDirectory}
+                        getOptionLabel={(o) => o.name}
+                        isOptionEqualToValue={(a, b) => a.name === b.name}
+                        openOnFocus
+                        filterOptions={(options, { inputValue }) => {
+                          const q = inputValue.trim().toLowerCase();
+                          if (!q) return options;
+                          return options.filter((o) => o.name.toLowerCase().includes(q));
+                        }}
+                        value={companyDirectory.find((c) => c.name === companyName) ?? null}
+                        onChange={(_, next) => {
+                          if (next) {
+                            applyMockCompany(next);
+                            return;
+                          }
+                          clearCompanyDetails();
+                        }}
+                        popupIcon={<KeyboardArrowDownOutlined sx={{ fontSize: 16, color: '#6A6A70' }} />}
+                        slots={{ paper: CompanyNameDropdownPaper }}
+                        slotProps={{
+                          paper: {
+                            onCreateCompany: () => setCreateCompanyModalOpen(true),
+                          } as CompanyNamePaperProps,
+                          listbox: {
+                            sx: {
+                              py: 0.5,
+                              maxHeight: 220,
+                              '& .MuiAutocomplete-option': {
+                                fontSize: 12,
+                                lineHeight: '18px',
+                                minHeight: 36,
+                                py: 1,
+                                px: 1.5,
+                              },
+                            },
+                          },
+                        }}
+                        renderOption={(props, option) => {
+                          const { key, ...optionProps } = props;
+                          return (
+                            <Box
+                              component="li"
+                              key={key}
+                              {...optionProps}
+                              sx={{
+                                px: 1.5,
+                                py: 1,
+                                fontSize: 12,
+                                lineHeight: '18px',
+                                color: '#262527',
+                              }}
+                            >
+                              {option.name}
+                            </Box>
+                          );
+                        }}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            name="companyName"
+                            size="small"
+                            placeholder="Select company"
+                            error={Boolean(fieldErrors.companyName)}
+                            helperText={fieldErrors.companyName}
+                            sx={figmaTextFieldSx}
+                          />
+                        )}
+                      />
+                    </Stack>
+                  </Grid>
                 </Grid>
                 <Stack spacing={0.75} sx={{ width: '100%', mt: 2 }}>
                   <Typography sx={figmaLabelSx}>
@@ -2485,7 +2916,77 @@ export function CreateDispatchPage() {
                 </Stack>
               </FormSection>
 
+              <FormSection id="section-proposal" title="Proposal Details">
+                <Grid container spacing={2}>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <LabeledField
+                      name="proposalName"
+                      label="Proposal Name"
+                      placeholder="Enter proposal name"
+                      value={proposalName}
+                      onChange={setProposalName}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <Stack spacing={0.75} sx={{ width: '100%' }}>
+                      <Typography sx={figmaLabelSx}>
+                        Time Zone
+                        <RequiredAsterisk />
+                      </Typography>
+                      <Autocomplete
+                        options={timeZoneOptions}
+                        value={timeZoneOptions.find((o) => o.value === timeZone) ?? null}
+                        onChange={(_, next) => setTimeZone(next?.value ?? '')}
+                        getOptionLabel={(o) => o.label}
+                        isOptionEqualToValue={(a, b) => a.value === b.value}
+                        filterOptions={(options, { inputValue }) => {
+                          const q = inputValue.trim().toLowerCase();
+                          if (!q) return options;
+                          return options.filter(
+                            (o) =>
+                              o.label.toLowerCase().includes(q) ||
+                              o.value.toLowerCase().includes(q),
+                          );
+                        }}
+                        popupIcon={<KeyboardArrowDownOutlined sx={{ fontSize: 16, color: '#6A6A70' }} />}
+                        slotProps={{
+                          paper: {
+                            sx: {
+                              borderRadius: '8px',
+                              mt: 0.5,
+                              boxShadow: '0px 8px 24px rgba(15, 23, 42, 0.12)',
+                            },
+                          },
+                          listbox: {
+                            sx: {
+                              py: 0.5,
+                              '& .MuiAutocomplete-option': {
+                                fontSize: 12,
+                                lineHeight: '18px',
+                                minHeight: 36,
+                                py: 1,
+                                px: 1.5,
+                              },
+                            },
+                          },
+                        }}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            name="timeZone"
+                            size="small"
+                            placeholder="Select time zone"
+                            sx={figmaTextFieldSx}
+                          />
+                        )}
+                      />
+                    </Stack>
+                  </Grid>
+                </Grid>
+              </FormSection>
+
               <FormSection
+                id="section-contacts"
                 title="Contact Details"
                 titleEnd={
                   <Button
@@ -2523,12 +3024,7 @@ export function CreateDispatchPage() {
                         sx={{ alignItems: { xs: 'stretch', sm: 'flex-start' } }}
                       >
                         <Chip
-                          label={
-                            <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center' }}>
-                              {row.label}
-                              <RequiredAsterisk />
-                            </Box>
-                          }
+                          label={row.label}
                           sx={{
                             alignSelf: { xs: 'flex-start', sm: 'center' },
                             minWidth: { sm: 140 },
@@ -2649,8 +3145,8 @@ export function CreateDispatchPage() {
                 </Stack>
               </FormSection>
 
-              <FormSection title="Services">
-                <Stack sx={{ width: '100%', maxWidth: 960, mx: 'auto', gap: 2 }}>
+              <FormSection id="section-services" title="Services">
+                <Stack sx={{ width: '100%', minWidth: 0, gap: 2 }}>
                   {serviceProducts.map((svc) => {
                     const weeklyTotal = calcSignalServiceWeeklyTotal(svc);
                     return (
@@ -2858,7 +3354,6 @@ export function CreateDispatchPage() {
                                 <Stack spacing={0.75} sx={{ width: '100%' }}>
                                   <Typography sx={figmaLabelSx}>
                                     Start Time
-                                    <RequiredAsterisk />
                                   </Typography>
                                   <TextField
                                     fullWidth
@@ -2876,7 +3371,6 @@ export function CreateDispatchPage() {
                                 <Stack spacing={0.75} sx={{ width: '100%' }}>
                                   <Typography sx={figmaLabelSx}>
                                     End Time
-                                    <RequiredAsterisk />
                                   </Typography>
                                   <TextField
                                     fullWidth
@@ -2894,7 +3388,6 @@ export function CreateDispatchPage() {
                                 <Stack spacing={0.75}>
                                   <Typography sx={figmaLabelSx}>
                                     Job Days
-                                    <RequiredAsterisk />
                                   </Typography>
                                   <Stack direction="row" sx={{ flexWrap: 'nowrap', gap: 0.5 }}>
                                     {JOB_DAYS.map((day) => {
@@ -3194,8 +3687,8 @@ export function CreateDispatchPage() {
                 </Stack>
               </FormSection>
 
-              <FormSection title="On Demand">
-                <Stack sx={{ width: '100%', maxWidth: 960, mx: 'auto', gap: 0 }}>
+              <FormSection id="section-on-demand" title="On Demand">
+                <Stack sx={{ width: '100%', minWidth: 0, gap: 0 }}>
                   <Typography sx={{ fontSize: 12, lineHeight: '18px', color: '#5B5B5F', mb: 1 }}>
                     These items will be added to your monthly invoice, if utilised
                   </Typography>
@@ -3211,8 +3704,7 @@ export function CreateDispatchPage() {
                         <Box
                           key={item.id}
                           sx={{
-                            py: 3,
-                            borderBottom: '1px solid #E6E6E7',
+                            py: 1.5,
                           }}
                         >
                           <Box
@@ -3314,8 +3806,7 @@ export function CreateDispatchPage() {
                         <Box
                           key={item.id}
                           sx={{
-                            py: 2.5,
-                            borderBottom: '1px solid #E6E6E7',
+                            py: 1.5,
                             display: 'flex',
                             alignItems: 'center',
                             gap: 2,
@@ -3372,8 +3863,7 @@ export function CreateDispatchPage() {
                       <Box
                         key={item.id}
                         sx={{
-                          py: 3,
-                          borderBottom: '1px solid #E6E6E7',
+                          py: 1.5,
                         }}
                       >
                         <Box
@@ -3501,7 +3991,7 @@ export function CreateDispatchPage() {
                 </Stack>
               </FormSection>
 
-              <FormSection title="Billing & Payment Details">
+              <FormSection id="section-billing" title="Billing & Payment Details">
                 <Grid container spacing={2}>
                   <Grid size={12}>
                     <Stack spacing={1.5} sx={{ width: '100%', mb: 1 }}>
@@ -3510,8 +4000,7 @@ export function CreateDispatchPage() {
                         sx={{ alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between', gap: 1.5 }}
                       >
                         <Typography sx={{ fontSize: 14, fontWeight: 600, lineHeight: '20px', color: '#262527' }}>
-                          Select Billing Occurrence
-                          <RequiredAsterisk />
+                          Billing Occurrence
                         </Typography>
                         {(() => {
                           const totalServices = Math.max(serviceProducts.length, 1);
@@ -3547,10 +4036,11 @@ export function CreateDispatchPage() {
                         })()}
                       </Stack>
 
-                      <Box sx={{ width: '100%', overflowX: 'auto' }}>
+                      <Box sx={{ width: '100%', minWidth: 0, overflowX: 'auto' }}>
                         <Box
                           sx={{
-                            minWidth: 720,
+                            width: '100%',
+                            minWidth: { xs: 560, md: 0 },
                             border: '1px solid #E6E6E7',
                             borderRadius: '10px',
                             overflow: 'hidden',
@@ -3628,10 +4118,7 @@ export function CreateDispatchPage() {
                                 label: (
                                   <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                                     <Typography sx={{ fontSize: 13, color: '#262527' }}>
-                                      Tax Rate (%){' '}
-                                      <Box component="span" sx={{ color: '#B32318' }}>
-                                        *
-                                      </Box>
+                                      Tax Rate (%)
                                     </Typography>
                                     <TextField
                                       size="small"
@@ -3688,9 +4175,8 @@ export function CreateDispatchPage() {
                                     sx={{
                                       ...colSx(isWeeklyGroup),
                                       display: 'flex',
-                                      gap: 0.5,
-                                      p: 0.5,
-                                      bgcolor: isWeeklyGroup ? '#E8F1FF' : '#FFFFFF',
+                                      alignItems: 'stretch',
+                                      p: 0,
                                     }}
                                   >
                                     <Box
@@ -3698,25 +4184,22 @@ export function CreateDispatchPage() {
                                         flex: 1,
                                         display: 'flex',
                                         alignItems: 'center',
-                                        px: 1,
-                                        py: 0.75,
-                                        borderRadius: '6px',
-                                        bgcolor: billingOccurrence === 'weekly' ? '#146dff' : '#FFFFFF',
-                                        border: billingOccurrence === 'weekly' ? 'none' : '1px solid #E6E6E7',
+                                        px: 1.5,
+                                        py: 1.25,
+                                        bgcolor: billingOccurrence === 'weekly' ? '#146dff' : 'transparent',
                                       }}
                                     >
                                       {headerRadio('weekly', 'Weekly', billingOccurrence === 'weekly')}
                                     </Box>
+                                    <Box sx={{ width: '1px', bgcolor: '#E6E6E7', alignSelf: 'stretch' }} />
                                     <Box
                                       sx={{
                                         flex: 1,
                                         display: 'flex',
                                         alignItems: 'center',
-                                        px: 1,
-                                        py: 0.75,
-                                        borderRadius: '6px',
-                                        bgcolor: billingOccurrence === 'event' ? '#146dff' : '#FFFFFF',
-                                        border: billingOccurrence === 'event' ? 'none' : '1px solid #E6E6E7',
+                                        px: 1.5,
+                                        py: 1.25,
+                                        bgcolor: billingOccurrence === 'event' ? '#146dff' : 'transparent',
                                       }}
                                     >
                                       {headerRadio('event', 'Event', billingOccurrence === 'event')}
@@ -3844,6 +4327,13 @@ export function CreateDispatchPage() {
                           name="paymentTerms"
                           label="Payment Terms"
                           required
+                          placeholder="Select payment terms"
+                          placeholderSx={{
+                            fontSize: 12,
+                            lineHeight: '18px',
+                            fontWeight: 400,
+                            color: '#CCCCCC',
+                          }}
                           value={paymentTerms}
                           onChange={setPaymentTerms}
                           select
@@ -3894,6 +4384,59 @@ export function CreateDispatchPage() {
                           select
                           options={billingFrequencyOptions}
                         />
+                        <Stack spacing={0.75} sx={{ width: '100%' }}>
+                          <Typography sx={figmaLabelSx}>
+                            Payment Portal
+                            <RequiredAsterisk />
+                          </Typography>
+                          <Autocomplete
+                            options={paymentModeOptions}
+                            value={paymentModeOptions.find((o) => o.value === paymentMode) ?? null}
+                            onChange={(_, next) => setPaymentMode(next?.value ?? '')}
+                            getOptionLabel={(o) => o.label}
+                            isOptionEqualToValue={(a, b) => a.value === b.value}
+                            filterOptions={(options, { inputValue }) => {
+                              const q = inputValue.trim().toLowerCase();
+                              if (!q) return options;
+                              return options.filter(
+                                (o) =>
+                                  o.label.toLowerCase().includes(q) ||
+                                  o.value.toLowerCase().includes(q),
+                              );
+                            }}
+                            popupIcon={<KeyboardArrowDownOutlined sx={{ fontSize: 16, color: '#6A6A70' }} />}
+                            slotProps={{
+                              paper: {
+                                sx: {
+                                  borderRadius: '8px',
+                                  mt: 0.5,
+                                  boxShadow: '0px 8px 24px rgba(15, 23, 42, 0.12)',
+                                },
+                              },
+                              listbox: {
+                                sx: {
+                                  py: 0.5,
+                                  '& .MuiAutocomplete-option': {
+                                    fontSize: 12,
+                                    lineHeight: '18px',
+                                    minHeight: 36,
+                                    py: 1,
+                                    px: 1.5,
+                                  },
+                                },
+                              },
+                            }}
+                            renderInput={(params) => (
+                              <TextField
+                                {...params}
+                                name="paymentMode"
+                                size="small"
+                                placeholder="Select payment portal"
+                                sx={figmaTextFieldSx}
+                              />
+                            )}
+                          />
+                        </Stack>
                       </Box>
                     </Stack>
                   </Grid>
@@ -3911,7 +4454,7 @@ export function CreateDispatchPage() {
                         <Stack
                           direction={{ xs: 'column', sm: 'row' }}
                           spacing={1.5}
-                          sx={{ alignItems: { xs: 'stretch', sm: 'center' }, maxWidth: 640 }}
+                          sx={{ alignItems: { xs: 'stretch', sm: 'center' }, width: '100%', maxWidth: '100%' }}
                         >
                           <Autocomplete
                             options={contactDirectory}
@@ -4104,7 +4647,7 @@ export function CreateDispatchPage() {
                 </Grid>
               </FormSection>
 
-              <FormSection title="Signee">
+              <FormSection id="section-signee" title="Signee">
                 <Box sx={{ width: '100%', overflowX: 'auto' }}>
                   <Stack sx={{ minWidth: { xs: 560, sm: 640 }, gap: 2, alignItems: 'stretch' }}>
                     {signeeCards.length === 0 && !addSigneeRowOpen ? (
@@ -4336,6 +4879,7 @@ export function CreateDispatchPage() {
               </FormSection>
             </Stack>
           </Box>
+          </Box>
         </Box>
 
         <Box
@@ -4344,21 +4888,24 @@ export function CreateDispatchPage() {
             flexShrink: 0,
             borderTop: '1px solid #E6E6E7',
             bgcolor: '#FFFFFF',
-            px: { xs: 1.5, sm: 3, md: 4 },
+            px: isMobileVariant ? 1.5 : { xs: 1.5, sm: 3, md: 4 },
             py: 1.5,
             zIndex: (t) => t.zIndex.appBar,
-            boxShadow: { xs: '0 -4px 12px rgba(0,0,0,0.06)', sm: 'none' },
+            boxShadow: { xs: '0 -4px 12px rgba(0,0,0,0.06)', sm: isMobileVariant ? '0 -4px 12px rgba(0,0,0,0.06)' : 'none' },
           }}
         >
           <Box sx={{ width: '100%', maxWidth: '100%', mx: 'auto' }}>
             <Stack
-              direction={{ xs: 'column-reverse', sm: 'row' }}
+              direction={isMobileVariant ? 'column-reverse' : { xs: 'column-reverse', sm: 'row' }}
               spacing={1.5}
-              sx={{ alignItems: { xs: 'stretch', sm: 'center' }, justifyContent: { sm: 'flex-end' } }}
+              sx={{
+                alignItems: isMobileVariant ? 'stretch' : { xs: 'stretch', sm: 'center' },
+                justifyContent: { sm: 'flex-end' },
+              }}
             >
               <Button
                 type="button"
-                fullWidth={!isSmUp}
+                fullWidth={!isSmUp || isMobileVariant}
                 variant="outlined"
                 size="medium"
                 onClick={handleCancel}
@@ -4366,7 +4913,7 @@ export function CreateDispatchPage() {
                 Cancel
               </Button>
               <Button
-                fullWidth={!isSmUp}
+                fullWidth={!isSmUp || isMobileVariant}
                 type="submit"
                 form="create-contract-form"
                 variant="contained"
@@ -4752,10 +5299,6 @@ export function CreateDispatchPage() {
                         name,
                         address: createCompanyDomain.trim() || 'Address pending',
                         industryVertical: market,
-                        propertyAddress: '',
-                        propertyName: '',
-                        franchiseAssociation: '',
-                        affiliations: [],
                       };
                       setCompanyDirectory((prev) => [...prev, company]);
                       applyMockCompany(company);
@@ -4794,9 +5337,43 @@ export function CreateDispatchPage() {
               open={addressMapModalOpen}
               value={propertyAddress}
               onClose={() => setAddressMapModalOpen(false)}
-              onConfirm={(address) => {
-                setPropertyAddress(address);
+              onConfirm={() => {
+                const mockAddress = MOCK_MAP_NEW_PROPERTY_ADDRESS;
+                // New map property: fill Property Address only; clear all linked autofill.
+                setPropertyAddress(mockAddress);
+                setPropertyName('');
+                setFranchiseAssociation('');
+                setPropertySource('');
+                setCompanyAffiliations([]);
                 clearFieldError('propertyAddress');
+                clearFieldError('propertyName');
+                setPropertyDirectory((prev) => {
+                  if (prev.some((p) => p.address === mockAddress)) {
+                    return prev.map((p) =>
+                      p.address === mockAddress
+                        ? {
+                            address: mockAddress,
+                            propertyName: '',
+                            franchiseAssociation: '',
+                            propertySource: '',
+                            affiliations: [],
+                            companyName: companyName.trim(),
+                          }
+                        : p,
+                    );
+                  }
+                  return [
+                    ...prev,
+                    {
+                      address: mockAddress,
+                      propertyName: '',
+                      franchiseAssociation: '',
+                      propertySource: '',
+                      affiliations: [],
+                      companyName: companyName.trim(),
+                    },
+                  ];
+                });
               }}
             />
       </Box>

@@ -7,25 +7,36 @@ export function FormSection({
   children,
   defaultOpen = true,
   titleEnd,
+  showDivider = true,
+  id,
 }: {
   title: string;
   children: ReactNode;
   defaultOpen?: boolean;
   titleEnd?: ReactNode;
+  showDivider?: boolean;
+  id?: string;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <Box sx={{ width: '100%' }}>
+    <Box id={id} sx={{ width: '100%', minWidth: 0, scrollMarginTop: 16 }}>
+      {showDivider ? <Divider sx={{ borderColor: '#E6E6E7', mb: 2 }} /> : null}
       <Stack
         sx={{
           flexDirection: 'row',
           alignItems: 'center',
           width: '100%',
           gap: 1,
-          flexWrap: 'wrap',
-          rowGap: 1,
+          flexWrap: 'nowrap',
+          mb: 2,
         }}
       >
+        <Typography
+          component="h2"
+          sx={{ fontSize: 14, fontWeight: 700, lineHeight: '24px', color: '#262527', flex: '0 1 auto', minWidth: 0 }}
+        >
+          {title}
+        </Typography>
         <IconButton
           type="button"
           size="small"
@@ -38,16 +49,10 @@ export function FormSection({
             sx={{ fontSize: 16, transform: open ? 'rotate(0deg)' : 'rotate(-90deg)', transition: (t) => t.transitions.create('transform') }}
           />
         </IconButton>
-        <Typography
-          component="h2"
-          sx={{ fontSize: 14, fontWeight: 700, lineHeight: '24px', color: '#262527', flex: '0 1 auto', minWidth: 0 }}
-        >
-          {title}
-        </Typography>
         {titleEnd ? (
           <Box
             sx={{
-              flex: '1 1 0%',
+              flex: '1 1 auto',
               minWidth: 0,
               display: 'flex',
               justifyContent: 'flex-end',
@@ -58,7 +63,6 @@ export function FormSection({
           </Box>
         ) : null}
       </Stack>
-      <Divider sx={{ borderColor: '#E6E6E7', my: 2 }} />
       <Collapse in={open}>
         <Box sx={{ pt: 0, pb: 0.5 }}>{children}</Box>
       </Collapse>
