@@ -1,16 +1,18 @@
 import {
   Alert,
   AppBar,
+  Autocomplete,
   Avatar,
   Box,
   Button,
   Checkbox,
+  Chip,
   Dialog,
   DialogContent,
   Divider,
   Drawer,
   FormControlLabel,
-  Radio,
+  Paper,
   IconButton,
   InputAdornment,
   MenuItem,
@@ -21,6 +23,7 @@ import {
   Tooltip,
   Typography,
   useMediaQuery,
+  type PaperProps,
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -38,6 +41,7 @@ import GroupsOutlined from '@mui/icons-material/GroupsOutlined';
 import KeyboardArrowDown from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowDownOutlined from '@mui/icons-material/KeyboardArrowDownOutlined';
 import NotificationsNoneOutlined from '@mui/icons-material/NotificationsNoneOutlined';
+import MapOutlined from '@mui/icons-material/MapOutlined';
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded';
 import PlaceOutlined from '@mui/icons-material/PlaceOutlined';
 import PersonOutlineOutlined from '@mui/icons-material/PersonOutlineOutlined';
@@ -46,7 +50,7 @@ import Refresh from '@mui/icons-material/Refresh';
 import SettingsOutlined from '@mui/icons-material/SettingsOutlined';
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined';
 import ViewKanbanOutlined from '@mui/icons-material/ViewKanbanOutlined';
-import { AddressAutocompleteField } from '../components/createContract/AddressAutocompleteField';
+import { AddressMapPickerModal } from '../components/createContract/AddressMapPickerModal';
 import { FormSection } from '../components/createContract/FormSection';
 import { useTheme } from '@mui/material/styles';
 import type { Dayjs } from 'dayjs';
@@ -110,18 +114,26 @@ const figmaTextFieldSx = {
 const figmaLabelSx = { color: '#86868B', fontSize: 12, fontWeight: 500, lineHeight: '18px' } as const;
 
 /** Figma node 1132:17001 — Contact Title / Users table (Filter-Go). */
-type ContactDirectoryUser = { id: string; name: string; email: string; phone: string };
+type ContactDirectoryUser = { id: string; name: string; email: string; phone: string; avatar: string };
 
 const CONTACT_DIRECTORY_USERS: ContactDirectoryUser[] = [
-  { id: 'henry', name: 'Henry Micheal', email: 'henrymicheal23@signal.com', phone: '+1-402-555-0199' },
-  { id: 'jeff', name: 'Jeff Zolos', email: 'jeff@teamfiltergo.com', phone: '+1-402-555-0100' },
-  { id: 'aleena', name: 'Aleena Javed', email: 'aleena@teamfiltergo.com', phone: '+1-402-444-5900' },
+  { id: 'henry', name: 'Henry Micheal', email: 'henrymicheal23@signal.com', phone: '+1-402-555-0199', avatar: 'https://www.figma.com/api/mcp/asset/07f4b5c4-1dc8-49b9-8fc5-2a024cd336e9' },
+  { id: 'jeff', name: 'Jeff Zolos', email: 'jeff@teamfiltergo.com', phone: '+1-402-555-0100', avatar: 'https://www.figma.com/api/mcp/asset/0bef3b1e-19dc-4c42-8fae-76f8058bb0ce' },
+  { id: 'aleena', name: 'Aleena Javed', email: 'aleena@teamfiltergo.com', phone: '+1-402-444-5900', avatar: 'https://www.figma.com/api/mcp/asset/0139ac94-a956-4149-84df-c0751acca97d' },
+  { id: 'matt', name: 'Matt Quinn', email: 'matt.quinn@signal.com', phone: '+1-402-555-0112', avatar: 'https://www.figma.com/api/mcp/asset/0bef3b1e-19dc-4c42-8fae-76f8058bb0ce' },
+  { id: 'jodi', name: 'Jodi Wimer', email: 'jodi.wimer@signal.com', phone: '+1-402-555-0144', avatar: 'https://www.figma.com/api/mcp/asset/0139ac94-a956-4149-84df-c0751acca97d' },
+  { id: 'darin', name: 'Darin Smith', email: 'darin.smith@signal.com', phone: '+1-402-555-0155', avatar: 'https://www.figma.com/api/mcp/asset/f2e29d6a-3ca4-46cd-a041-a46829bd08b4' },
+  { id: 'don', name: 'Don Crowell', email: 'don.crowell@signal.com', phone: '+1-402-555-0166', avatar: 'https://www.figma.com/api/mcp/asset/9b865407-4730-4bbf-b832-b3b184922f4d' },
+  { id: 'derrick', name: 'Derrick Dancy', email: 'derrick.dancy@signal.com', phone: '+1-402-555-0177', avatar: 'https://www.figma.com/api/mcp/asset/e44286c7-801e-4591-b759-428f2c4b259f' },
 ];
 
 const CONTACT_ROLE_ROWS = [
-  { id: 'decision_maker', label: 'Decision Maker', color: '#9747FF' },
-  { id: 'billing', label: 'Billing', color: '#2E964B' },
+  { id: 'decision_maker', label: 'Decision Maker', color: '#9747FF', bg: '#F5EDFF' },
 ] as const;
+
+const EMPTY_CONTACT_ROLE_SELECTIONS: Record<string, string[]> = {
+  decision_maker: [],
+};
 
 /** Figma 44329:162823 — Affiliation (multi-select pills). */
 const COMPANY_AFFILIATION_OPTIONS = [
@@ -132,6 +144,180 @@ const COMPANY_AFFILIATION_OPTIONS = [
   { id: 'shared', label: 'Shared' },
   { id: 'tenant', label: 'Tenant' },
 ] as const;
+
+function RequiredAsterisk() {
+  return (
+    <Box component="span" sx={{ color: '#B32318' }}>
+      {' '}
+      *
+    </Box>
+  );
+}
+
+type MockCompany = {
+  name: string;
+  address: string;
+  industryVertical: string;
+};
+
+type MockProperty = {
+  address: string;
+  propertyName: string;
+  franchiseAssociation: string;
+  propertySource: string;
+  affiliations: string[];
+  companyName: string;
+};
+
+/** Existing companies for Company autocomplete (mock). */
+const MOCK_EXISTING_COMPANIES: MockCompany[] = [
+  {
+    name: 'Tkxel One World',
+    address: 'Fulton Street, 10048 New York New York, United States',
+    industryVertical: 'Commercial',
+  },
+  {
+    name: 'Signal Security Partners',
+    address: '',
+    industryVertical: '',
+  },
+  {
+    name: 'Midwest Distribution Co',
+    address: '2200 Cornhusker Hwy, Lincoln, NE 68521',
+    industryVertical: 'Distribution',
+  },
+  {
+    name: 'Prairie Housing Group',
+    address: '310 S 15th St, Omaha, NE 68102',
+    industryVertical: 'Housing',
+  },
+];
+
+/** Address applied when user confirms a new location from the map picker. */
+const MOCK_MAP_NEW_PROPERTY_ADDRESS = '412 N Broadway St, Bloomfield, NE 68718';
+
+const MOCK_EXISTING_PROPERTIES: MockProperty[] = [
+  {
+    companyName: 'Tkxel One World',
+    address: '1 World Trade Center, New York, NY 10007',
+    propertyName: 'One World Trade Center',
+    franchiseAssociation: '#402 Nebraska, NB',
+    propertySource: 'ALN',
+    affiliations: ['headquarters', 'owned'],
+  },
+  {
+    companyName: 'Tkxel One World',
+    address: '4 World Trade Center, New York, NY 10007',
+    propertyName: 'Four World Trade Center',
+    franchiseAssociation: '#402 Nebraska, NB',
+    propertySource: 'Costar',
+    affiliations: ['managed'],
+  },
+  {
+    companyName: 'Midwest Distribution Co',
+    address: '150 Warehouse Blvd, Lincoln, NE 68508',
+    propertyName: 'Lincoln Warehouse',
+    franchiseAssociation: 'Regional co-op',
+    propertySource: 'Referral',
+    affiliations: ['shared', 'tenant'],
+  },
+  {
+    companyName: 'Midwest Distribution Co',
+    address: '200 Logistics Way, Omaha, NE 68102',
+    propertyName: 'Omaha Distribution Hub',
+    franchiseAssociation: 'Regional co-op',
+    propertySource: 'ALN',
+    affiliations: ['owned'],
+  },
+  {
+    companyName: 'Prairie Housing Group',
+    address: '901 Maple Ave, Bloomfield, NE 68718',
+    propertyName: 'Maple Avenue Residences',
+    franchiseAssociation: 'None',
+    propertySource: 'Costar',
+    affiliations: ['managed'],
+  },
+  {
+    companyName: 'Prairie Housing Group',
+    address: '220 Oak Street, Norfolk, NE 68701',
+    propertyName: 'Oak Street Apartments',
+    franchiseAssociation: 'None',
+    propertySource: 'Referral',
+    affiliations: ['tenant'],
+  },
+];
+
+type CompanyNamePaperProps = PaperProps & {
+  onCreateCompany?: () => void;
+};
+
+const CompanyNameDropdownPaper = forwardRef<HTMLDivElement, CompanyNamePaperProps>(
+  function CompanyNameDropdownPaper(props, ref) {
+    const { children, onCreateCompany, sx, ...other } = props;
+    return (
+      <Paper
+        ref={ref}
+        {...other}
+        sx={[
+          {
+            borderRadius: '8px',
+            mt: 0.5,
+            boxShadow: '0px 8px 24px rgba(15, 23, 42, 0.12)',
+            overflow: 'hidden',
+          },
+          ...(Array.isArray(sx) ? sx : sx ? [sx] : []),
+        ]}
+      >
+        {children}
+        <Box
+          sx={{
+            position: 'sticky',
+            bottom: 0,
+            zIndex: 1,
+            borderTop: '1px solid #E6E6E7',
+            bgcolor: '#FFFFFF',
+            px: 1,
+            py: 0.75,
+          }}
+        >
+          <Button
+            type="button"
+            fullWidth
+            disableRipple
+            startIcon={<AddOutlined sx={{ fontSize: 16, color: '#146dff' }} />}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onCreateCompany?.();
+            }}
+            sx={{
+              justifyContent: 'flex-start',
+              textTransform: 'none',
+              fontSize: 13,
+              fontWeight: 500,
+              lineHeight: '20px',
+              color: '#146dff',
+              px: 1,
+              py: 0.75,
+              minHeight: 36,
+              '&:hover': { bgcolor: '#F5F8FF' },
+            }}
+          >
+            Create new company
+          </Button>
+        </Box>
+      </Paper>
+    );
+  },
+);
+
+const PROPERTY_BILLING_ADDRESS = {
+  address: '412 N Broadway St',
+  country: 'USA',
+  state: 'Nebraska',
+  city: 'Bloomfield',
+  zip: '68718',
+} as const;
 
 /** Default product row — form starts empty except products stay prefilled. */
 const DEFAULT_SERVICE_PRODUCTS: { id: string; dimension: string; rate: string; quantity: string }[] = [
@@ -275,7 +461,7 @@ function LabeledDatePicker(props: {
             ...(props.placeholder ? { placeholder: props.placeholder } : {}),
             // PickersTextField slot typings omit `placeholder`; underlying field supports it.
           } as Record<string, unknown>,
-          openPickerIcon: { sx: { color: '#6A6A70', fontSize: 16 } },
+          openPickerIcon: { sx: { color: '#6A6A70', fontSize: 14 } },
         }}
       />
     </Stack>
@@ -368,23 +554,61 @@ export function CreateDispatchPage() {
 
   const industryVerticalOptions = useMemo<UiOption[]>(
     () => [
-      { label: 'Select industry vertical', value: '' },
-      { label: 'QSR / Fast Food', value: 'QSR / Fast Food' },
-      { label: 'Hyperstores', value: 'Hyperstores' },
-      { label: 'Healthcare', value: 'Healthcare' },
-      { label: 'Education', value: 'Education' },
-      { label: 'Residential', value: 'Residential' },
+      { label: 'Commercial', value: 'Commercial' },
+      { label: 'Distribution', value: 'Distribution' },
+      { label: 'Housing', value: 'Housing' },
+      { label: 'Industrial', value: 'Industrial' },
+      { label: 'Manufacturing', value: 'Manufacturing' },
+    ],
+    [],
+  );
+  const partnershipStatusOptions = useMemo<UiOption[]>(
+    () => [
+      { label: 'Owner', value: 'Owner' },
+      { label: 'Strategic Partner', value: 'Strategic Partner' },
+      { label: 'Prospect', value: 'Prospect' },
+      { label: 'Customer', value: 'Customer' },
     ],
     [],
   );
 
-
+  const [companyDirectory, setCompanyDirectory] = useState<MockCompany[]>(() =>
+    MOCK_EXISTING_COMPANIES.map((c) => ({ ...c })),
+  );
+  const [propertyDirectory, setPropertyDirectory] = useState<MockProperty[]>(() =>
+    MOCK_EXISTING_PROPERTIES.map((p) => ({ ...p, affiliations: [...p.affiliations] })),
+  );
   const [companyName, setCompanyName] = useState('');
   const [companyAddress, setCompanyAddress] = useState('');
   const [industryVertical, setIndustryVertical] = useState('');
   const [propertyAddress, setPropertyAddress] = useState('');
+  const [propertyName, setPropertyName] = useState('');
+  const [propertySource, setPropertySource] = useState('');
+  const [addressMapModalOpen, setAddressMapModalOpen] = useState(false);
   const [franchiseAssociation, setFranchiseAssociation] = useState('');
   const [companyAffiliations, setCompanyAffiliations] = useState<string[]>([]);
+  const [createCompanyModalOpen, setCreateCompanyModalOpen] = useState(false);
+  const [createCompanyDomain, setCreateCompanyDomain] = useState('');
+  const [createCompanyName, setCreateCompanyName] = useState('');
+  const [createCompanyMarketVertical, setCreateCompanyMarketVertical] = useState('');
+  const [createCompanyPartnershipStatus, setCreateCompanyPartnershipStatus] = useState('');
+  const [createCompanyEmployees, setCreateCompanyEmployees] = useState('');
+  const [createCompanyRevenue, setCreateCompanyRevenue] = useState('');
+
+  const propertyOptionsForCompany = useMemo(() => {
+    const selected = companyName.trim();
+    if (!selected) return propertyDirectory;
+    return propertyDirectory.filter((p) => p.companyName === selected);
+  }, [propertyDirectory, companyName]);
+
+  const resetCreateCompanyForm = useCallback(() => {
+    setCreateCompanyDomain('');
+    setCreateCompanyName('');
+    setCreateCompanyMarketVertical('');
+    setCreateCompanyPartnershipStatus('');
+    setCreateCompanyEmployees('');
+    setCreateCompanyRevenue('');
+  }, []);
 
   const [contactFirstName, setContactFirstName] = useState('');
   const [contactLastName, setContactLastName] = useState('');
@@ -396,11 +620,12 @@ export function CreateDispatchPage() {
   };
   const [contactEmail, setContactEmail] = useState('');
   const [contactPhone, setContactPhone] = useState('');
-  const [contactPhoneCountryCode, setContactPhoneCountryCode] = useState('+1');
-  const [contactUserByRole, setContactUserByRole] = useState<Record<string, string>>(() => ({
-    decision_maker: '',
-    billing: '',
-  }));
+  const [contactUserByRole, setContactUserByRole] = useState<Record<string, string[]>>(
+    () => ({ ...EMPTY_CONTACT_ROLE_SELECTIONS }),
+  );
+  const [contactDirectory, setContactDirectory] = useState<ContactDirectoryUser[]>(() => [
+    ...CONTACT_DIRECTORY_USERS,
+  ]);
 
   const [contractStartDate, setContractStartDate] = useState<Dayjs | null>(null);
   const [cycleReferenceDate, setCycleReferenceDate] = useState<Dayjs | null>(null);
@@ -479,17 +704,16 @@ export function CreateDispatchPage() {
   const [billEmail, setBillEmail] = useState('');
   const [billPhoneCountryCode, setBillPhoneCountryCode] = useState('+1');
   const [billPhoneNumber, setBillPhoneNumber] = useState('');
-  const [billCountry, setBillCountry] = useState('');
-  const [billCity, setBillCity] = useState('');
-  const [billState, setBillState] = useState('');
-  const [billZip, setBillZip] = useState('');
-  const [billAddress, setBillAddress] = useState('');
-  const [billingSameAsContactDetails, setBillingSameAsContactDetails] = useState(false);
-  const [billingAddressSameAsProperty, setBillingAddressSameAsProperty] = useState(false);
-  const [billingAddressOption, setBillingAddressOption] = useState<'property' | 'company' | 'other'>('other');
+  const [billCountry, setBillCountry] = useState<string>(PROPERTY_BILLING_ADDRESS.country);
+  const [billCity, setBillCity] = useState<string>(PROPERTY_BILLING_ADDRESS.city);
+  const [billState, setBillState] = useState<string>(PROPERTY_BILLING_ADDRESS.state);
+  const [billZip, setBillZip] = useState<string>(PROPERTY_BILLING_ADDRESS.zip);
+  const [billAddress, setBillAddress] = useState<string>(PROPERTY_BILLING_ADDRESS.address);
+  const [billingContactId, setBillingContactId] = useState<string | null>(null);
+  const [sameAsPropertyAddress, setSameAsPropertyAddress] = useState(true);
   const countryOptions = useMemo<UiOption[]>(
     () => [
-      { label: 'Select country', value: '' },
+      { label: 'USA', value: 'USA' },
       { label: 'United States of America', value: 'United States of America' },
       { label: 'Canada', value: 'Canada' },
     ],
@@ -497,7 +721,7 @@ export function CreateDispatchPage() {
   );
   const cityOptions = useMemo<UiOption[]>(
     () => [
-      { label: 'Select city', value: '' },
+      { label: 'Bloomfield', value: 'Bloomfield' },
       { label: 'New York', value: 'New York' },
       { label: 'Omaha', value: 'Omaha' },
     ],
@@ -505,7 +729,6 @@ export function CreateDispatchPage() {
   );
   const stateOptions = useMemo<UiOption[]>(
     () => [
-      { label: 'Select state', value: '' },
       { label: 'Florida', value: 'Florida' },
       { label: 'Nebraska', value: 'Nebraska' },
     ],
@@ -513,7 +736,6 @@ export function CreateDispatchPage() {
   );
   const franchiseAssociationOptions = useMemo<UiOption[]>(
     () => [
-      { label: 'Select associated franchise', value: '' },
       { label: '#402 Nebraska, NB', value: '#402 Nebraska, NB' },
       { label: 'None', value: 'None' },
       { label: 'IFA / Franchisee network', value: 'IFA / Franchisee network' },
@@ -557,28 +779,99 @@ export function CreateDispatchPage() {
   }, [sameAsContractDate, contractStartDate]);
 
   useEffect(() => {
-    if (!billingSameAsContactDetails) return;
-    const parts = contactName.trim().split(/\s+/);
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- billing fields mirror contact when enabled
+    if (!billingContactId) return;
+    const contact = contactDirectory.find((c) => c.id === billingContactId);
+    if (!contact) return;
+    const parts = contact.name.trim().split(/\s+/);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- billing fields mirror selected contact
     setBillFirstName(parts[0] ?? '');
     setBillLastName(parts.slice(1).join(' ') || '');
-    setBillEmail(contactEmail);
+    setBillEmail(contact.email);
     setBillPhoneCountryCode('+1');
-    setBillPhoneNumber(contactPhone);
-  }, [billingSameAsContactDetails, contactName, contactEmail, contactPhone]);
+    setBillPhoneNumber(contact.phone);
+  }, [billingContactId, contactDirectory]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- billing address mirrors selection
-    if (billingAddressOption === 'property') setBillAddress(propertyAddress);
-    else if (billingAddressOption === 'company') setBillAddress(companyAddress);
-    setBillingAddressSameAsProperty(billingAddressOption !== 'other');
-  }, [billingAddressOption, propertyAddress, companyAddress]);
+    if (!sameAsPropertyAddress) return;
+    const preset = PROPERTY_BILLING_ADDRESS;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- billing address mirrors property when checked
+    setBillAddress(propertyAddress.trim() || preset.address);
+    setBillCountry(preset.country);
+    setBillState(preset.state);
+    setBillCity(preset.city);
+    setBillZip(preset.zip);
+  }, [sameAsPropertyAddress, propertyAddress]);
 
   const clearFieldError = useCallback((key: string) => {
     setFieldErrors((prev) => {
       if (!prev[key]) return prev;
       const next = { ...prev };
       delete next[key];
+      return next;
+    });
+  }, []);
+
+  const clearPropertyLinkedDetails = useCallback(() => {
+    setPropertyName('');
+    setFranchiseAssociation('');
+    setPropertySource('');
+    setCompanyAffiliations([]);
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      delete next.propertyName;
+      return next;
+    });
+  }, []);
+
+  const applyMockProperty = useCallback((property: MockProperty) => {
+    setPropertyAddress(property.address);
+    setPropertyName(property.propertyName);
+    setFranchiseAssociation(property.franchiseAssociation);
+    setPropertySource(property.propertySource);
+    setCompanyAffiliations([...property.affiliations]);
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      delete next.propertyAddress;
+      delete next.propertyName;
+      return next;
+    });
+  }, []);
+
+  const clearCompanyDetails = useCallback(() => {
+    setCompanyName('');
+    setCompanyAddress('');
+    setIndustryVertical('');
+    setPropertyAddress('');
+    setPropertyName('');
+    setFranchiseAssociation('');
+    setPropertySource('');
+    setCompanyAffiliations([]);
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      delete next.industryVertical;
+      delete next.companyName;
+      delete next.propertyAddress;
+      delete next.propertyName;
+      return next;
+    });
+  }, []);
+
+  const applyMockCompany = useCallback((company: MockCompany) => {
+    setCompanyName(company.name);
+    setCompanyAddress(company.address);
+    setIndustryVertical(company.industryVertical);
+    // One company can have many properties — user picks property separately.
+    setPropertyAddress('');
+    setPropertyName('');
+    setFranchiseAssociation('');
+    setPropertySource('');
+    setCompanyAffiliations([]);
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      if (company.industryVertical) delete next.industryVertical;
+      delete next.companyName;
+      delete next.propertyAddress;
+      delete next.propertyName;
       return next;
     });
   }, []);
@@ -592,9 +885,12 @@ export function CreateDispatchPage() {
   const validate = useCallback((): boolean => {
     const e: Record<string, string> = {};
     if (!companyName.trim()) e.companyName = 'Company name is required.';
-    if (!companyAddress.trim()) e.companyAddress = 'Company address is required.';
     if (!industryVertical) e.industryVertical = 'Industry vertical is required.';
     if (!propertyAddress.trim()) e.propertyAddress = 'Property address is required.';
+    if (!propertyName.trim()) e.propertyName = 'Property name is required.';
+    if ((contactUserByRole.decision_maker ?? []).length === 0) {
+      e.decisionMakerContacts = 'Select at least one Decision Maker.';
+    }
     if (!contactName.trim()) e.contactName = 'Name is required.';
     if (!contactEmail.trim()) e.contactEmail = 'Email is required.';
     if (!contactPhone.trim()) e.contactPhone = 'Phone is required.';
@@ -618,9 +914,10 @@ export function CreateDispatchPage() {
     return Object.keys(e).length === 0;
   }, [
     companyName,
-    companyAddress,
     industryVertical,
     propertyAddress,
+    propertyName,
+    contactUserByRole,
     contactName,
     contactEmail,
     contactPhone,
@@ -639,15 +936,15 @@ export function CreateDispatchPage() {
     setCompanyAddress('');
     setIndustryVertical('');
     setPropertyAddress('');
+    setPropertyName('');
+    setPropertySource('');
     setFranchiseAssociation('');
     setCompanyAffiliations([]);
     setContactName('');
     setContactEmail('');
     setContactPhone('');
-    setContactUserByRole({
-      decision_maker: '',
-      billing: '',
-    });
+    setContactUserByRole({ ...EMPTY_CONTACT_ROLE_SELECTIONS });
+    setContactDirectory([...CONTACT_DIRECTORY_USERS]);
     setContractStartDate(null);
     setCycleReferenceDate(null);
     setServiceStartDate(null);
@@ -670,13 +967,13 @@ export function CreateDispatchPage() {
     setBillEmail('');
     setBillPhoneCountryCode('+1');
     setBillPhoneNumber('');
-    setBillCountry('');
-    setBillCity('');
-    setBillState('');
-    setBillZip('');
-    setBillAddress('');
-    setBillingSameAsContactDetails(false);
-    setBillingAddressSameAsProperty(false);
+    setBillCountry(PROPERTY_BILLING_ADDRESS.country);
+    setBillCity(PROPERTY_BILLING_ADDRESS.city);
+    setBillState(PROPERTY_BILLING_ADDRESS.state);
+    setBillZip(PROPERTY_BILLING_ADDRESS.zip);
+    setBillAddress(PROPERTY_BILLING_ADDRESS.address);
+    setBillingContactId(null);
+    setSameAsPropertyAddress(true);
     setSigneeCards([]);
     setSignContractModalSigneeId(null);
     setModalSignaturePreview('');
@@ -709,18 +1006,22 @@ export function CreateDispatchPage() {
         address: companyAddress.trim(),
         industryVertical,
         propertyAddress: propertyAddress.trim(),
+        propertyName: propertyName.trim(),
         franchiseAssociation: franchiseAssociation.trim(),
+        propertySource: propertySource.trim(),
         affiliations: [...companyAffiliations],
       },
       contact: {
         name: contactName.trim(),
         email: contactEmail.trim(),
         phone: contactPhone.trim(),
-        roleAssignments: CONTACT_ROLE_ROWS.reduce<Record<string, { name: string; email: string; phone: string } | null>>(
+        roleAssignments: CONTACT_ROLE_ROWS.reduce<Record<string, { name: string; email: string; phone: string }[]>>(
           (acc, { id }) => {
-            const uid = contactUserByRole[id];
-            const u = CONTACT_DIRECTORY_USERS.find((x) => x.id === uid);
-            acc[id] = u ? { name: u.name, email: u.email, phone: u.phone } : null;
+            const ids = contactUserByRole[id] ?? [];
+            acc[id] = ids
+              .map((uid) => contactDirectory.find((x) => x.id === uid))
+              .filter((u): u is ContactDirectoryUser => Boolean(u))
+              .map((u) => ({ name: u.name, email: u.email, phone: u.phone }));
             return acc;
           },
           {},
@@ -743,7 +1044,8 @@ export function CreateDispatchPage() {
         productsTotal: serviceProductsSubtotal,
       },
       billingInfo: {
-        sameAsContactDetails: billingSameAsContactDetails,
+        contactId: billingContactId,
+        sameAsPropertyAddress,
         firstName: billFirstName,
         lastName: billLastName,
         email: billEmail,
@@ -776,7 +1078,7 @@ export function CreateDispatchPage() {
 
   const applyContactUserToPrimaryFields = useCallback(
     (userId: string) => {
-      const u = CONTACT_DIRECTORY_USERS.find((x) => x.id === userId);
+      const u = contactDirectory.find((x) => x.id === userId);
       if (u) {
         setContactName(u.name);
         setContactEmail(u.email);
@@ -790,17 +1092,18 @@ export function CreateDispatchPage() {
       clearFieldError('contactEmail');
       clearFieldError('contactPhone');
     },
-    [clearFieldError],
+    [clearFieldError, contactDirectory],
   );
 
-  const handleContactRoleUserChange = useCallback(
-    (roleId: string, userId: string) => {
-      setContactUserByRole((prev) => ({ ...prev, [roleId]: userId }));
+  const handleContactRoleUsersChange = useCallback(
+    (roleId: string, userIds: string[]) => {
+      setContactUserByRole((prev) => ({ ...prev, [roleId]: userIds }));
       if (roleId === 'decision_maker') {
-        applyContactUserToPrimaryFields(userId);
+        applyContactUserToPrimaryFields(userIds[0] ?? '');
+        clearFieldError('decisionMakerContacts');
       }
     },
-    [applyContactUserToPrimaryFields],
+    [applyContactUserToPrimaryFields, clearFieldError],
   );
 
   const addServiceProduct = useCallback(() => {
@@ -1104,112 +1407,351 @@ export function CreateDispatchPage() {
                 flex: '0 0 auto',
               }}
             >
-              <FormSection title="Company">
+              <FormSection title="Company & Property Details" showDivider={false}>
                 <Grid container spacing={2}>
                   <Grid size={{ xs: 12, md: 4 }}>
-                    <AddressAutocompleteField
-                      name="companyAddress"
-                      label="Company address"
-                      required
-                      placeholder="Enter company street, city, state, ZIP"
-                      value={companyAddress}
-                      onChange={(v) => {
-                        setCompanyAddress(v);
-                        clearFieldError('companyAddress');
-                      }}
-                      error={Boolean(fieldErrors.companyAddress)}
-                      helperText={fieldErrors.companyAddress}
-                    />
+                    <Stack spacing={0.75} sx={{ width: '100%' }}>
+                      <Stack
+                        direction="row"
+                        spacing={0.5}
+                        sx={{ alignItems: 'center', justifyContent: 'space-between', width: '100%' }}
+                      >
+                        <Typography sx={figmaLabelSx}>
+                          Property Address
+                          <RequiredAsterisk />
+                        </Typography>
+                        <IconButton
+                          type="button"
+                          size="small"
+                          aria-label="Open address map to add a new property"
+                          onClick={() => setAddressMapModalOpen(true)}
+                          sx={{ color: '#6A6A70', p: 0.25, mr: -0.5 }}
+                        >
+                          <MapOutlined sx={{ fontSize: 16 }} />
+                        </IconButton>
+                      </Stack>
+                      <Autocomplete
+                        options={propertyOptionsForCompany}
+                        getOptionLabel={(o) => (typeof o === 'string' ? o : o.address)}
+                        isOptionEqualToValue={(a, b) => {
+                          const addrA = typeof a === 'string' ? a : a.address;
+                          const addrB = typeof b === 'string' ? b : b.address;
+                          return addrA === addrB;
+                        }}
+                        openOnFocus
+                        freeSolo
+                        forcePopupIcon
+                        filterOptions={(options, { inputValue }) => {
+                          const q = inputValue.trim().toLowerCase();
+                          if (!q) return options;
+                          return options.filter(
+                            (o) =>
+                              o.address.toLowerCase().includes(q) ||
+                              o.propertyName.toLowerCase().includes(q),
+                          );
+                        }}
+                        value={
+                          propertyOptionsForCompany.find((p) => p.address === propertyAddress) ??
+                          (propertyAddress.trim()
+                            ? {
+                                address: propertyAddress,
+                                propertyName: '',
+                                franchiseAssociation: '',
+                                propertySource: '',
+                                affiliations: [],
+                                companyName: companyName.trim(),
+                              }
+                            : null)
+                        }
+                        onChange={(_, next) => {
+                          if (typeof next === 'string') {
+                            setPropertyAddress(next);
+                            clearPropertyLinkedDetails();
+                            clearFieldError('propertyAddress');
+                            return;
+                          }
+                          if (next) {
+                            applyMockProperty(next);
+                            return;
+                          }
+                          setPropertyAddress('');
+                          clearPropertyLinkedDetails();
+                          clearFieldError('propertyAddress');
+                        }}
+                        onInputChange={(_, value, reason) => {
+                          if (reason === 'input') {
+                            setPropertyAddress(value);
+                            clearFieldError('propertyAddress');
+                          }
+                        }}
+                        popupIcon={<KeyboardArrowDownOutlined sx={{ fontSize: 16, color: '#6A6A70' }} />}
+                        slotProps={{
+                          paper: {
+                            sx: {
+                              borderRadius: '8px',
+                              mt: 0.5,
+                              boxShadow: '0px 8px 24px rgba(15, 23, 42, 0.12)',
+                            },
+                          },
+                          listbox: {
+                            sx: {
+                              py: 0.5,
+                              maxHeight: 220,
+                              '& .MuiAutocomplete-option': {
+                                fontSize: 12,
+                                lineHeight: '18px',
+                                minHeight: 40,
+                                py: 1,
+                                px: 1.5,
+                              },
+                            },
+                          },
+                        }}
+                        renderOption={(props, option) => {
+                          const { key, ...optionProps } = props;
+                          return (
+                            <Box component="li" key={key} {...optionProps}>
+                              <Stack spacing={0.25} sx={{ minWidth: 0 }}>
+                                <Typography sx={{ fontSize: 12, fontWeight: 500, lineHeight: '18px', color: '#262527' }}>
+                                  {option.address}
+                                </Typography>
+                                {option.propertyName ? (
+                                  <Typography sx={{ fontSize: 11, lineHeight: '16px', color: '#86868B' }}>
+                                    {option.propertyName}
+                                  </Typography>
+                                ) : null}
+                              </Stack>
+                            </Box>
+                          );
+                        }}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            name="propertyAddress"
+                            size="small"
+                            placeholder="Select property address"
+                            error={Boolean(fieldErrors.propertyAddress)}
+                            helperText={fieldErrors.propertyAddress}
+                            sx={figmaTextFieldSx}
+                          />
+                        )}
+                      />
+                    </Stack>
                   </Grid>
                   <Grid size={{ xs: 12, md: 4 }}>
                     <LabeledField
-                      name="companyName"
-                      label="Company"
-                      required
-                      placeholder="Add company name"
-                      value={companyName}
+                      name="propertyName"
+                      label="Property Name"
+                      required={false}
+                      placeholder="Enter property name"
+                      value={propertyName}
                       onChange={(v) => {
-                        setCompanyName(v);
-                        clearFieldError('companyName');
+                        setPropertyName(v);
+                        clearFieldError('propertyName');
                       }}
-                      error={Boolean(fieldErrors.companyName)}
-                      helperText={fieldErrors.companyName}
+                      error={Boolean(fieldErrors.propertyName)}
+                      helperText={fieldErrors.propertyName}
                     />
                   </Grid>
                   <Grid size={{ xs: 12, md: 4 }}>
-                    <LabeledField
-                      name="propertyAddress"
-                      label="Property"
-                      required
-                      placeholder="Enter property street, city, state, ZIP"
-                      value={propertyAddress}
-                      onChange={(v) => {
-                        setPropertyAddress(v);
-                        clearFieldError('propertyAddress');
-                      }}
-                      error={Boolean(fieldErrors.propertyAddress)}
-                      helperText={fieldErrors.propertyAddress}
-                    />
+                    <Stack spacing={0.75} sx={{ width: '100%' }}>
+                      <Typography sx={figmaLabelSx}>Associated Franchise</Typography>
+                      <Autocomplete
+                        options={franchiseAssociationOptions}
+                        value={franchiseAssociationOptions.find((o) => o.value === franchiseAssociation) ?? null}
+                        onChange={(_, next) => setFranchiseAssociation(next?.value ?? '')}
+                        getOptionLabel={(o) => o.label}
+                        isOptionEqualToValue={(a, b) => a.value === b.value}
+                        filterOptions={(options, { inputValue }) => {
+                          const q = inputValue.trim().toLowerCase();
+                          if (!q) return options;
+                          return options.filter(
+                            (o) =>
+                              o.label.toLowerCase().includes(q) ||
+                              o.value.toLowerCase().includes(q),
+                          );
+                        }}
+                        popupIcon={<KeyboardArrowDownOutlined sx={{ fontSize: 16, color: '#6A6A70' }} />}
+                        slotProps={{
+                          paper: {
+                            sx: {
+                              borderRadius: '8px',
+                              mt: 0.5,
+                              boxShadow: '0px 8px 24px rgba(15, 23, 42, 0.12)',
+                            },
+                          },
+                          listbox: {
+                            sx: {
+                              py: 0.5,
+                              '& .MuiAutocomplete-option': {
+                                fontSize: 12,
+                                lineHeight: '18px',
+                                minHeight: 36,
+                                py: 1,
+                                px: 1.5,
+                              },
+                            },
+                          },
+                        }}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            name="franchiseAssociation"
+                            size="small"
+                            placeholder="Select associated franchise"
+                            sx={figmaTextFieldSx}
+                          />
+                        )}
+                      />
+                    </Stack>
                   </Grid>
                   <Grid size={{ xs: 12, md: 4 }}>
-                    <LabeledField
-                      name="industryVertical"
-                      label="Industry vertical"
-                      required
-                      value={industryVertical}
-                      onChange={(v) => {
-                        setIndustryVertical(v);
-                        clearFieldError('industryVertical');
-                      }}
-                      select
-                      options={industryVerticalOptions}
-                      error={Boolean(fieldErrors.industryVertical)}
-                      helperText={fieldErrors.industryVertical}
-                    />
+                    <Stack spacing={0.75} sx={{ width: '100%' }}>
+                      <Typography sx={figmaLabelSx}>
+                        Company
+                        <RequiredAsterisk />
+                      </Typography>
+                      <Autocomplete
+                        options={companyDirectory}
+                        getOptionLabel={(o) => o.name}
+                        isOptionEqualToValue={(a, b) => a.name === b.name}
+                        openOnFocus
+                        filterOptions={(options, { inputValue }) => {
+                          const q = inputValue.trim().toLowerCase();
+                          if (!q) return options;
+                          return options.filter((o) => o.name.toLowerCase().includes(q));
+                        }}
+                        value={companyDirectory.find((c) => c.name === companyName) ?? null}
+                        onChange={(_, next) => {
+                          if (next) {
+                            applyMockCompany(next);
+                            return;
+                          }
+                          clearCompanyDetails();
+                        }}
+                        popupIcon={<KeyboardArrowDownOutlined sx={{ fontSize: 16, color: '#6A6A70' }} />}
+                        slots={{ paper: CompanyNameDropdownPaper }}
+                        slotProps={{
+                          paper: {
+                            onCreateCompany: () => setCreateCompanyModalOpen(true),
+                          } as CompanyNamePaperProps,
+                          listbox: {
+                            sx: {
+                              py: 0.5,
+                              maxHeight: 220,
+                              '& .MuiAutocomplete-option': {
+                                fontSize: 12,
+                                lineHeight: '18px',
+                                minHeight: 36,
+                                py: 1,
+                                px: 1.5,
+                              },
+                            },
+                          },
+                        }}
+                        renderOption={(props, option) => {
+                          const { key, ...optionProps } = props;
+                          return (
+                            <Box
+                              component="li"
+                              key={key}
+                              {...optionProps}
+                              sx={{
+                                px: 1.5,
+                                py: 1,
+                                fontSize: 12,
+                                lineHeight: '18px',
+                                color: '#262527',
+                              }}
+                            >
+                              {option.name}
+                            </Box>
+                          );
+                        }}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            name="companyName"
+                            size="small"
+                            placeholder="Select company"
+                            error={Boolean(fieldErrors.companyName)}
+                            helperText={fieldErrors.companyName}
+                            sx={figmaTextFieldSx}
+                          />
+                        )}
+                      />
+                    </Stack>
                   </Grid>
                   <Grid size={{ xs: 12, md: 4 }}>
-                    <LabeledField
-                      name="franchiseAssociation"
-                      label="Associated Franchise"
-                      required
-                      value={franchiseAssociation}
-                      onChange={setFranchiseAssociation}
-                      select
-                      options={franchiseAssociationOptions}
-                    />
+                    <Stack spacing={0.75} sx={{ width: '100%' }}>
+                      <Typography sx={figmaLabelSx}>
+                        Industry Vertical
+                        <RequiredAsterisk />
+                      </Typography>
+                      <Autocomplete
+                        options={industryVerticalOptions}
+                        value={
+                          industryVerticalOptions.find((o) => o.value === industryVertical) ?? null
+                        }
+                        onChange={(_, next) => {
+                          setIndustryVertical(next?.value ?? '');
+                          clearFieldError('industryVertical');
+                        }}
+                        getOptionLabel={(o) => o.label}
+                        isOptionEqualToValue={(a, b) => a.value === b.value}
+                        openOnFocus
+                        filterOptions={(options, { inputValue }) => {
+                          const q = inputValue.trim().toLowerCase();
+                          if (!q) return options;
+                          return options.filter((o) => o.label.toLowerCase().includes(q));
+                        }}
+                        popupIcon={<KeyboardArrowDownOutlined sx={{ fontSize: 16, color: '#6A6A70' }} />}
+                        slotProps={{
+                          paper: {
+                            sx: {
+                              borderRadius: '8px',
+                              mt: 0.5,
+                              boxShadow: '0px 8px 24px rgba(15, 23, 42, 0.12)',
+                            },
+                          },
+                          listbox: {
+                            sx: {
+                              py: 0.5,
+                              '& .MuiAutocomplete-option': {
+                                fontSize: 12,
+                                lineHeight: '18px',
+                                minHeight: 36,
+                                py: 1,
+                                px: 1.5,
+                              },
+                            },
+                          },
+                        }}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            name="industryVertical"
+                            size="small"
+                            placeholder="Select industry vertical"
+                            error={Boolean(fieldErrors.industryVertical)}
+                            helperText={fieldErrors.industryVertical}
+                            sx={figmaTextFieldSx}
+                          />
+                        )}
+                      />
+                    </Stack>
                   </Grid>
                 </Grid>
-                <Stack
-                  sx={{
-                    width: '100%',
-                    mt: 2,
-                    flexDirection: { xs: 'column', md: 'row' },
-                    alignItems: { xs: 'flex-start', md: 'center' },
-                    columnGap: 1.5,
-                    rowGap: 1.5,
-                  }}
-                >
-                  <Typography
-                    component="h3"
-                    sx={{
-                      fontSize: 14,
-                      fontWeight: 700,
-                      lineHeight: '24px',
-                      color: '#262527',
-                      width: { md: 135 },
-                      flexShrink: 0,
-                    }}
-                  >
+                <Stack spacing={0.75} sx={{ width: '100%', mt: 2 }}>
+                  <Typography sx={figmaLabelSx}>
                     Affiliation
+                    <RequiredAsterisk />
                   </Typography>
                   <Stack
+                    direction="row"
                     sx={{
-                      flex: '1 1 0%',
-                      minWidth: 0,
-                      flexDirection: 'row',
-                      flexWrap: 'nowrap',
-                      justifyContent: 'flex-start',
-                      alignItems: 'flex-start',
+                      flexWrap: 'wrap',
+                      alignItems: 'center',
                       gap: 1.5,
                     }}
                   >
@@ -1259,305 +1801,163 @@ export function CreateDispatchPage() {
                 </Stack>
               </FormSection>
 
-              <FormSection title="Contact details">
-                <Grid container spacing={2}>
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <LabeledField
-                      name="contactFirstName"
-                      label="First name"
-                      required
-                      placeholder="Add first name"
-                      value={contactFirstName}
-                      onChange={(v) => { setContactFirstName(v); clearFieldError('contactName'); }}
-                      error={Boolean(fieldErrors.contactName)}
-                      helperText={fieldErrors.contactName}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <LabeledField
-                      name="contactLastName"
-                      label="Last name"
-                      placeholder="Add last name"
-                      value={contactLastName}
-                      onChange={setContactLastName}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <LabeledField
-                      name="contactEmail"
-                      label="Email"
-                      required
-                      placeholder="Add email (e.g. name@company.com)"
-                      value={contactEmail}
-                      onChange={(v) => { setContactEmail(v); clearFieldError('contactEmail'); }}
-                      error={Boolean(fieldErrors.contactEmail)}
-                      helperText={fieldErrors.contactEmail}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <Stack spacing={0.75} sx={{ width: '100%' }}>
-                      <Typography sx={figmaLabelSx}>
-                        Phone number
-                        <Box component="span" sx={{ color: '#B32318' }}> *</Box>
-                      </Typography>
-                      <TextField
-                        fullWidth
-                        size="small"
-                        variant="outlined"
-                        placeholder="Phone number"
-                        value={contactPhone}
-                        onChange={(e) => { setContactPhone(e.target.value); clearFieldError('contactPhone'); }}
-                        error={Boolean(fieldErrors.contactPhone)}
-                        helperText={fieldErrors.contactPhone}
-                        sx={[
-                          figmaTextFieldSx,
-                          {
-                            '& .MuiOutlinedInput-root': { minHeight: 36, height: 36 },
-                            '& .MuiInputAdornment-root': { mr: 0.75 },
-                          },
-                        ]}
-                        slotProps={{
-                          input: {
-                            startAdornment: (
-                              <InputAdornment position="start" sx={{ mr: 0.75 }}>
-                                <TextField
-                                  select
-                                  variant="standard"
-                                  value={contactPhoneCountryCode}
-                                  onChange={(e) => setContactPhoneCountryCode(e.target.value)}
-                                  sx={{
-                                    minWidth: 54,
-                                    '& .MuiInputBase-root': { fontSize: 14, lineHeight: '24px' },
-                                    '& .MuiInput-underline:before': { borderBottom: 'none' },
-                                    '& .MuiInput-underline:after': { borderBottom: 'none' },
-                                    '& .MuiInput-underline:hover:not(.Mui-disabled):before': { borderBottom: 'none' },
-                                    '& .MuiSelect-nativeInput': { width: 54 },
-                                    '& .MuiSelect-select': { display: 'flex', alignItems: 'center', gap: 0.75, pr: '20px' },
-                                    '& .MuiSelect-icon': { right: 4 },
-                                  }}
-                                  slotProps={{ select: { IconComponent: FieldSelectChevronIcon } }}
-                                >
-                                  <MenuItem value="+1">🇺🇸 +1</MenuItem>
-                                  <MenuItem value="+44">🇬🇧 +44</MenuItem>
-                                  <MenuItem value="+92">🇵🇰 +92</MenuItem>
-                                  <MenuItem value="+91">🇮🇳 +91</MenuItem>
-                                </TextField>
-                              </InputAdornment>
-                            ),
-                          },
-                          htmlInput: { inputMode: 'tel', autoComplete: 'tel' },
-                        }}
-                      />
-                    </Stack>
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <LabeledField
-                      name="contactTitle"
-                      label="Title"
-                      value="Decision Maker"
-                      onChange={() => {}}
-                      disabled
-                    />
-                  </Grid>
-                </Grid>
-                {/* preserved for billing-sync logic */}
-                {false && <Box
-                  sx={{
-                    width: '100%',
-                    overflowX: 'auto',
-                    borderTop: '1px solid #E6E6E7',
-                    borderBottom: '1px solid #E6E6E7',
-                  }}
-                >
-                  <Box
+              <FormSection
+                title="Contact Details"
+                titleEnd={
+                  <Button
+                    type="button"
+                    variant="text"
+                    startIcon={<AddOutlined sx={{ fontSize: 16 }} />}
+                    onClick={() => setCreateContactModalOpen(true)}
                     sx={{
-                      display: 'flex',
-                      flexDirection: { xs: 'column', md: 'row' },
-                      alignItems: 'stretch',
-                      minWidth: { md: 0 },
+                      color: '#146dff',
+                      textTransform: 'none',
+                      fontSize: 14,
+                      fontWeight: 500,
+                      lineHeight: '20px',
+                      px: 1,
+                      py: 0.5,
+                      minWidth: 0,
+                      bgcolor: 'transparent',
+                      '&:hover': { bgcolor: 'rgba(20, 109, 255, 0.06)', color: '#0059FF' },
                     }}
                   >
-                    <Box
-                      sx={{
-                        width: { xs: '100%', md: 172 },
-                        flexShrink: 0,
-                        borderRight: { md: '1px solid #E6E6E7' },
-                        borderBottom: { xs: '1px solid #E6E6E7', md: 'none' },
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          bgcolor: '#F9F9F9',
-                          height: 40,
-                          px: 3,
-                          display: 'flex',
-                          alignItems: 'center',
-                          boxSizing: 'border-box',
-                        }}
+                    Create New
+                  </Button>
+                }
+              >
+                <Stack spacing={1.5}>
+                  {CONTACT_ROLE_ROWS.map((row) => {
+                    const selectedIds = contactUserByRole[row.id] ?? [];
+                    const selectedUsers = contactDirectory.filter((u) => selectedIds.includes(u.id));
+                    const showError = row.id === 'decision_maker' && Boolean(fieldErrors.decisionMakerContacts);
+                    return (
+                      <Stack
+                        key={row.id}
+                        direction={{ xs: 'column', sm: 'row' }}
+                        spacing={1.5}
+                        sx={{ alignItems: { xs: 'stretch', sm: 'flex-start' } }}
                       >
-                        <Typography sx={{ color: '#5B5B5F', fontSize: 12, fontWeight: 500, lineHeight: '18px' }}>
-                          Contact Title
-                        </Typography>
-                      </Box>
-                      {CONTACT_ROLE_ROWS.map((row) => (
-                        <Box
-                          key={row.id}
+                        <Chip
+                          label={row.label}
                           sx={{
-                            borderBottom: '1px solid #E6E6E7',
-                            minHeight: 54,
-                            px: 3,
-                            display: 'flex',
-                            alignItems: 'center',
-                            boxSizing: 'border-box',
+                            alignSelf: { xs: 'flex-start', sm: 'center' },
+                            minWidth: { sm: 140 },
+                            height: 28,
+                            borderRadius: '16px',
+                            bgcolor: row.bg,
+                            color: row.color,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            '& .MuiChip-label': { px: 1.5 },
                           }}
-                        >
-                          <Typography
-                            sx={{
-                              color: row.color,
-                              fontSize: 12,
-                              fontWeight: 500,
-                              lineHeight: '18px',
-                              borderRadius: '16px',
-                              py: '2px',
-                            }}
-                          >
-                            {row.label}
-                          </Typography>
-                        </Box>
-                      ))}
-                    </Box>
-                    <Box sx={{ flex: '1 1 0%', minWidth: { xs: 0, md: 200 } }}>
-                      <Box
-                        sx={{
-                          bgcolor: '#F9F9F9',
-                          height: 40,
-                          px: 3,
-                          display: 'flex',
-                          alignItems: 'center',
-                          boxSizing: 'border-box',
-                        }}
-                      >
-                        <Typography sx={{ color: '#5B5B5F', fontSize: 12, fontWeight: 500, lineHeight: '18px' }}>
-                          Users
-                        </Typography>
-                      </Box>
-                      {CONTACT_ROLE_ROWS.map((row) => {
-                        const value = contactUserByRole[row.id] ?? '';
-                        const placeholder = `Select ${row.label}`;
-                        const decisionMakerError =
-                          row.id === 'decision_maker'
-                            ? fieldErrors.contactName || fieldErrors.contactEmail || fieldErrors.contactPhone
-                            : undefined;
-                        return (
-                          <Box
-                            key={row.id}
-                            sx={{
-                              borderBottom: '1px solid #E6E6E7',
-                              minHeight: 54,
-                              px: 3,
-                              py: 1,
-                              display: 'flex',
-                              alignItems: 'center',
-                              boxSizing: 'border-box',
-                            }}
-                          >
+                        />
+                        <Autocomplete
+                          multiple
+                          disableCloseOnSelect
+                          options={contactDirectory}
+                          value={selectedUsers}
+                          onChange={(_, next) =>
+                            handleContactRoleUsersChange(
+                              row.id,
+                              next.map((u) => u.id),
+                            )
+                          }
+                          getOptionLabel={(o) => o.name}
+                          isOptionEqualToValue={(a, b) => a.id === b.id}
+                          filterOptions={(options, { inputValue }) => {
+                            const q = inputValue.trim().toLowerCase();
+                            if (!q) return options;
+                            return options.filter(
+                              (o) =>
+                                o.name.toLowerCase().includes(q) ||
+                                o.email.toLowerCase().includes(q),
+                            );
+                          }}
+                          popupIcon={<KeyboardArrowDownOutlined sx={{ fontSize: 16, color: '#6A6A70' }} />}
+                          sx={{ flex: 1, minWidth: 0 }}
+                          slotProps={{
+                            paper: {
+                              sx: {
+                                borderRadius: '8px',
+                                mt: 0.5,
+                                boxShadow: '0px 8px 24px rgba(15, 23, 42, 0.12)',
+                              },
+                            },
+                          }}
+                          renderValue={(value, getItemProps) =>
+                            (value as ContactDirectoryUser[]).map((option, index) => {
+                              const { key, ...tagProps } = getItemProps({ index });
+                              return (
+                                <Chip
+                                  key={key}
+                                  {...tagProps}
+                                  size="small"
+                                  avatar={<Avatar src={option.avatar} alt={option.name} />}
+                                  label={option.name}
+                                  sx={{
+                                    height: 26,
+                                    bgcolor: '#F5F5F6',
+                                    '& .MuiChip-label': { fontSize: 12, fontWeight: 500 },
+                                    '& .MuiChip-avatar': { width: 18, height: 18 },
+                                  }}
+                                />
+                              );
+                            })
+                          }
+                          renderOption={(props, option) => {
+                            const { key, ...optionProps } = props;
+                            return (
+                              <Box
+                                component="li"
+                                key={key}
+                                {...optionProps}
+                                sx={{
+                                  display: 'flex !important',
+                                  alignItems: 'center',
+                                  gap: 1.25,
+                                  px: 1.5,
+                                  py: 1,
+                                }}
+                              >
+                                <Avatar src={option.avatar} alt={option.name} sx={{ width: 28, height: 28 }} />
+                                <Box sx={{ minWidth: 0 }}>
+                                  <Typography sx={{ fontSize: 13, fontWeight: 500, color: '#262527', lineHeight: '18px' }}>
+                                    {option.name}
+                                  </Typography>
+                                  <Typography sx={{ fontSize: 11, color: '#86868B', lineHeight: '16px' }}>
+                                    {option.email}
+                                  </Typography>
+                                </Box>
+                              </Box>
+                            );
+                          }}
+                          renderInput={(params) => (
                             <TextField
-                              select
+                              {...params}
                               name={`contactRole_${row.id}`}
-                              value={value}
-                              onChange={(e) => {
-                                const next = e.target.value;
-                                if ((row.id === 'decision_maker' || row.id === 'billing') && next === '__create_new_contact__') {
-                                  setCreateContactModalOpen(true);
-                                  return;
-                                }
-                                handleContactRoleUserChange(row.id, next);
-                              }}
+                              placeholder={selectedUsers.length ? 'Add contact' : `Select ${row.label.toLowerCase()} contacts`}
                               size="small"
-                              fullWidth
-                              error={Boolean(decisionMakerError)}
-                              helperText={decisionMakerError}
+                              variant="outlined"
+                              error={showError}
+                              helperText={showError ? fieldErrors.decisionMakerContacts : undefined}
                               sx={[
                                 figmaTextFieldSx,
                                 {
-                                  '& .MuiOutlinedInput-root': { minHeight: 36, height: 36 },
-                                  '& .MuiSelect-select': {
-                                    py: '8px',
-                                    display: 'flex',
+                                  '& .MuiOutlinedInput-root': {
+                                    minHeight: 40,
+                                    py: 0.25,
                                     alignItems: 'center',
                                   },
                                 },
                               ]}
-                              slotProps={{
-                                select: {
-                                  displayEmpty: true,
-                                  IconComponent: FieldSelectChevronIcon,
-                                  renderValue: (selected) => {
-                                    const id = typeof selected === 'string' ? selected : '';
-                                    const u = CONTACT_DIRECTORY_USERS.find((x) => x.id === id);
-                                    if (!u) {
-                                      return (
-                                        <Typography sx={{ fontSize: 14, lineHeight: '24px', color: '#CCCCCC' }}>
-                                          {placeholder}
-                                        </Typography>
-                                      );
-                                    }
-                                    return (
-                                      <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 0.75, rowGap: 0 }}>
-                                        <Typography component="span" sx={{ fontSize: 14, lineHeight: '24px', color: '#262527' }}>
-                                          {u.name}
-                                        </Typography>
-                                        <Typography
-                                          component="span"
-                                          sx={{ fontSize: 12, fontWeight: 500, lineHeight: '20px', color: '#A1A1A1' }}
-                                        >
-                                          {u.email}
-                                        </Typography>
-                                      </Box>
-                                    );
-                                  },
-                                },
-                              }}
-                            >
-                              {row.id === 'decision_maker' || row.id === 'billing' ? (
-                                <MenuItem
-                                  value="__create_new_contact__"
-                                  sx={{
-                                    justifyContent: 'center',
-                                    color: 'primary.main',
-                                  }}
-                                >
-                                  <Typography sx={{ width: '100%', textAlign: 'center', fontSize: 14, fontWeight: 500, color: 'inherit' }}>
-                                    Create new contact
-                                  </Typography>
-                                </MenuItem>
-                              ) : null}
-                              {row.id !== 'decision_maker' && row.id !== 'billing' ? (
-                                <MenuItem value="">
-                                  <Typography sx={{ fontSize: 14, color: '#CCCCCC', fontStyle: 'italic' }}>
-                                    {placeholder}
-                                  </Typography>
-                                </MenuItem>
-                              ) : null}
-                              {CONTACT_DIRECTORY_USERS.map((u) => (
-                                <MenuItem key={u.id} value={u.id}>
-                                  <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 0.75 }}>
-                                    <Typography component="span" sx={{ fontSize: 14, color: '#262527' }}>
-                                      {u.name}
-                                    </Typography>
-                                    <Typography component="span" sx={{ fontSize: 12, fontWeight: 500, color: '#A1A1A1' }}>
-                                      {u.email}
-                                    </Typography>
-                                  </Box>
-                                </MenuItem>
-                              ))}
-                            </TextField>
-                          </Box>
-                        );
-                      })}
-                    </Box>
-                  </Box>
-                </Box>}
+                            />
+                          )}
+                        />
+                      </Stack>
+                    );
+                  })}
+                </Stack>
               </FormSection>
 
               <FormSection title="Contract & dates">
@@ -1940,200 +2340,210 @@ export function CreateDispatchPage() {
                 </Stack>
               </FormSection>
 
-              <FormSection
-                title="Billing and Payment details"
-                titleEnd={
-                  <FormControlLabel
-                    sx={{ m: 0, alignItems: 'center', flexShrink: 0 }}
-                    control={
-                      <Checkbox
-                        size="small"
-                        checked={billingSameAsContactDetails}
-                        onChange={(_, checked) => {
-                          setBillingSameAsContactDetails(checked);
-                          if (checked) {
-                            const parts = contactName.trim().split(/\s+/);
-                            setBillFirstName(parts[0] ?? '');
-                            setBillLastName(parts.slice(1).join(' ') || '');
-                            setBillEmail(contactEmail);
-                            setBillPhoneCountryCode('+1');
-                            setBillPhoneNumber(contactPhone);
-                          }
-                        }}
-                      />
-                    }
-                    label={
-                      <Typography sx={{ fontSize: 14, lineHeight: '20px', color: '#262527' }}>
-                        Same as contact details
-                      </Typography>
-                    }
-                  />
-                }
-              >
+              <FormSection title="Billing and Payment details">
                 <Grid container spacing={2}>
                   <Grid size={12}>
-                    <Typography sx={{ fontSize: 14, fontWeight: 600, lineHeight: '20px', color: '#262527' }}>
-                      Billing details
-                    </Typography>
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <LabeledField
-                      name="billFirstName"
-                      label="First Name"
-                      required
-                      placeholder="Add first name"
-                      value={billFirstName}
-                      onChange={setBillFirstName}
-                      disabled={billingSameAsContactDetails}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <LabeledField
-                      name="billLastName"
-                      label="Last Name"
-                      required
-                      placeholder="Add last name"
-                      value={billLastName}
-                      onChange={setBillLastName}
-                      disabled={billingSameAsContactDetails}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <LabeledField
-                      name="billEmail"
-                      label="Email"
-                      required
-                      placeholder="Add email (e.g. name@company.com)"
-                      value={billEmail}
-                      onChange={setBillEmail}
-                      disabled={billingSameAsContactDetails}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <Stack spacing={0.75} sx={{ width: '100%' }}>
-                      <Typography sx={figmaLabelSx}>
-                        Phone number
-                        <Box component="span" sx={{ color: '#B32318' }}>
-                          {' '}
-                          *
-                        </Box>
+                    <Stack spacing={2} sx={{ width: '100%' }}>
+                      <Typography sx={{ fontSize: 14, fontWeight: 600, lineHeight: '20px', color: '#262527' }}>
+                        Billing Information
                       </Typography>
-                      <TextField
-                        fullWidth
-                        size="small"
-                        variant="outlined"
-                        placeholder="Phone number"
-                        value={billPhoneNumber}
-                        onChange={(e) => setBillPhoneNumber(e.target.value)}
-                        disabled={billingSameAsContactDetails}
-                        sx={[
-                          figmaTextFieldSx,
-                          {
-                            '& .MuiOutlinedInput-root': { minHeight: 36, height: 36 },
-                            '& .MuiInputAdornment-root': { mr: 0.75 },
-                          },
-                        ]}
-                        slotProps={{
-                          input: {
-                            startAdornment: (
-                              <InputAdornment position="start" sx={{ mr: 0.75 }}>
-                                <TextField
-                                  select
-                                  variant="standard"
-                                  value={billPhoneCountryCode}
-                                  onChange={(e) => setBillPhoneCountryCode(e.target.value)}
-                                  disabled={billingSameAsContactDetails}
-                                  sx={{
-                                    minWidth: 54,
-                                    '& .MuiInputBase-root': { fontSize: 14, lineHeight: '24px' },
-                                    '& .MuiInput-underline:before': { borderBottom: 'none' },
-                                    '& .MuiInput-underline:after': { borderBottom: 'none' },
-                                    '& .MuiInput-underline:hover:not(.Mui-disabled):before': { borderBottom: 'none' },
-                                    '& .MuiSelect-nativeInput': { width: 54 },
-                                    '& .MuiSelect-select': {
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      gap: 0.75,
-                                      pr: '20px',
-                                    },
-                                    '& .MuiSelect-icon': { right: 4 },
-                                  }}
-                                  slotProps={{ select: { IconComponent: FieldSelectChevronIcon } }}
+                      <Stack spacing={0.75} sx={{ width: '100%' }}>
+                        <Typography sx={figmaLabelSx}>
+                          Contact
+                          <RequiredAsterisk />
+                        </Typography>
+                        <Stack
+                          direction={{ xs: 'column', sm: 'row' }}
+                          spacing={1.5}
+                          sx={{ alignItems: { xs: 'stretch', sm: 'center' }, width: '100%', maxWidth: '100%' }}
+                        >
+                          <Autocomplete
+                            options={contactDirectory}
+                            value={contactDirectory.find((c) => c.id === billingContactId) ?? null}
+                            onChange={(_, next) => setBillingContactId(next?.id ?? null)}
+                            getOptionLabel={(o) => o.name}
+                            isOptionEqualToValue={(a, b) => a.id === b.id}
+                            popupIcon={<KeyboardArrowDownOutlined sx={{ fontSize: 16, color: '#6A6A70' }} />}
+                            sx={{ width: { xs: '100%', sm: 'calc((100% - 32px) / 3)' }, flexShrink: 0 }}
+                            renderOption={(props, option) => {
+                              const { key, ...optionProps } = props;
+                              return (
+                                <Box
+                                  component="li"
+                                  key={key}
+                                  {...optionProps}
+                                  sx={{ display: 'flex !important', alignItems: 'center', gap: 1.25, px: 1.5, py: 1 }}
                                 >
-                                  <MenuItem value="+1">🇺🇸 +1</MenuItem>
-                                  <MenuItem value="+44">🇬🇧 +44</MenuItem>
-                                  <MenuItem value="+92">🇵🇰 +92</MenuItem>
-                                  <MenuItem value="+91">🇮🇳 +91</MenuItem>
-                                </TextField>
-                              </InputAdornment>
-                            ),
-                          },
-                          htmlInput: { inputMode: 'tel', autoComplete: 'tel' },
+                                  <Avatar src={option.avatar} alt={option.name} sx={{ width: 28, height: 28 }} />
+                                  <Box sx={{ minWidth: 0 }}>
+                                    <Typography sx={{ fontSize: 13, fontWeight: 500, color: '#262527', lineHeight: '18px' }}>
+                                      {option.name}
+                                    </Typography>
+                                    <Typography sx={{ fontSize: 11, color: '#86868B', lineHeight: '16px' }}>
+                                      {option.email}
+                                    </Typography>
+                                  </Box>
+                                </Box>
+                              );
+                            }}
+                            renderInput={(params) => (
+                              <TextField
+                                {...params}
+                                size="small"
+                                placeholder="Select contact"
+                                sx={figmaTextFieldSx}
+                              />
+                            )}
+                          />
+                          {billingContactId ? (
+                            (() => {
+                              const contact = contactDirectory.find((c) => c.id === billingContactId);
+                              if (!contact) return null;
+                              return (
+                                <Box
+                                  sx={{
+                                    flex: 1,
+                                    minWidth: 0,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 1,
+                                    px: 1.5,
+                                    py: 0.75,
+                                    minHeight: 36,
+                                    borderRadius: '8px',
+                                    border: '1px solid #E6E6E7',
+                                    bgcolor: '#F8F8F9',
+                                  }}
+                                >
+                                  <Typography
+                                    sx={{
+                                      flex: 1,
+                                      minWidth: 0,
+                                      fontSize: 12,
+                                      lineHeight: '18px',
+                                      color: '#444446',
+                                      whiteSpace: 'nowrap',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                    }}
+                                  >
+                                    {contact.email}
+                                    <Box component="span" sx={{ mx: 0.75, color: '#86868B' }}>
+                                      ·
+                                    </Box>
+                                    {contact.phone}
+                                  </Typography>
+                                  <IconButton
+                                    type="button"
+                                    size="small"
+                                    aria-label="Clear billing contact"
+                                    onClick={() => setBillingContactId(null)}
+                                    sx={{ color: '#6A6A70', p: 0.25 }}
+                                  >
+                                    <CloseOutlined sx={{ fontSize: 16 }} />
+                                  </IconButton>
+                                </Box>
+                              );
+                            })()
+                          ) : null}
+                        </Stack>
+                      </Stack>
+
+                      <FormControlLabel
+                        sx={{
+                          m: 0,
+                          ml: 0,
+                          alignItems: 'center',
+                          gap: 1,
+                          width: 'fit-content',
+                          '& .MuiFormControlLabel-label': { pl: 0 },
                         }}
+                        control={
+                          <Checkbox
+                            size="small"
+                            checked={sameAsPropertyAddress}
+                            onChange={(_, checked) => {
+                              setSameAsPropertyAddress(checked);
+                              if (!checked) {
+                                setBillAddress('');
+                                setBillCountry('');
+                                setBillState('');
+                                setBillCity('');
+                                setBillZip('');
+                              }
+                            }}
+                            sx={{
+                              p: 0,
+                              color: '#86868B',
+                              '&.Mui-checked': { color: '#146dff' },
+                            }}
+                          />
+                        }
+                        label={
+                          <Typography sx={{ fontSize: 12, lineHeight: '18px', color: '#262527' }}>
+                            Same as Property Address
+                          </Typography>
+                        }
                       />
-                    </Stack>
-                  </Grid>
 
-                  <Grid size={12}>
-                    <Typography sx={{ fontSize: 14, fontWeight: 600, lineHeight: '20px', color: '#262527', mb: 1 }}>
-                      Billing address
-                    </Typography>
-                    <Stack direction="row" sx={{ gap: 2, flexWrap: 'wrap' }}>
-                      {([
-                        { value: 'property', label: 'Same as Property Address' },
-                        { value: 'company', label: 'Same as Company Address' },
-                        { value: 'other', label: 'Other' },
-                      ] as const).map((opt) => (
-                        <FormControlLabel
-                          key={opt.value}
-                          sx={{ m: 0, alignItems: 'center' }}
-                          control={
-                            <Radio
-                              size="small"
-                              checked={billingAddressOption === opt.value}
-                              onChange={() => setBillingAddressOption(opt.value)}
-                              sx={{ color: '#86868B', '&.Mui-checked': { color: '#1A9E4A' } }}
-                            />
-                          }
-                          label={
-                            <Typography sx={{ fontSize: 14, lineHeight: '20px', color: '#262527' }}>
-                              {opt.label}
-                            </Typography>
-                          }
-                        />
-                      ))}
+                      {!sameAsPropertyAddress ? (
+                      <Grid container spacing={2}>
+                        <Grid size={{ xs: 12, md: 6 }}>
+                          <LabeledField
+                            name="billAddress"
+                            label="Address"
+                            required
+                            placeholder="Enter Address"
+                            value={billAddress}
+                            onChange={setBillAddress}
+                          />
+                        </Grid>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                          <LabeledField
+                            name="billCountry"
+                            label="Country"
+                            required
+                            value={billCountry}
+                            onChange={setBillCountry}
+                            select
+                            options={countryOptions}
+                          />
+                        </Grid>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                          <LabeledField
+                            name="billState"
+                            label="State"
+                            required
+                            value={billState}
+                            onChange={setBillState}
+                            select
+                            options={stateOptions}
+                          />
+                        </Grid>
+                        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                          <LabeledField
+                            name="billCity"
+                            label="City"
+                            required
+                            value={billCity}
+                            onChange={setBillCity}
+                            select
+                            options={cityOptions}
+                          />
+                        </Grid>
+                        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                          <LabeledField
+                            name="billZip"
+                            label="Zip Code / Postal Code"
+                            required
+                            placeholder="Enter Zip Code"
+                            value={billZip}
+                            onChange={setBillZip}
+                          />
+                        </Grid>
+                      </Grid>
+                      ) : null}
                     </Stack>
-                  </Grid>
-
-                  <Grid size={12}>
-                    <LabeledField
-                      name="billAddress"
-                      label="Address"
-                      required
-                      placeholder="Enter billing street, city, state, ZIP"
-                      value={billAddress}
-                      onChange={setBillAddress}
-                      disabled={billingAddressSameAsProperty}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <LabeledField name="billCountry" label="Country" required value={billCountry} onChange={setBillCountry} select options={countryOptions} />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <LabeledField name="billCity" label="City" required value={billCity} onChange={setBillCity} select options={cityOptions} />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <LabeledField name="billState" label="State" required value={billState} onChange={setBillState} select options={stateOptions} />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <LabeledField
-                      name="billZip"
-                      label="Zipcode"
-                      required
-                      placeholder="Enter ZIP or postal code"
-                      value={billZip}
-                      onChange={setBillZip}
-                    />
                   </Grid>
                   <Grid size={12}>
                     <Typography sx={{ fontSize: 14, fontWeight: 600, lineHeight: '20px', color: '#262527' }}>
@@ -3048,8 +3458,32 @@ export function CreateDispatchPage() {
                     color="primary"
                     size="medium"
                     onClick={() => {
+                      const first = createContactFirstName.trim();
+                      const last = createContactLastName.trim();
+                      const email = createContactEmail.trim();
+                      const phone = `${createContactCountryCode} ${createContactPhoneNumber.trim()}`.trim();
+                      if (!first || !email || !createContactPhoneNumber.trim() || !createContactJobTitle.trim()) {
+                        setSnackbar({ open: true, message: 'Please fill all required fields.', severity: 'error' });
+                        return;
+                      }
+                      setContactDirectory((prev) => [
+                        ...prev,
+                        {
+                          id: `contact_${Date.now()}`,
+                          name: `${first}${last ? ` ${last}` : ''}`,
+                          email,
+                          phone,
+                          avatar: createContractHeaderAvatar,
+                        },
+                      ]);
                       setCreateContactModalOpen(false);
-                      setSnackbar({ open: true, message: 'Contact created (UI only).', severity: 'success' });
+                      setCreateContactEmail('');
+                      setCreateContactFirstName('');
+                      setCreateContactLastName('');
+                      setCreateContactJobTitle('');
+                      setCreateContactCountryCode('+1');
+                      setCreateContactPhoneNumber('');
+                      setSnackbar({ open: true, message: 'Contact created.', severity: 'success' });
                     }}
                   >
                     Create Contact
@@ -3057,6 +3491,199 @@ export function CreateDispatchPage() {
                 </Box>
               </DialogContent>
             </Dialog>
+
+            <Dialog
+              open={createCompanyModalOpen}
+              onClose={() => {
+                setCreateCompanyModalOpen(false);
+                resetCreateCompanyForm();
+              }}
+              maxWidth="md"
+              fullWidth
+              slotProps={{
+                backdrop: {
+                  sx: { backgroundColor: 'rgba(0, 0, 0, 0.5)' },
+                },
+                paper: {
+                  sx: {
+                    borderRadius: '12px',
+                    border: '1px solid #E6E6E7',
+                    boxShadow:
+                      '0px 20px 24px -4px rgba(16, 24, 40, 0.10), 0px 8px 8px -4px rgba(16, 24, 40, 0.04)',
+                    maxWidth: 780,
+                  },
+                },
+              }}
+            >
+              <DialogContent sx={{ p: 0 }}>
+                <Box sx={{ px: 4, pt: 3, pb: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 2 }}>
+                    <Stack sx={{ gap: 0.5, minWidth: 0 }}>
+                      <Typography sx={{ fontSize: 16, fontWeight: 700, lineHeight: '24px', color: '#262527' }}>
+                        Create a New Company
+                      </Typography>
+                      <Typography sx={{ fontSize: 12, fontWeight: 400, lineHeight: '18px', color: '#5B5B5F' }}>
+                        Add the following information to create a new company
+                      </Typography>
+                    </Stack>
+                    <IconButton
+                      aria-label="Close"
+                      onClick={() => {
+                        setCreateCompanyModalOpen(false);
+                        resetCreateCompanyForm();
+                      }}
+                      sx={{ color: '#5B5B5F' }}
+                    >
+                      <CloseOutlined sx={{ fontSize: 20 }} />
+                    </IconButton>
+                  </Box>
+                </Box>
+
+                <Divider />
+
+                <Box sx={{ px: 4, py: 3 }}>
+                  <Grid container spacing={2}>
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <LabeledField
+                        name="newCompanyDomain"
+                        label="Company Domain"
+                        required={false}
+                        placeholder="e.g., www.teamfiltergo.com"
+                        value={createCompanyDomain}
+                        onChange={setCreateCompanyDomain}
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <LabeledField
+                        name="newCompanyName"
+                        label="Company Name"
+                        required
+                        placeholder="Add company name"
+                        value={createCompanyName}
+                        onChange={setCreateCompanyName}
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <LabeledField
+                        name="newCompanyMarketVertical"
+                        label="Market Vertical"
+                        required
+                        select
+                        options={industryVerticalOptions}
+                        placeholder="Select market vertical"
+                        value={createCompanyMarketVertical}
+                        onChange={setCreateCompanyMarketVertical}
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <LabeledField
+                        name="newCompanyPartnershipStatus"
+                        label="Strategic Partnership Status"
+                        required={false}
+                        select
+                        options={partnershipStatusOptions}
+                        placeholder="Select owner"
+                        value={createCompanyPartnershipStatus}
+                        onChange={setCreateCompanyPartnershipStatus}
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <LabeledField
+                        name="newCompanyEmployees"
+                        label="No. of Employees"
+                        required={false}
+                        placeholder="No. of employees"
+                        value={createCompanyEmployees}
+                        onChange={setCreateCompanyEmployees}
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <LabeledField
+                        name="newCompanyRevenue"
+                        label="Revenue"
+                        required={false}
+                        placeholder="Add revenue"
+                        value={createCompanyRevenue}
+                        onChange={setCreateCompanyRevenue}
+                      />
+                    </Grid>
+                  </Grid>
+                </Box>
+
+                <Divider />
+
+                <Box sx={{ px: 4, py: 2.5, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+                  <Button
+                    type="button"
+                    variant="outlined"
+                    size="medium"
+                    onClick={() => {
+                      setCreateCompanyModalOpen(false);
+                      resetCreateCompanyForm();
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="contained"
+                    color="primary"
+                    size="medium"
+                    onClick={() => {
+                      const name = createCompanyName.trim();
+                      const market = createCompanyMarketVertical.trim();
+                      if (!name || !market) {
+                        setSnackbar({ open: true, message: 'Please fill all required fields.', severity: 'error' });
+                        return;
+                      }
+                      const company: MockCompany = {
+                        name,
+                        address: createCompanyDomain.trim() || 'Address pending',
+                        industryVertical: market,
+                      };
+                      setCompanyDirectory((prev) => [...prev, company]);
+                      applyMockCompany(company);
+                      setCreateCompanyModalOpen(false);
+                      resetCreateCompanyForm();
+                      setSnackbar({ open: true, message: 'Company created.', severity: 'success' });
+                    }}
+                  >
+                    Create Company
+                  </Button>
+                </Box>
+              </DialogContent>
+            </Dialog>
+
+            <AddressMapPickerModal
+              open={addressMapModalOpen}
+              value={propertyAddress}
+              onClose={() => setAddressMapModalOpen(false)}
+              onConfirm={() => {
+                const mockAddress = MOCK_MAP_NEW_PROPERTY_ADDRESS;
+                // New map property: fill Property Address only; clear all linked autofill.
+                setPropertyAddress(mockAddress);
+                setPropertyName('');
+                setFranchiseAssociation('');
+                setPropertySource('');
+                setCompanyAffiliations([]);
+                clearFieldError('propertyAddress');
+                clearFieldError('propertyName');
+                setPropertyDirectory((prev) => {
+                  const entry: MockProperty = {
+                    address: mockAddress,
+                    propertyName: '',
+                    franchiseAssociation: '',
+                    propertySource: '',
+                    affiliations: [],
+                    companyName: companyName.trim(),
+                  };
+                  if (prev.some((p) => p.address === mockAddress)) {
+                    return prev.map((p) => (p.address === mockAddress ? entry : p));
+                  }
+                  return [...prev, entry];
+                });
+              }}
+            />
       </Box>
     </Box>
   );

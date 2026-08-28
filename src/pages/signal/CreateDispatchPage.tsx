@@ -1201,11 +1201,11 @@ export function CreateDispatchPage({
 
   const industryVerticalOptions = useMemo<UiOption[]>(
     () => [
-      { label: 'Housing', value: 'Housing' },
-      { label: 'Manufacturing', value: 'Manufacturing' },
       { label: 'Commercial', value: 'Commercial' },
-      { label: 'Industrial', value: 'Industrial' },
       { label: 'Distribution', value: 'Distribution' },
+      { label: 'Housing', value: 'Housing' },
+      { label: 'Industrial', value: 'Industrial' },
+      { label: 'Manufacturing', value: 'Manufacturing' },
     ],
     [],
   );
@@ -1294,6 +1294,7 @@ export function CreateDispatchPage({
   const [serviceProducts, setServiceProducts] = useState<SignalServiceCard[]>(() =>
     DEFAULT_SIGNAL_SERVICES.map((s) => ({ ...s, jobDays: [...s.jobDays] })),
   );
+  const [serviceScope, setServiceScope] = useState<'all' | 'dispatch_only'>('all');
   const [onDemandItems, setOnDemandItems] = useState<OnDemandItem[]>(() =>
     DEFAULT_ON_DEMAND_ITEMS.map((item) => ({ ...item })),
   );
@@ -1577,6 +1578,7 @@ export function CreateDispatchPage({
     return {
       'section-company-property':
         Boolean(companyName.trim()) &&
+        Boolean(industryVertical) &&
         Boolean(propertyAddress.trim()) &&
         Boolean(propertyName.trim()) &&
         Boolean(propertySource) &&
@@ -1586,7 +1588,9 @@ export function CreateDispatchPage({
         (contactUserByRole.decision_maker ?? []).length > 0 &&
         (contactUserByRole.end_user ?? []).length > 0 &&
         (contactUserByRole.billing ?? []).length > 0,
-      'section-services': serviceProducts.length > 0 && serviceProducts.every(isServiceComplete),
+      'section-services':
+        serviceScope === 'dispatch_only' ||
+        (serviceProducts.length > 0 && serviceProducts.every(isServiceComplete)),
       'section-on-demand': onDemandItems.length > 0 && onDemandItems.every(isOnDemandComplete),
       'section-billing':
         Boolean(billingOccurrence) &&
@@ -1610,6 +1614,7 @@ export function CreateDispatchPage({
     } as Record<(typeof FORM_PROGRESS_SECTIONS)[number]['id'], boolean>;
   }, [
     companyName,
+    industryVertical,
     propertyAddress,
     propertyName,
     propertySource,
@@ -1617,6 +1622,7 @@ export function CreateDispatchPage({
     proposalName,
     timeZone,
     contactUserByRole,
+    serviceScope,
     serviceProducts,
     onDemandItems,
     billingOccurrence,
@@ -1692,6 +1698,7 @@ export function CreateDispatchPage({
     setCompanyAffiliations([]);
     setFieldErrors((prev) => {
       const next = { ...prev };
+      delete next.industryVertical;
       delete next.companyName;
       delete next.propertyAddress;
       delete next.propertyName;
@@ -1711,6 +1718,7 @@ export function CreateDispatchPage({
     setCompanyAffiliations([]);
     setFieldErrors((prev) => {
       const next = { ...prev };
+      if (company.industryVertical) delete next.industryVertical;
       delete next.companyName;
       delete next.propertyAddress;
       delete next.propertyName;
@@ -1727,6 +1735,7 @@ export function CreateDispatchPage({
   const validate = useCallback((): boolean => {
     const e: Record<string, string> = {};
     if (!companyName.trim()) e.companyName = 'Company name is required.';
+    if (!industryVertical) e.industryVertical = 'Industry vertical is required.';
     if (!propertyAddress.trim()) e.propertyAddress = 'Address is required.';
     if (!propertyName.trim()) e.propertyName = 'Property name is required.';
     if ((contactUserByRole.decision_maker ?? []).length === 0) {
@@ -1735,7 +1744,9 @@ export function CreateDispatchPage({
     if (!contactName.trim()) e.contactName = 'Name is required.';
     if (!contactEmail.trim()) e.contactEmail = 'Email is required.';
     if (!contactPhone.trim()) e.contactPhone = 'Phone is required.';
-    if (serviceProducts.length === 0) e.serviceProducts = 'Add at least one service.';
+    if (serviceScope === 'all' && serviceProducts.length === 0) {
+      e.serviceProducts = 'Add at least one service.';
+    }
     for (let i = 0; i < serviceProducts.length; i++) {
       const s = serviceProducts[i];
       if (s.kind === 'dedicated') {
@@ -1752,12 +1763,14 @@ export function CreateDispatchPage({
     return Object.keys(e).length === 0;
   }, [
     companyName,
+    industryVertical,
     propertyAddress,
     propertyName,
     contactUserByRole,
     contactName,
     contactEmail,
     contactPhone,
+    serviceScope,
     serviceProducts,
     paymentMethod,
   ]);
@@ -1790,6 +1803,7 @@ export function CreateDispatchPage({
     setPreferredStartTime(null);
     setPreferredEndTime(null);
     setServiceProducts(DEFAULT_SIGNAL_SERVICES.map((s) => ({ ...s, jobDays: [...s.jobDays] })));
+    setServiceScope('all');
     setBillingType('');
     setCycleReferenceDateInput(null);
     setPaymentMethod('');
@@ -1868,6 +1882,7 @@ export function CreateDispatchPage({
       proposalName: proposalName.trim(),
       timeZone,
       serviceOccurrence: { every: Number.parseInt(occurrenceEvery, 10), unit: occurrenceUnit, jobDays: [] },
+      serviceScope,
       service: {
         label: serviceLabel,
         priceSummary: `${serviceProductsSubtotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })} / ${occurrenceUnit === 'Month' ? 'monthly' : occurrenceUnit === 'Week' ? 'weekly' : '—'}`,
@@ -1957,6 +1972,19 @@ export function CreateDispatchPage({
     setServiceProducts((prev) => [...prev, createEmptySignalService(prev.length + 1)]);
     clearFieldError('serviceProducts');
   }, [clearFieldError]);
+
+  const changeServiceScope = useCallback(
+    (next: 'all' | 'dispatch_only') => {
+      setServiceScope(next);
+      // Dispatch-only contracts carry no service lines, so drop them from the totals.
+      setServiceProducts((prev) => {
+        if (next === 'dispatch_only') return [];
+        return prev.length > 0 ? prev : [createEmptySignalService(1)];
+      });
+      clearFieldError('serviceProducts');
+    },
+    [clearFieldError],
+  );
 
   const removeServiceProduct = useCallback((id: string) => {
     setServiceProducts((prev) => (prev.length <= 1 ? prev : prev.filter((p) => p.id !== id)));
@@ -2860,6 +2888,65 @@ export function CreateDispatchPage({
                       />
                     </Stack>
                   </Grid>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <Stack spacing={0.75} sx={{ width: '100%' }}>
+                      <Typography sx={figmaLabelSx}>
+                        Industry Vertical
+                        <RequiredAsterisk />
+                      </Typography>
+                      <Autocomplete
+                        options={industryVerticalOptions}
+                        value={
+                          industryVerticalOptions.find((o) => o.value === industryVertical) ?? null
+                        }
+                        onChange={(_, next) => {
+                          setIndustryVertical(next?.value ?? '');
+                          clearFieldError('industryVertical');
+                        }}
+                        getOptionLabel={(o) => o.label}
+                        isOptionEqualToValue={(a, b) => a.value === b.value}
+                        openOnFocus
+                        filterOptions={(options, { inputValue }) => {
+                          const q = inputValue.trim().toLowerCase();
+                          if (!q) return options;
+                          return options.filter((o) => o.label.toLowerCase().includes(q));
+                        }}
+                        popupIcon={<KeyboardArrowDownOutlined sx={{ fontSize: 16, color: '#6A6A70' }} />}
+                        slotProps={{
+                          paper: {
+                            sx: {
+                              borderRadius: '8px',
+                              mt: 0.5,
+                              boxShadow: '0px 8px 24px rgba(15, 23, 42, 0.12)',
+                            },
+                          },
+                          listbox: {
+                            sx: {
+                              py: 0.5,
+                              '& .MuiAutocomplete-option': {
+                                fontSize: 12,
+                                lineHeight: '18px',
+                                minHeight: 36,
+                                py: 1,
+                                px: 1.5,
+                              },
+                            },
+                          },
+                        }}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            name="industryVertical"
+                            size="small"
+                            placeholder="Select industry vertical"
+                            error={Boolean(fieldErrors.industryVertical)}
+                            helperText={fieldErrors.industryVertical}
+                            sx={figmaTextFieldSx}
+                          />
+                        )}
+                      />
+                    </Stack>
+                  </Grid>
                 </Grid>
                 <Stack spacing={0.75} sx={{ width: '100%', mt: 2 }}>
                   <Typography sx={figmaLabelSx}>
@@ -3149,7 +3236,59 @@ export function CreateDispatchPage({
                 </Stack>
               </FormSection>
 
-              <FormSection id="section-services" title="Services">
+              <FormSection
+                id="section-services"
+                title="Services"
+                titleEnd={
+                  <FormControlLabel
+                    sx={{ m: 0, gap: 0.75, flexShrink: 0 }}
+                    control={
+                      <Checkbox
+                        name="serviceScope"
+                        size="small"
+                        checked={serviceScope === 'dispatch_only'}
+                        onChange={(e) =>
+                          changeServiceScope(e.target.checked ? 'dispatch_only' : 'all')
+                        }
+                        sx={{
+                          p: 0,
+                          color: '#86868B',
+                          '&.Mui-checked': { color: '#146dff' },
+                          '& .MuiSvgIcon-root': { fontSize: 17 },
+                        }}
+                      />
+                    }
+                    label={
+                      <Typography
+                        sx={{ fontSize: 12, fontWeight: 500, lineHeight: '18px', color: '#262527' }}
+                      >
+                        Dispatch Only
+                      </Typography>
+                    }
+                  />
+                }
+              >
+                {serviceScope === 'dispatch_only' ? (
+                  <Box
+                    sx={{
+                      width: '100%',
+                      border: '1px dashed #E6E6E7',
+                      borderRadius: '12px',
+                      bgcolor: '#F8F8F9',
+                      px: 2,
+                      py: 3,
+                      textAlign: 'center',
+                      boxSizing: 'border-box',
+                    }}
+                  >
+                    <Typography sx={{ fontSize: 14, fontWeight: 600, color: '#262527', mb: 0.5 }}>
+                      Dispatch Only
+                    </Typography>
+                    <Typography sx={{ fontSize: 12, lineHeight: '18px', color: '#6A6A70' }}>
+                      This contract covers dispatch only. Uncheck Dispatch Only to add service lines.
+                    </Typography>
+                  </Box>
+                ) : (
                 <Stack sx={{ width: '100%', minWidth: 0, gap: 2 }}>
                   {serviceProducts.map((svc) => {
                     const weeklyTotal = calcSignalServiceWeeklyTotal(svc);
@@ -3689,6 +3828,7 @@ export function CreateDispatchPage({
                     </Typography>
                   ) : null}
                 </Stack>
+                )}
               </FormSection>
 
               <FormSection id="section-on-demand" title="On Demand">
