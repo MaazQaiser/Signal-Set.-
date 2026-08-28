@@ -6,4 +6,13 @@ export const signalTheme = createTheme(appTheme, {
   palette: {
     primary: { main: '#146dff' },
   },
+  components: {
+    MuiAutocomplete: {
+      styleOverrides: {
+        clearIndicator: {
+          '& .MuiSvgIcon-root': { fontSize: 16 },
+        },
+      },
+    },
+  },
 });

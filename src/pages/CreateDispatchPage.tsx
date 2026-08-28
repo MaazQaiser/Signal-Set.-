@@ -2345,6 +2345,85 @@ export function CreateDispatchPage() {
                   <Grid size={12}>
                     <Stack spacing={2} sx={{ width: '100%' }}>
                       <Typography sx={{ fontSize: 14, fontWeight: 600, lineHeight: '20px', color: '#262527' }}>
+                        Payment details
+                      </Typography>
+                      <Grid container spacing={2}>
+                        <Grid size={{ xs: 12, md: 4 }}>
+                          <LabeledDatePicker
+                            name="cycleReferenceDate"
+                            label="Cycle Reference Date"
+                            required
+                            placeholder="Select cycle reference date"
+                            value={cycleReferenceDateInput}
+                            onChange={setCycleReferenceDateInput}
+                          />
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 4 }}>
+                          <LabeledField
+                            name="billingType"
+                            label="Billing type"
+                            required
+                            value={billingType}
+                            onChange={setBillingType}
+                            select
+                            options={billingTypeOptions}
+                          />
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 4 }}>
+                          <LabeledField
+                            name="paymentMethod"
+                            label="Payment method"
+                            required
+                            value={paymentMethod}
+                            onChange={(v) => { setPaymentMethod(v); }}
+                            select
+                            options={paymentMethodOptions}
+                          />
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 4 }}>
+                          <LabeledField
+                            name="paymentTerms"
+                            label="Payment terms"
+                            required
+                            value={paymentTerms}
+                            onChange={setPaymentTerms}
+                            select
+                            options={paymentTermsOptions}
+                          />
+                        </Grid>
+                        {paymentMethod === 'Credit Card' ? (
+                          <Grid size={12}>
+                            <Button
+                              type="button"
+                              variant="outlined"
+                              fullWidth
+                              startIcon={<AddOutlined />}
+                              sx={{
+                                height: 36,
+                                minHeight: 36,
+                                px: '14px',
+                                py: 0,
+                                fontSize: 14,
+                                fontWeight: 500,
+                                lineHeight: '20px',
+                                color: '#444446',
+                                textTransform: 'none',
+                                borderRadius: '8px',
+                                borderColor: '#E6E6E7',
+                                gap: 1,
+                                '&:hover': { backgroundColor: 'rgba(0,0,0,0.04)', borderColor: '#E6E6E7' },
+                              }}
+                            >
+                              Add Payment Method
+                            </Button>
+                          </Grid>
+                        ) : null}
+                      </Grid>
+                    </Stack>
+                  </Grid>
+                  <Grid size={12}>
+                    <Stack spacing={2} sx={{ width: '100%' }}>
+                      <Typography sx={{ fontSize: 14, fontWeight: 600, lineHeight: '20px', color: '#262527' }}>
                         Billing Information
                       </Typography>
                       <Stack spacing={0.75} sx={{ width: '100%' }}>
@@ -2545,81 +2624,6 @@ export function CreateDispatchPage() {
                       ) : null}
                     </Stack>
                   </Grid>
-                  <Grid size={12}>
-                    <Typography sx={{ fontSize: 14, fontWeight: 600, lineHeight: '20px', color: '#262527' }}>
-                      Payment details
-                    </Typography>
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <LabeledDatePicker
-                      name="cycleReferenceDate"
-                      label="Cycle Reference Date"
-                      required
-                      placeholder="Select cycle reference date"
-                      value={cycleReferenceDateInput}
-                      onChange={setCycleReferenceDateInput}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <LabeledField
-                      name="billingType"
-                      label="Billing type"
-                      required
-                      value={billingType}
-                      onChange={setBillingType}
-                      select
-                      options={billingTypeOptions}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <LabeledField
-                      name="paymentMethod"
-                      label="Payment method"
-                      required
-                      value={paymentMethod}
-                      onChange={(v) => { setPaymentMethod(v); }}
-                      select
-                      options={paymentMethodOptions}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <LabeledField
-                      name="paymentTerms"
-                      label="Payment terms"
-                      required
-                      value={paymentTerms}
-                      onChange={setPaymentTerms}
-                      select
-                      options={paymentTermsOptions}
-                    />
-                  </Grid>
-                  {paymentMethod === 'Credit Card' ? (
-                    <Grid size={12}>
-                      <Button
-                        type="button"
-                        variant="outlined"
-                        fullWidth
-                        startIcon={<AddOutlined />}
-                        sx={{
-                          height: 36,
-                          minHeight: 36,
-                          px: '14px',
-                          py: 0,
-                          fontSize: 14,
-                          fontWeight: 500,
-                          lineHeight: '20px',
-                          color: '#444446',
-                          textTransform: 'none',
-                          borderRadius: '8px',
-                          borderColor: '#E6E6E7',
-                          gap: 1,
-                          '&:hover': { backgroundColor: 'rgba(0,0,0,0.04)', borderColor: '#E6E6E7' },
-                        }}
-                      >
-                        Add Payment Method
-                      </Button>
-                    </Grid>
-                  ) : null}
                 </Grid>
               </FormSection>
 
