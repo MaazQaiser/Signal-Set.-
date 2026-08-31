@@ -128,7 +128,7 @@ const CONTACT_DIRECTORY_USERS: ContactDirectoryUser[] = [
 ];
 
 const CONTACT_ROLE_ROWS = [
-  { id: 'decision_maker', label: 'Decision Maker', color: '#9747FF', bg: '#F5EDFF' },
+  { id: 'decision_maker', label: 'Billing', color: '#2E964B', bg: '#EFF8EF' },
 ] as const;
 
 const EMPTY_CONTACT_ROLE_SELECTIONS: Record<string, string[]> = {
@@ -889,7 +889,7 @@ export function CreateDispatchPage() {
     if (!propertyAddress.trim()) e.propertyAddress = 'Property address is required.';
     if (!propertyName.trim()) e.propertyName = 'Property name is required.';
     if ((contactUserByRole.decision_maker ?? []).length === 0) {
-      e.decisionMakerContacts = 'Select at least one Decision Maker.';
+      e.decisionMakerContacts = 'Select at least one Billing contact.';
     }
     if (!contactName.trim()) e.contactName = 'Name is required.';
     if (!contactEmail.trim()) e.contactEmail = 'Email is required.';

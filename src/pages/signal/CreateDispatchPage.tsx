@@ -105,6 +105,9 @@ const FieldSelectChevronIcon = forwardRef<SVGSVGElement, SvgIconProps>(function 
 
 const FIELD_STROKE = '#E6E6E7';
 
+/** Shared height for every single-line input, select and date field. */
+const FIELD_HEIGHT = 36;
+
 const figmaTextFieldSx = {
   '& .MuiOutlinedInput-root': {
     borderRadius: '8px',
@@ -116,6 +119,7 @@ const figmaTextFieldSx = {
     '&.Mui-disabled': { backgroundColor: '#F5F5F6' },
   },
   '& .MuiPickersOutlinedInput-root': {
+    height: FIELD_HEIGHT,
     borderRadius: '8px',
     backgroundColor: 'transparent',
     '& .MuiPickersOutlinedInput-notchedOutline': { borderColor: FIELD_STROKE, borderWidth: 1 },
@@ -124,6 +128,10 @@ const figmaTextFieldSx = {
     '&.Mui-disabled .MuiPickersOutlinedInput-notchedOutline': { borderColor: FIELD_STROKE },
     '&.Mui-disabled': { backgroundColor: '#F5F5F6' },
   },
+  '& .MuiOutlinedInput-root:not(.MuiInputBase-multiline):not(.MuiAutocomplete-inputRoot)': {
+    height: FIELD_HEIGHT,
+  },
+  '& .MuiAutocomplete-inputRoot': { minHeight: FIELD_HEIGHT },
   '& .MuiInputBase-input': { fontSize: 12, lineHeight: '18px', fontWeight: 400 },
   '& .MuiPickersInputBase-sectionsContainer': { fontSize: 12, lineHeight: '18px', fontWeight: 400 },
   '& .MuiPickersInputBase-sectionContent': {
@@ -1269,6 +1277,14 @@ export function CreateDispatchPage({
   );
 
   const [contractStartDate, setContractStartDate] = useState<Dayjs | null>(null);
+  const [contractDatesToBeDecided, setContractDatesToBeDecided] = useState(false);
+  const [contractEndMode, setContractEndMode] = useState<'end_date' | 'renewal_date'>('renewal_date');
+  const [contractEndDate, setContractEndDate] = useState<Dayjs | null>(null);
+  const [renewalDate, setRenewalDate] = useState<Dayjs | null>(null);
+  const [autoRenewal, setAutoRenewal] = useState(false);
+  const [autoRenewalNotifyDays, setAutoRenewalNotifyDays] = useState('15');
+  const [draftsBeforeDays, setDraftsBeforeDays] = useState('10');
+  const [autoPublishBeforeDays, setAutoPublishBeforeDays] = useState('5');
   const [cycleReferenceDate, setCycleReferenceDate] = useState<Dayjs | null>(null);
   const [serviceStartDate, setServiceStartDate] = useState<Dayjs | null>(null);
   const [sameAsContractDate, setSameAsContractDate] = useState(false);
@@ -1582,6 +1598,7 @@ export function CreateDispatchPage({
         Boolean(propertyAddress.trim()) &&
         Boolean(propertyName.trim()) &&
         Boolean(propertySource) &&
+        Boolean(franchiseAssociation.trim()) &&
         companyAffiliations.length > 0,
       'section-proposal': Boolean(proposalName.trim()) && Boolean(timeZone),
       'section-contacts':
@@ -1618,6 +1635,7 @@ export function CreateDispatchPage({
     propertyAddress,
     propertyName,
     propertySource,
+    franchiseAssociation,
     companyAffiliations,
     proposalName,
     timeZone,
@@ -1738,6 +1756,7 @@ export function CreateDispatchPage({
     if (!industryVertical) e.industryVertical = 'Industry vertical is required.';
     if (!propertyAddress.trim()) e.propertyAddress = 'Address is required.';
     if (!propertyName.trim()) e.propertyName = 'Property name is required.';
+    if (!franchiseAssociation.trim()) e.franchiseAssociation = 'Associated franchise is required.';
     if ((contactUserByRole.decision_maker ?? []).length === 0) {
       e.decisionMakerContacts = 'Select at least one Decision Maker.';
     }
@@ -1766,6 +1785,7 @@ export function CreateDispatchPage({
     industryVertical,
     propertyAddress,
     propertyName,
+    franchiseAssociation,
     contactUserByRole,
     contactName,
     contactEmail,
@@ -1789,6 +1809,14 @@ export function CreateDispatchPage({
     setContactPhone('');
     setContactUserByRole({ ...EMPTY_CONTACT_ROLE_SELECTIONS });
     setContractStartDate(null);
+    setContractDatesToBeDecided(false);
+    setContractEndMode('renewal_date');
+    setContractEndDate(null);
+    setRenewalDate(null);
+    setAutoRenewal(false);
+    setAutoRenewalNotifyDays('15');
+    setDraftsBeforeDays('10');
+    setAutoPublishBeforeDays('5');
     setCycleReferenceDate(null);
     setServiceStartDate(null);
     setSameAsContractDate(false);
@@ -1875,7 +1903,15 @@ export function CreateDispatchPage({
           {},
         ),
       },
+      contractDatesToBeDecided,
       contractStartDate: contractStartDate?.toISOString(),
+      contractEndMode,
+      contractEndDate: contractEndDate?.toISOString(),
+      renewalDate: renewalDate?.toISOString(),
+      autoRenewal,
+      autoRenewalNotifyDays,
+      draftsBeforeDays,
+      autoPublishBeforeDays,
       cycleReferenceDate: cycleReferenceDate?.toISOString(),
       serviceStartDate: serviceStartDate?.toISOString(),
       sameAsContractDate,
@@ -2449,19 +2485,6 @@ export function CreateDispatchPage({
                         alignItems: 'center',
                       }}
                     >
-                      {!isLast ? (
-                        <Box
-                          sx={{
-                            display: isMobileVariant ? 'none' : { xs: 'none', md: 'block' },
-                            position: 'absolute',
-                            left: 9,
-                            top: 20,
-                            bottom: 0,
-                            width: 2,
-                            bgcolor: complete ? '#146dff' : '#E6E6E7',
-                          }}
-                        />
-                      ) : null}
                       <Box
                         sx={{
                           width: 20,
@@ -2706,11 +2729,15 @@ export function CreateDispatchPage({
                     <Stack spacing={0.75} sx={{ width: '100%' }}>
                       <Typography sx={figmaLabelSx}>
                         Associated Franchise
+                        <RequiredAsterisk />
                       </Typography>
                       <Autocomplete
                         options={franchiseAssociationOptions}
                         value={franchiseAssociationOptions.find((o) => o.value === franchiseAssociation) ?? null}
-                        onChange={(_, next) => setFranchiseAssociation(next?.value ?? '')}
+                        onChange={(_, next) => {
+                          setFranchiseAssociation(next?.value ?? '');
+                          if (next?.value) clearFieldError('franchiseAssociation');
+                        }}
                         getOptionLabel={(o) => o.label}
                         isOptionEqualToValue={(a, b) => a.value === b.value}
                         filterOptions={(options, { inputValue }) => {
@@ -2750,6 +2777,8 @@ export function CreateDispatchPage({
                             name="franchiseAssociation"
                             size="small"
                             placeholder="Select associated franchise"
+                            error={Boolean(fieldErrors.franchiseAssociation)}
+                            helperText={fieldErrors.franchiseAssociation}
                             sx={figmaTextFieldSx}
                           />
                         )}
@@ -3007,7 +3036,31 @@ export function CreateDispatchPage({
                 </Stack>
               </FormSection>
 
-              <FormSection id="section-proposal" title="Proposal Details">
+              <FormSection
+                id="section-proposal"
+                title="Proposal Details"
+                titleEnd={
+                  <FormControlLabel
+                    sx={{ m: 0, alignItems: 'center', flexShrink: 0 }}
+                    control={
+                      <Checkbox
+                        size="small"
+                        checked={contractDatesToBeDecided}
+                        onChange={(_, checked) => {
+                          setContractDatesToBeDecided(checked);
+                          if (checked) setContractStartDate(null);
+                        }}
+                        sx={{ p: 0.5, mr: 0.5, '& .MuiSvgIcon-root': { fontSize: 17 } }}
+                      />
+                    }
+                    label={
+                      <Typography sx={{ fontSize: 14, lineHeight: '20px', color: '#262527' }}>
+                        Contract Dates to be decided
+                      </Typography>
+                    }
+                  />
+                }
+              >
                 <Grid container spacing={2}>
                   <Grid size={{ xs: 12, md: 4 }}>
                     <LabeledField
@@ -3073,6 +3126,167 @@ export function CreateDispatchPage({
                       />
                     </Stack>
                   </Grid>
+                  {!contractDatesToBeDecided ? (
+                    <>
+                      <Grid size={{ xs: 12, md: 4 }}>
+                        <LabeledDatePicker
+                          name="contractStartDate"
+                          label="Contract start date"
+                          placeholder="Select contract start date"
+                          value={contractStartDate}
+                          onChange={setContractStartDate}
+                        />
+                      </Grid>
+                      <Grid size={{ xs: 12, md: 4 }}>
+                        <Stack
+                          direction="row"
+                          spacing={3}
+                          sx={{
+                            alignItems: 'center',
+                            mt: { md: '24px' },
+                            height: { md: FIELD_HEIGHT },
+                          }}
+                        >
+                          {([
+                            { value: 'end_date', label: 'End Date' },
+                            { value: 'renewal_date', label: 'Renewal Date' },
+                          ] as const).map((mode) => (
+                            <FormControlLabel
+                              key={mode.value}
+                              sx={{ m: 0, alignItems: 'center' }}
+                              control={
+                                <Radio
+                                  size="small"
+                                  checked={contractEndMode === mode.value}
+                                  onChange={() => setContractEndMode(mode.value)}
+                                  sx={{ p: 0.5, mr: 0.5, '& .MuiSvgIcon-root': { fontSize: 17 } }}
+                                />
+                              }
+                              label={
+                                <Typography sx={{ fontSize: 14, lineHeight: '20px', color: '#262527' }}>
+                                  {mode.label}
+                                </Typography>
+                              }
+                            />
+                          ))}
+                        </Stack>
+                      </Grid>
+                      {contractEndMode === 'end_date' ? (
+                        <Grid size={{ xs: 12, md: 4 }}>
+                          <LabeledDatePicker
+                            name="contractEndDate"
+                            label="End Date"
+                            placeholder="Select end date"
+                            value={contractEndDate}
+                            onChange={setContractEndDate}
+                          />
+                        </Grid>
+                      ) : (
+                        <Grid size={{ xs: 12, md: 4 }}>
+                          <LabeledDatePicker
+                            name="renewalDate"
+                            label="Renewal Date"
+                            placeholder="Select renewal date"
+                            value={renewalDate}
+                            onChange={setRenewalDate}
+                          />
+                        </Grid>
+                      )}
+                      {contractEndMode === 'renewal_date' ? (
+                        <Grid size={12}>
+                          <Grid container spacing={2}>
+                            <Grid size={{ xs: 12, md: 4 }}>
+                              <FormControlLabel
+                                sx={{
+                                  m: 0,
+                                  alignItems: 'center',
+                                  mt: { md: '24px' },
+                                  height: { md: FIELD_HEIGHT },
+                                }}
+                                control={
+                                  <Checkbox
+                                    size="small"
+                                    checked={autoRenewal}
+                                    onChange={(_, checked) => setAutoRenewal(checked)}
+                                    sx={{ p: 0.5, mr: 0.5, '& .MuiSvgIcon-root': { fontSize: 17 } }}
+                                  />
+                                }
+                                label={
+                                  <Typography sx={{ fontSize: 14, lineHeight: '20px', color: '#262527' }}>
+                                    Auto Renewal of Contract
+                                  </Typography>
+                                }
+                              />
+                            </Grid>
+                            {!autoRenewal ? (
+                              <Grid size={{ xs: 12, md: 4 }}>
+                                <LabeledField
+                                  name="autoRenewalNotifyDays"
+                                  label="Notify for Auto-Renewal Before (Days)"
+                                  placeholder="Enter days"
+                                  value={autoRenewalNotifyDays}
+                                  onChange={setAutoRenewalNotifyDays}
+                                  htmlInput={{ inputMode: 'numeric', pattern: '[0-9]*' }}
+                                />
+                              </Grid>
+                            ) : (
+                              <>
+                                <Grid size={{ xs: 12, md: 4 }}>
+                                  <LabeledField
+                                    name="draftsBeforeDays"
+                                    label="Drafts Before (Days)"
+                                    placeholder="Enter days"
+                                    value={draftsBeforeDays}
+                                    onChange={setDraftsBeforeDays}
+                                    htmlInput={{ inputMode: 'numeric', pattern: '[0-9]*' }}
+                                  />
+                                </Grid>
+                                <Grid size={{ xs: 12, md: 4 }}>
+                                  <Stack spacing={0.75}>
+                                    <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                                      <Typography sx={figmaLabelSx}>
+                                        Auto Publish Before (Days)
+                                        <RequiredAsterisk />
+                                      </Typography>
+                                      <Tooltip
+                                        title="Set how many days before the renewal date the draft will be auto-published"
+                                        arrow
+                                        placement="top"
+                                        slotProps={{
+                                          tooltip: {
+                                            sx: {
+                                              bgcolor: '#262527',
+                                              color: '#FFFFFF',
+                                              fontSize: 12,
+                                              lineHeight: '18px',
+                                              fontWeight: 400,
+                                              px: 1.5,
+                                              py: 1,
+                                              borderRadius: '8px',
+                                            },
+                                          },
+                                          arrow: { sx: { color: '#262527' } },
+                                        }}
+                                      >
+                                        <InfoOutlined sx={{ fontSize: 14, color: '#146dff', cursor: 'help' }} />
+                                      </Tooltip>
+                                    </Stack>
+                                    <LabeledField
+                                      name="autoPublishBeforeDays"
+                                      placeholder="Enter days"
+                                      value={autoPublishBeforeDays}
+                                      onChange={setAutoPublishBeforeDays}
+                                      htmlInput={{ inputMode: 'numeric', pattern: '[0-9]*' }}
+                                    />
+                                  </Stack>
+                                </Grid>
+                              </>
+                            )}
+                          </Grid>
+                        </Grid>
+                      ) : null}
+                    </>
+                  ) : null}
                 </Grid>
               </FormSection>
 
