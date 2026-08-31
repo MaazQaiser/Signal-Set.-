@@ -57,6 +57,12 @@ import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined';
 import ViewKanbanOutlined from '@mui/icons-material/ViewKanbanOutlined';
 import { FormSection } from '../../components/createContract/FormSection';
 import { AddressMapPickerModal } from '../../components/createContract/AddressMapPickerModal';
+import {
+  MOBILE_HOME_INDICATOR,
+  MOBILE_SHEET_RADIUS,
+  MOBILE_SHEET_SCRIM,
+  MOBILE_SHEET_SHADOW,
+} from './mobileSheet';
 import { useTheme } from '@mui/material/styles';
 import type { Dayjs } from 'dayjs';
 import { forwardRef, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type InputHTMLAttributes, type KeyboardEvent, type ReactNode } from 'react';
@@ -1199,6 +1205,11 @@ export function CreateDispatchPage({
   const isMobileVariant = variant === 'mobile';
   const isDesktop = useMediaQuery(theme.breakpoints.up('md')) && !isMobileVariant;
   const isSmUp = useMediaQuery(theme.breakpoints.up('sm')) && !isMobileVariant;
+  /** In the phone shell every field takes a full row, since MUI breakpoints see the desktop viewport. */
+  const thirdWidthField = isMobileVariant ? 12 : ({ xs: 12, md: 4 } as const);
+  const halfWidthField = isMobileVariant ? 12 : ({ xs: 12, md: 6 } as const);
+  const cardThirdWidthField = isMobileVariant ? 12 : ({ xs: 12, sm: 6, md: 4 } as const);
+  const cardQuarterWidthField = isMobileVariant ? 12 : ({ xs: 12, sm: 6, md: 3 } as const);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   // Sidebar icon highlight for this screen.
@@ -1494,6 +1505,9 @@ export function CreateDispatchPage({
   const [newSigneeName, setNewSigneeName] = useState('');
   const [newSigneeEmail, setNewSigneeEmail] = useState('');
   const [newSigneeTitle, setNewSigneeTitle] = useState('');
+  // Mobile only: add/edit a signee in a bottom sheet instead of an inline table row.
+  const [signeeSheetOpen, setSigneeSheetOpen] = useState(false);
+  const [signeeSheetEditId, setSigneeSheetEditId] = useState<string | null>(null);
 
   const [contactDirectory, setContactDirectory] = useState<ContactDirectoryUser[]>(() => [...CONTACT_DIRECTORY_USERS]);
   const [createContactModalOpen, setCreateContactModalOpen] = useState(false);
@@ -1855,6 +1869,8 @@ export function CreateDispatchPage({
     setNewSigneeName('');
     setNewSigneeEmail('');
     setNewSigneeTitle('');
+    setSigneeSheetOpen(false);
+    setSigneeSheetEditId(null);
     setCreateContactModalOpen(false);
     setCreateContactEmail('');
     setCreateContactFirstName('');
@@ -2438,7 +2454,7 @@ export function CreateDispatchPage({
               component="nav"
               aria-label="Form progress"
               sx={{
-                display: 'flex',
+                display: isMobileVariant ? 'none' : 'flex',
                 flexDirection: 'column',
                 flexShrink: 0,
                 width: { xs: '100%', md: isMobileVariant ? '100%' : 220 },
@@ -2581,7 +2597,7 @@ export function CreateDispatchPage({
             >
               <FormSection id="section-company-property" title="Company & Property Details" showDivider={false}>
                 <Grid container spacing={2}>
-                  <Grid size={{ xs: 12, md: 4 }}>
+                  <Grid size={thirdWidthField}>
                     <Stack spacing={0.75} sx={{ width: '100%' }}>
                       <Stack
                         direction="row"
@@ -2710,7 +2726,7 @@ export function CreateDispatchPage({
                       />
                     </Stack>
                   </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
+                  <Grid size={thirdWidthField}>
                     <LabeledField
                       name="propertyName"
                       label="Property Name"
@@ -2725,7 +2741,7 @@ export function CreateDispatchPage({
                       helperText={fieldErrors.propertyName}
                     />
                   </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
+                  <Grid size={thirdWidthField}>
                     <Stack spacing={0.75} sx={{ width: '100%' }}>
                       <Typography sx={figmaLabelSx}>
                         Associated Franchise
@@ -2785,7 +2801,7 @@ export function CreateDispatchPage({
                       />
                     </Stack>
                   </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
+                  <Grid size={thirdWidthField}>
                     <Stack spacing={0.75} sx={{ width: '100%' }}>
                       <Typography sx={figmaLabelSx}>
                         Property Source
@@ -2840,7 +2856,7 @@ export function CreateDispatchPage({
                       />
                     </Stack>
                   </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
+                  <Grid size={thirdWidthField}>
                     <Stack spacing={0.75} sx={{ width: '100%' }}>
                       <Typography sx={figmaLabelSx}>
                         Company
@@ -2917,7 +2933,7 @@ export function CreateDispatchPage({
                       />
                     </Stack>
                   </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
+                  <Grid size={thirdWidthField}>
                     <Stack spacing={0.75} sx={{ width: '100%' }}>
                       <Typography sx={figmaLabelSx}>
                         Industry Vertical
@@ -3054,7 +3070,7 @@ export function CreateDispatchPage({
                       />
                     }
                     label={
-                      <Typography sx={{ fontSize: 14, lineHeight: '20px', color: '#262527' }}>
+                      <Typography sx={{ fontSize: 12, lineHeight: '20px', color: '#262527' }}>
                         Contract Dates to be decided
                       </Typography>
                     }
@@ -3062,7 +3078,7 @@ export function CreateDispatchPage({
                 }
               >
                 <Grid container spacing={2}>
-                  <Grid size={{ xs: 12, md: 4 }}>
+                  <Grid size={thirdWidthField}>
                     <LabeledField
                       name="proposalName"
                       label="Proposal Name"
@@ -3071,7 +3087,7 @@ export function CreateDispatchPage({
                       onChange={setProposalName}
                     />
                   </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
+                  <Grid size={thirdWidthField}>
                     <Stack spacing={0.75} sx={{ width: '100%' }}>
                       <Typography sx={figmaLabelSx}>
                         Time Zone
@@ -3128,7 +3144,7 @@ export function CreateDispatchPage({
                   </Grid>
                   {!contractDatesToBeDecided ? (
                     <>
-                      <Grid size={{ xs: 12, md: 4 }}>
+                      <Grid size={thirdWidthField}>
                         <LabeledDatePicker
                           name="contractStartDate"
                           label="Contract start date"
@@ -3137,14 +3153,14 @@ export function CreateDispatchPage({
                           onChange={setContractStartDate}
                         />
                       </Grid>
-                      <Grid size={{ xs: 12, md: 4 }}>
+                      <Grid size={thirdWidthField}>
                         <Stack
                           direction="row"
                           spacing={3}
                           sx={{
                             alignItems: 'center',
-                            mt: { md: '24px' },
-                            height: { md: FIELD_HEIGHT },
+                            mt: isMobileVariant ? 0 : { md: '24px' },
+                            height: isMobileVariant ? 'auto' : { md: FIELD_HEIGHT },
                           }}
                         >
                           {([
@@ -3172,7 +3188,7 @@ export function CreateDispatchPage({
                         </Stack>
                       </Grid>
                       {contractEndMode === 'end_date' ? (
-                        <Grid size={{ xs: 12, md: 4 }}>
+                        <Grid size={thirdWidthField}>
                           <LabeledDatePicker
                             name="contractEndDate"
                             label="End Date"
@@ -3182,7 +3198,7 @@ export function CreateDispatchPage({
                           />
                         </Grid>
                       ) : (
-                        <Grid size={{ xs: 12, md: 4 }}>
+                        <Grid size={thirdWidthField}>
                           <LabeledDatePicker
                             name="renewalDate"
                             label="Renewal Date"
@@ -3195,13 +3211,13 @@ export function CreateDispatchPage({
                       {contractEndMode === 'renewal_date' ? (
                         <Grid size={12}>
                           <Grid container spacing={2}>
-                            <Grid size={{ xs: 12, md: 4 }}>
+                            <Grid size={thirdWidthField}>
                               <FormControlLabel
                                 sx={{
                                   m: 0,
                                   alignItems: 'center',
-                                  mt: { md: '24px' },
-                                  height: { md: FIELD_HEIGHT },
+                                  mt: isMobileVariant ? 0 : { md: '24px' },
+                                  height: isMobileVariant ? 'auto' : { md: FIELD_HEIGHT },
                                 }}
                                 control={
                                   <Checkbox
@@ -3219,7 +3235,7 @@ export function CreateDispatchPage({
                               />
                             </Grid>
                             {!autoRenewal ? (
-                              <Grid size={{ xs: 12, md: 4 }}>
+                              <Grid size={thirdWidthField}>
                                 <LabeledField
                                   name="autoRenewalNotifyDays"
                                   label="Notify for Auto-Renewal Before (Days)"
@@ -3231,7 +3247,7 @@ export function CreateDispatchPage({
                               </Grid>
                             ) : (
                               <>
-                                <Grid size={{ xs: 12, md: 4 }}>
+                                <Grid size={thirdWidthField}>
                                   <LabeledField
                                     name="draftsBeforeDays"
                                     label="Drafts Before (Days)"
@@ -3241,7 +3257,7 @@ export function CreateDispatchPage({
                                     htmlInput={{ inputMode: 'numeric', pattern: '[0-9]*' }}
                                   />
                                 </Grid>
-                                <Grid size={{ xs: 12, md: 4 }}>
+                                <Grid size={thirdWidthField}>
                                   <Stack spacing={0.75}>
                                     <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
                                       <Typography sx={figmaLabelSx}>
@@ -3636,7 +3652,7 @@ export function CreateDispatchPage({
                         {svc.kind === 'dedicated' ? (
                           <Stack spacing={1.5}>
                             <Grid container spacing={2}>
-                              <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                              <Grid size={cardThirdWidthField}>
                                 <LabeledField
                                   name={`resourceType_${svc.id}`}
                                   label="Resource Type"
@@ -3646,7 +3662,7 @@ export function CreateDispatchPage({
                                   options={RESOURCE_TYPE_OPTIONS}
                                 />
                               </Grid>
-                              <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                              <Grid size={cardThirdWidthField}>
                                 <LabeledField
                                   name={`officers_${svc.id}`}
                                   label="Officer/Guard"
@@ -3656,7 +3672,7 @@ export function CreateDispatchPage({
                                   htmlInput={{ inputMode: 'numeric' }}
                                 />
                               </Grid>
-                              <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                              <Grid size={cardThirdWidthField}>
                                 <Stack spacing={0.5} sx={{ width: '100%' }}>
                                   <LabeledField
                                     name={`hours_${svc.id}`}
@@ -3671,7 +3687,7 @@ export function CreateDispatchPage({
                                   </Typography>
                                 </Stack>
                               </Grid>
-                              <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                              <Grid size={cardThirdWidthField}>
                                 <Stack spacing={0.5} sx={{ width: '100%' }}>
                                   <LabeledField
                                     name={`hourlyRate_${svc.id}`}
@@ -3707,7 +3723,7 @@ export function CreateDispatchPage({
                                   ) : null}
                                 </Stack>
                               </Grid>
-                              <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                              <Grid size={cardThirdWidthField}>
                                 <Stack spacing={0.75} sx={{ width: '100%' }}>
                                   <Typography sx={figmaLabelSx}>
                                     Start Time
@@ -3724,7 +3740,7 @@ export function CreateDispatchPage({
                                   />
                                 </Stack>
                               </Grid>
-                              <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                              <Grid size={cardThirdWidthField}>
                                 <Stack spacing={0.75} sx={{ width: '100%' }}>
                                   <Typography sx={figmaLabelSx}>
                                     End Time
@@ -3785,7 +3801,7 @@ export function CreateDispatchPage({
                         ) : (
                           <Stack spacing={1.5}>
                             <Grid container spacing={2}>
-                              <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                              <Grid size={cardThirdWidthField}>
                                 <LabeledField
                                   name={`resourceType_${svc.id}`}
                                   label="Resource Type"
@@ -3795,7 +3811,7 @@ export function CreateDispatchPage({
                                   options={RESOURCE_TYPE_OPTIONS}
                                 />
                               </Grid>
-                              <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                              <Grid size={cardThirdWidthField}>
                                 <LabeledField
                                   name={`visits_${svc.id}`}
                                   label="Visit(s) Per Week"
@@ -3805,7 +3821,7 @@ export function CreateDispatchPage({
                                   htmlInput={{ inputMode: 'numeric' }}
                                 />
                               </Grid>
-                              <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                              <Grid size={cardThirdWidthField}>
                                 <Stack spacing={0.5} sx={{ width: '100%' }}>
                                   <LabeledField
                                     name={`priceVisit_${svc.id}`}
@@ -3860,7 +3876,7 @@ export function CreateDispatchPage({
                                   Time Duration
                                 </Typography>
                                 <Grid container spacing={2}>
-                                  <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                                  <Grid size={cardThirdWidthField}>
                                     <Stack spacing={0.75} sx={{ width: '100%' }}>
                                       <Typography sx={figmaLabelSx}>
                                         Start Time
@@ -3880,7 +3896,7 @@ export function CreateDispatchPage({
                                       />
                                     </Stack>
                                   </Grid>
-                                  <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                                  <Grid size={cardThirdWidthField}>
                                     <Stack spacing={0.75} sx={{ width: '100%' }}>
                                       <Typography sx={figmaLabelSx}>
                                         End Time
@@ -3900,7 +3916,7 @@ export function CreateDispatchPage({
                                       />
                                     </Stack>
                                   </Grid>
-                                  <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                                  <Grid size={cardThirdWidthField}>
                                     <LabeledField
                                       name={`visitsPerDay_${visitSet.id}`}
                                       label="Visits Per Day"
@@ -4068,10 +4084,12 @@ export function CreateDispatchPage({
                           <Box
                             sx={{
                               display: 'grid',
-                              gridTemplateColumns: {
-                                xs: '1fr',
-                                sm: '1.4fr 1fr 0.7fr 0.7fr 0.7fr',
-                              },
+                              gridTemplateColumns: isMobileVariant
+                                ? '1fr'
+                                : {
+                                    xs: '1fr',
+                                    sm: '1.4fr 1fr 0.7fr 0.7fr 0.7fr',
+                                  },
                               columnGap: 2,
                               rowGap: 1.5,
                               alignItems: 'start',
@@ -4227,16 +4245,18 @@ export function CreateDispatchPage({
                         <Box
                           sx={{
                             display: 'grid',
-                            gridTemplateColumns: {
-                              xs: '1fr',
-                              md: 'minmax(0, 1fr) 168px 168px 168px',
-                            },
+                            gridTemplateColumns: isMobileVariant
+                              ? '1fr'
+                              : {
+                                  xs: '1fr',
+                                  md: 'minmax(0, 1fr) 168px 168px 168px',
+                                },
                             columnGap: 2,
                             rowGap: 1.5,
                             alignItems: 'start',
                           }}
                         >
-                          <Stack spacing={0.5} sx={{ minWidth: 0, pr: { md: 2 } }}>
+                          <Stack spacing={0.5} sx={{ minWidth: 0, pr: isMobileVariant ? 0 : { md: 2 } }}>
                             <Typography sx={{ fontSize: 14, fontWeight: 600, lineHeight: '20px', color: '#262527' }}>
                               {item.title}
                             </Typography>
@@ -4394,14 +4414,14 @@ export function CreateDispatchPage({
                         })()}
                       </Stack>
 
-                      <Box sx={{ width: '100%', minWidth: 0, overflowX: 'auto' }}>
+                      <Box sx={{ width: '100%', minWidth: 0, overflowX: isMobileVariant ? 'visible' : 'auto' }}>
                         <Box
                           sx={{
                             width: '100%',
-                            minWidth: { xs: 560, md: 0 },
-                            border: '1px solid #E6E6E7',
-                            borderRadius: '10px',
-                            overflow: 'hidden',
+                            minWidth: isMobileVariant ? 0 : { xs: 560, md: 0 },
+                            border: isMobileVariant ? 'none' : '1px solid #E6E6E7',
+                            borderRadius: isMobileVariant ? 0 : '10px',
+                            overflow: isMobileVariant ? 'visible' : 'hidden',
                           }}
                         >
                           {(() => {
@@ -4510,6 +4530,127 @@ export function CreateDispatchPage({
                                 total: true,
                               },
                             ];
+
+                            // Mobile: the 5-column table cannot fit the phone frame, so each
+                            // payment plan becomes its own selectable card.
+                            if (isMobileVariant) {
+                              const plans = [
+                                { id: 'monthly' as const, label: 'Monthly', column: 'monthly' as const },
+                                { id: 'biweekly' as const, label: 'Bi-Weekly', column: 'biweekly' as const },
+                                { id: 'weekly' as const, label: 'Weekly', column: 'weekly' as const },
+                                { id: 'event' as const, label: 'Event', column: 'weekly' as const },
+                                { id: 'flat' as const, label: 'Flat', column: 'flat' as const },
+                              ];
+                              const bodyRows = rows.filter((row) => !row.total);
+                              const totalRow = rows.find((row) => row.total);
+                              return (
+                                <Stack spacing={1.5} sx={{ width: '100%' }}>
+                                  {plans.map((plan) => {
+                                    const selected = billingOccurrence === plan.id;
+                                    return (
+                                      <Box
+                                        key={plan.id}
+                                        sx={{
+                                          border: '1px solid',
+                                          borderColor: selected ? '#146dff' : '#E6E6E7',
+                                          borderRadius: '12px',
+                                          overflow: 'hidden',
+                                          bgcolor: '#FFFFFF',
+                                        }}
+                                      >
+                                        <Box
+                                          sx={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between',
+                                            gap: 1,
+                                            px: 2,
+                                            py: 1.5,
+                                            bgcolor: selected ? '#E8F1FF' : '#FFFFFF',
+                                          }}
+                                        >
+                                          {headerRadio(plan.id, plan.label)}
+                                          <Typography
+                                            sx={{ fontSize: 16, fontWeight: 700, color: '#262527' }}
+                                          >
+                                            {totalRow?.[plan.column]}
+                                          </Typography>
+                                        </Box>
+                                        {plan.id === 'flat' ? (
+                                          <Box
+                                            sx={{
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              justifyContent: 'space-between',
+                                              gap: 1,
+                                              px: 2,
+                                              py: 1.5,
+                                              borderTop: '1px solid #EFEFF0',
+                                            }}
+                                          >
+                                            <Typography sx={{ fontSize: 13, color: '#262527' }}>
+                                              Flat Amount ($)
+                                            </Typography>
+                                            <TextField
+                                              size="small"
+                                              value={flatBillingAmount}
+                                              onChange={(e) => setFlatBillingAmount(e.target.value)}
+                                              sx={{
+                                                width: 96,
+                                                ...figmaTextFieldSx,
+                                                '& .MuiOutlinedInput-root': {
+                                                  ...figmaTextFieldSx['& .MuiOutlinedInput-root'],
+                                                  minHeight: 32,
+                                                  height: 32,
+                                                },
+                                                '& .MuiInputBase-input': { fontSize: 13, py: 0.5, px: 1 },
+                                              }}
+                                              slotProps={{ htmlInput: { inputMode: 'decimal' } }}
+                                            />
+                                          </Box>
+                                        ) : null}
+                                        {bodyRows.map((row, idx) => (
+                                          <Box
+                                            key={idx}
+                                            sx={{
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              justifyContent: 'space-between',
+                                              gap: 1,
+                                              px: 2,
+                                              py: 1.5,
+                                              borderTop: '1px solid #EFEFF0',
+                                            }}
+                                          >
+                                            {typeof row.label === 'string' ? (
+                                              <Typography
+                                                sx={{ fontSize: 13, color: '#262527', minWidth: 0 }}
+                                              >
+                                                {row.label}
+                                              </Typography>
+                                            ) : (
+                                              row.label
+                                            )}
+                                            <Typography
+                                              sx={{
+                                                fontSize: 13,
+                                                fontWeight: 500,
+                                                color: '#262527',
+                                                textAlign: 'right',
+                                                flexShrink: 0,
+                                              }}
+                                            >
+                                              {row[plan.column]}
+                                            </Typography>
+                                          </Box>
+                                        ))}
+                                      </Box>
+                                    );
+                                  })}
+                                </Stack>
+                              );
+                            }
+
                             return (
                               <>
                                 <Box
@@ -4668,7 +4809,9 @@ export function CreateDispatchPage({
                       <Box
                         sx={{
                           display: 'grid',
-                          gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' },
+                          gridTemplateColumns: isMobileVariant
+                            ? '1fr'
+                            : { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' },
                           gap: 2,
                           alignItems: 'start',
                         }}
@@ -4810,9 +4953,13 @@ export function CreateDispatchPage({
                           <RequiredAsterisk />
                         </Typography>
                         <Stack
-                          direction={{ xs: 'column', sm: 'row' }}
+                          direction={isMobileVariant ? 'column' : { xs: 'column', sm: 'row' }}
                           spacing={1.5}
-                          sx={{ alignItems: { xs: 'stretch', sm: 'center' }, width: '100%', maxWidth: '100%' }}
+                          sx={{
+                            alignItems: isMobileVariant ? 'stretch' : { xs: 'stretch', sm: 'center' },
+                            width: '100%',
+                            maxWidth: '100%',
+                          }}
                         >
                           <Autocomplete
                             options={contactDirectory}
@@ -4821,7 +4968,7 @@ export function CreateDispatchPage({
                             getOptionLabel={(o) => o.name}
                             isOptionEqualToValue={(a, b) => a.id === b.id}
                             popupIcon={<KeyboardArrowDownOutlined sx={{ fontSize: 16, color: '#6A6A70' }} />}
-                            sx={{ width: { xs: '100%', sm: 220 }, flexShrink: 0 }}
+                            sx={{ width: isMobileVariant ? '100%' : { xs: '100%', sm: 220 }, flexShrink: 0 }}
                             renderOption={(props, option) => {
                               const { key, ...optionProps } = props;
                               return (
@@ -4890,15 +5037,17 @@ export function CreateDispatchPage({
                                     </Box>
                                     {contact.phone}
                                   </Typography>
-                                  <IconButton
-                                    type="button"
-                                    size="small"
-                                    aria-label="Clear billing contact"
-                                    onClick={() => setBillingContactId(null)}
-                                    sx={{ color: '#6A6A70', p: 0.25 }}
-                                  >
-                                    <CloseOutlined sx={{ fontSize: 16 }} />
-                                  </IconButton>
+                                  {!isMobileVariant ? (
+                                    <IconButton
+                                      type="button"
+                                      size="small"
+                                      aria-label="Clear billing contact"
+                                      onClick={() => setBillingContactId(null)}
+                                      sx={{ color: '#6A6A70', p: 0.25 }}
+                                    >
+                                      <CloseOutlined sx={{ fontSize: 16 }} />
+                                    </IconButton>
+                                  ) : null}
                                 </Box>
                               );
                             })()
@@ -4945,7 +5094,7 @@ export function CreateDispatchPage({
 
                       {!sameAsPropertyAddress ? (
                       <Grid container spacing={2}>
-                        <Grid size={{ xs: 12, md: 6 }}>
+                        <Grid size={halfWidthField}>
                           <LabeledField
                             name="billAddress"
                             label="Address"
@@ -4955,7 +5104,7 @@ export function CreateDispatchPage({
                             onChange={setBillAddress}
                           />
                         </Grid>
-                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                        <Grid size={cardQuarterWidthField}>
                           <LabeledField
                             name="billCountry"
                             label="Country"
@@ -4966,7 +5115,7 @@ export function CreateDispatchPage({
                             options={countryOptions}
                           />
                         </Grid>
-                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                        <Grid size={cardQuarterWidthField}>
                           <LabeledField
                             name="billState"
                             label="State"
@@ -4977,7 +5126,7 @@ export function CreateDispatchPage({
                             options={stateOptions}
                           />
                         </Grid>
-                        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                        <Grid size={cardThirdWidthField}>
                           <LabeledField
                             name="billCity"
                             label="City"
@@ -4988,7 +5137,7 @@ export function CreateDispatchPage({
                             options={cityOptions}
                           />
                         </Grid>
-                        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                        <Grid size={cardThirdWidthField}>
                           <LabeledField
                             name="billZip"
                             label="Zip Code / Postal Code"
@@ -5005,6 +5154,119 @@ export function CreateDispatchPage({
                 </Grid>
               </FormSection>
 
+              {isMobileVariant ? (
+              <FormSection
+                id="section-signee"
+                title="Signees"
+                titleEnd={
+                  <Button
+                    type="button"
+                    variant="text"
+                    disableRipple
+                    startIcon={<AddOutlined sx={{ fontSize: 18 }} />}
+                    onClick={() => {
+                      setSigneeSheetEditId(null);
+                      setNewSigneeName('');
+                      setNewSigneeTitle('');
+                      setNewSigneeEmail('');
+                      setSigneeSheetOpen(true);
+                    }}
+                    sx={{
+                      py: 0.25,
+                      px: 0,
+                      minWidth: 0,
+                      textTransform: 'none',
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: '#146dff',
+                      '&:hover': { bgcolor: 'transparent' },
+                    }}
+                  >
+                    Add new
+                  </Button>
+                }
+              >
+                <Stack spacing={1.5} sx={{ width: '100%' }}>
+                  {signeeCards.length === 0 ? (
+                    <Typography sx={{ fontSize: 14, color: '#86868B' }}>
+                      No signees yet. Use Add new to add one.
+                    </Typography>
+                  ) : (
+                    signeeCards.map((s, idx) => (
+                      <Box
+                        key={s.id}
+                        sx={{
+                          bgcolor: '#FFFFFF',
+                          border: '1px solid #E6E6E7',
+                          borderRadius: '12px',
+                          p: 2,
+                        }}
+                      >
+                        <Stack
+                          direction="row"
+                          sx={{ alignItems: 'center', justifyContent: 'space-between', gap: 1 }}
+                        >
+                          <Typography sx={{ fontSize: 16, fontWeight: 700, color: '#262527' }}>
+                            Signee {idx + 1}
+                          </Typography>
+                          <Stack direction="row" spacing={0.5}>
+                            <IconButton
+                              type="button"
+                              size="small"
+                              aria-label={`Remove ${s.name}`}
+                              onClick={() =>
+                                setSigneeCards((prev) => prev.filter((c) => c.id !== s.id))
+                              }
+                              sx={{ color: '#D9534F' }}
+                            >
+                              <DeleteOutlineOutlined sx={{ fontSize: 20 }} />
+                            </IconButton>
+                            <IconButton
+                              type="button"
+                              size="small"
+                              aria-label={`Edit ${s.name}`}
+                              onClick={() => {
+                                setSigneeSheetEditId(s.id);
+                                setNewSigneeName(s.name);
+                                setNewSigneeTitle(s.title ?? '');
+                                setNewSigneeEmail(s.email ?? '');
+                                setSigneeSheetOpen(true);
+                              }}
+                              sx={{ color: '#146dff' }}
+                            >
+                              <EditOutlined sx={{ fontSize: 20 }} />
+                            </IconButton>
+                          </Stack>
+                        </Stack>
+                        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', mt: 1.5 }}>
+                          <Box
+                            sx={{
+                              width: 44,
+                              height: 44,
+                              flexShrink: 0,
+                              borderRadius: '50%',
+                              bgcolor: '#E8F1FF',
+                              display: 'grid',
+                              placeItems: 'center',
+                            }}
+                          >
+                            <PersonOutlineOutlined sx={{ fontSize: 24, color: '#146dff' }} />
+                          </Box>
+                          <Stack spacing={0.25} sx={{ minWidth: 0 }}>
+                            <Typography sx={{ fontSize: 16, fontWeight: 600, color: '#262527' }}>
+                              {s.name}
+                            </Typography>
+                            <Typography sx={{ fontSize: 14, color: '#86868B' }}>
+                              {s.title || s.role}
+                            </Typography>
+                          </Stack>
+                        </Stack>
+                      </Box>
+                    ))
+                  )}
+                </Stack>
+              </FormSection>
+              ) : (
               <FormSection id="section-signee" title="Signee">
                 <Box sx={{ width: '100%', overflowX: 'auto' }}>
                   <Stack sx={{ minWidth: { xs: 560, sm: 640 }, gap: 2, alignItems: 'stretch' }}>
@@ -5235,6 +5497,7 @@ export function CreateDispatchPage({
                   </Stack>
                 </Box>
               </FormSection>
+              )}
             </Stack>
           </Box>
           </Box>
@@ -5345,7 +5608,7 @@ export function CreateDispatchPage({
 
                 <Box sx={{ px: 4, py: 3 }}>
                   <Grid container spacing={2}>
-                    <Grid size={{ xs: 12, md: 6 }}>
+                    <Grid size={halfWidthField}>
                       <LabeledField
                         name="newContactFirstName"
                         label="First Name"
@@ -5355,7 +5618,7 @@ export function CreateDispatchPage({
                         onChange={setCreateContactFirstName}
                       />
                     </Grid>
-                    <Grid size={{ xs: 12, md: 6 }}>
+                    <Grid size={halfWidthField}>
                       <LabeledField
                         name="newContactLastName"
                         label="Last Name"
@@ -5378,7 +5641,7 @@ export function CreateDispatchPage({
                       />
                     </Grid>
 
-                    <Grid size={{ xs: 12, md: 6 }}>
+                    <Grid size={halfWidthField}>
                       <LabeledField
                         name="newContactJobTitle"
                         label="Job Title"
@@ -5388,7 +5651,7 @@ export function CreateDispatchPage({
                         onChange={setCreateContactJobTitle}
                       />
                     </Grid>
-                    <Grid size={{ xs: 12, md: 6 }}>
+                    <Grid size={halfWidthField}>
                       <Stack spacing={0.75} sx={{ width: '100%' }}>
                         <Typography sx={figmaLabelSx}>
                           Phone No.
@@ -5560,7 +5823,7 @@ export function CreateDispatchPage({
 
                 <Box sx={{ px: 4, py: 3 }}>
                   <Grid container spacing={2}>
-                    <Grid size={{ xs: 12, md: 6 }}>
+                    <Grid size={halfWidthField}>
                       <LabeledField
                         name="newCompanyDomain"
                         label="Company Domain"
@@ -5570,7 +5833,7 @@ export function CreateDispatchPage({
                         onChange={setCreateCompanyDomain}
                       />
                     </Grid>
-                    <Grid size={{ xs: 12, md: 6 }}>
+                    <Grid size={halfWidthField}>
                       <LabeledField
                         name="newCompanyName"
                         label="Company Name"
@@ -5580,7 +5843,7 @@ export function CreateDispatchPage({
                         onChange={setCreateCompanyName}
                       />
                     </Grid>
-                    <Grid size={{ xs: 12, md: 6 }}>
+                    <Grid size={halfWidthField}>
                       <LabeledField
                         name="newCompanyMarketVertical"
                         label="Market Vertical"
@@ -5592,7 +5855,7 @@ export function CreateDispatchPage({
                         onChange={setCreateCompanyMarketVertical}
                       />
                     </Grid>
-                    <Grid size={{ xs: 12, md: 6 }}>
+                    <Grid size={halfWidthField}>
                       <LabeledField
                         name="newCompanyPartnershipStatus"
                         label="Strategic Partnership Status"
@@ -5604,7 +5867,7 @@ export function CreateDispatchPage({
                         onChange={setCreateCompanyPartnershipStatus}
                       />
                     </Grid>
-                    <Grid size={{ xs: 12, md: 6 }}>
+                    <Grid size={halfWidthField}>
                       <LabeledField
                         name="newCompanyEmployees"
                         label="No. of Employees"
@@ -5614,7 +5877,7 @@ export function CreateDispatchPage({
                         onChange={setCreateCompanyEmployees}
                       />
                     </Grid>
-                    <Grid size={{ xs: 12, md: 6 }}>
+                    <Grid size={halfWidthField}>
                       <LabeledField
                         name="newCompanyRevenue"
                         label="Revenue"
@@ -5734,6 +5997,107 @@ export function CreateDispatchPage({
                 });
               }}
             />
+
+            {/* Mobile only: add/edit signee bottom sheet, kept inside the phone frame. */}
+            <Drawer
+              anchor="bottom"
+              open={isMobileVariant && signeeSheetOpen}
+              onClose={() => setSigneeSheetOpen(false)}
+              container={() => document.getElementById('mobile-shell')}
+              sx={{ position: 'absolute' }}
+              slotProps={{
+                backdrop: {
+                  // Stops above the shell's home-indicator strip so it stays white.
+                  sx: {
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: `${MOBILE_HOME_INDICATOR}px`,
+                    bgcolor: MOBILE_SHEET_SCRIM,
+                  },
+                },
+                paper: {
+                  sx: {
+                    position: 'absolute',
+                    bottom: `${MOBILE_HOME_INDICATOR}px`,
+                    borderRadius: MOBILE_SHEET_RADIUS,
+                    boxShadow: MOBILE_SHEET_SHADOW,
+                    px: 2,
+                    pt: 1,
+                    pb: 2,
+                  },
+                },
+              }}
+            >
+              <Box sx={{ width: 40, height: 4, borderRadius: 100, bgcolor: '#D0CFD2', mx: 'auto' }} />
+              <Typography sx={{ fontSize: 18, fontWeight: 700, color: '#262527', py: 1.5 }}>
+                {signeeSheetEditId ? 'Edit Signee' : 'Add Signee'}
+              </Typography>
+              <Divider sx={{ borderColor: '#E6E6E7', mx: -2 }} />
+              <Stack spacing={2} sx={{ py: 2 }}>
+                <LabeledField
+                  name="sheetSigneeName"
+                  label="Name"
+                  required
+                  placeholder="Enter name"
+                  value={newSigneeName}
+                  onChange={setNewSigneeName}
+                />
+                <LabeledField
+                  name="sheetSigneeTitle"
+                  label="Title"
+                  placeholder="Enter title"
+                  value={newSigneeTitle}
+                  onChange={setNewSigneeTitle}
+                />
+                <LabeledField
+                  name="sheetSigneeEmail"
+                  label="Email"
+                  placeholder="Enter email"
+                  value={newSigneeEmail}
+                  onChange={setNewSigneeEmail}
+                />
+              </Stack>
+              <Divider sx={{ borderColor: '#E6E6E7', mx: -2 }} />
+              <Button
+                type="button"
+                variant="contained"
+                fullWidth
+                onClick={() => {
+                  const name = newSigneeName.trim();
+                  if (!name) {
+                    setSnackbar({ open: true, message: 'Please enter a name.', severity: 'error' });
+                    return;
+                  }
+                  const title = newSigneeTitle.trim() || undefined;
+                  const email = newSigneeEmail.trim() || undefined;
+                  setSigneeCards((prev) =>
+                    signeeSheetEditId
+                      ? prev.map((c) =>
+                          c.id === signeeSheetEditId ? { ...c, name, title, email } : c,
+                        )
+                      : [...prev, { id: `s${Date.now()}`, name, role: 'Client', title, email }],
+                  );
+                  setSigneeSheetOpen(false);
+                  setSigneeSheetEditId(null);
+                  setNewSigneeName('');
+                  setNewSigneeTitle('');
+                  setNewSigneeEmail('');
+                }}
+                sx={{
+                  mt: 2,
+                  py: 1.5,
+                  borderRadius: '10px',
+                  textTransform: 'none',
+                  fontSize: 16,
+                  fontWeight: 600,
+                  boxShadow: 'none',
+                }}
+              >
+                {signeeSheetEditId ? 'Save Signee' : 'Add Signee'}
+              </Button>
+            </Drawer>
       </Box>
     </Box>
   );

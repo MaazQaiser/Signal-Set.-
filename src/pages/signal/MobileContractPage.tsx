@@ -1,7 +1,14 @@
-import { Box, IconButton, Typography } from '@mui/material';
+import { Box, GlobalStyles, IconButton, Typography } from '@mui/material';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import { useNavigate } from 'react-router-dom';
 import { CreateDispatchPage } from './CreateDispatchPage';
+import {
+  MOBILE_HOME_INDICATOR,
+  MOBILE_SHEET_SCRIM_ID,
+  MOBILE_SHELL_HEIGHT,
+  MOBILE_SHELL_WIDTH,
+  mobileSheetGlobalStyles,
+} from './mobileSheet';
 
 const C = {
   bg: '#F6F6F8',
@@ -18,6 +25,10 @@ export function MobileContractPage() {
   const navigate = useNavigate();
 
   return (
+    <>
+    <GlobalStyles styles={mobileSheetGlobalStyles} />
+    {/* Shared dimmer for popup sheets that have no backdrop of their own. */}
+    <Box id={MOBILE_SHEET_SCRIM_ID} aria-hidden />
     <Box
       sx={{
         minHeight: '100vh',
@@ -32,8 +43,8 @@ export function MobileContractPage() {
         id="mobile-shell"
         sx={{
           position: 'relative',
-          width: 375,
-          height: 812,
+          width: MOBILE_SHELL_WIDTH,
+          height: MOBILE_SHELL_HEIGHT,
           flexShrink: 0,
           bgcolor: C.bg,
           overflow: 'hidden',
@@ -94,7 +105,7 @@ export function MobileContractPage() {
         {/* Home indicator */}
         <Box
           sx={{
-            height: 34,
+            height: MOBILE_HOME_INDICATOR,
             flexShrink: 0,
             bgcolor: C.white,
             display: 'flex',
@@ -106,5 +117,6 @@ export function MobileContractPage() {
         </Box>
       </Box>
     </Box>
+    </>
   );
 }
