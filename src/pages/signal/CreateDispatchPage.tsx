@@ -1537,6 +1537,15 @@ export function CreateDispatchPage({
   const [signeeSheetOpen, setSigneeSheetOpen] = useState(false);
   const [signeeSheetEditId, setSigneeSheetEditId] = useState<string | null>(null);
   const [termsConditionsModalOpen, setTermsConditionsModalOpen] = useState(false);
+  const showTermsConditionsButton =
+    Boolean(propertyAddress.trim()) && Boolean(franchiseAssociation.trim());
+
+  useEffect(() => {
+    if (!showTermsConditionsButton) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- close when franchise/property cleared
+      setTermsConditionsModalOpen(false);
+    }
+  }, [showTermsConditionsButton]);
 
   const [contactDirectory, setContactDirectory] = useState<ContactDirectoryUser[]>(() => [...CONTACT_DIRECTORY_USERS]);
   const [createContactModalOpen, setCreateContactModalOpen] = useState(false);
@@ -5313,6 +5322,7 @@ export function CreateDispatchPage({
                 id="section-signee"
                 title="Signee"
                 titleEnd={
+                  showTermsConditionsButton ? (
                   <Button
                     type="button"
                     variant="outlined"
@@ -5343,6 +5353,7 @@ export function CreateDispatchPage({
                   >
                     Terms & Conditions
                   </Button>
+                  ) : undefined
                 }
               >
                 <Box sx={{ width: '100%', overflowX: 'auto' }}>
@@ -5640,7 +5651,7 @@ export function CreateDispatchPage({
               </Alert>
             </Snackbar>
 
-            {termsConditionsModalOpen ? (
+            {termsConditionsModalOpen && showTermsConditionsButton ? (
               <Box
                 role="presentation"
                 onClick={() => setTermsConditionsModalOpen(false)}

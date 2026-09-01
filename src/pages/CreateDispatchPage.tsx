@@ -128,11 +128,13 @@ const CONTACT_DIRECTORY_USERS: ContactDirectoryUser[] = [
 ];
 
 const CONTACT_ROLE_ROWS = [
-  { id: 'decision_maker', label: 'Billing', color: '#2E964B', bg: '#EFF8EF' },
+  { id: 'decision_maker', label: 'Decision Maker', color: '#9747FF', bg: '#F5EDFF' },
+  { id: 'billing', label: 'Billing', color: '#2E964B', bg: '#EFF8EF' },
 ] as const;
 
 const EMPTY_CONTACT_ROLE_SELECTIONS: Record<string, string[]> = {
   decision_maker: [],
+  billing: [],
 };
 
 /** Figma 44329:162823 — Affiliation (multi-select pills). */
@@ -889,7 +891,7 @@ export function CreateDispatchPage() {
     if (!propertyAddress.trim()) e.propertyAddress = 'Property address is required.';
     if (!propertyName.trim()) e.propertyName = 'Property name is required.';
     if ((contactUserByRole.decision_maker ?? []).length === 0) {
-      e.decisionMakerContacts = 'Select at least one Billing contact.';
+      e.decisionMakerContacts = 'Select at least one Decision Maker contact.';
     }
     if (!contactName.trim()) e.contactName = 'Name is required.';
     if (!contactEmail.trim()) e.contactEmail = 'Email is required.';
@@ -2315,7 +2317,7 @@ export function CreateDispatchPage() {
                             <AddOutlined sx={{ fontSize: 14, color: '#146DFF' }} />
                           </Box>
                           <Typography sx={{ fontSize: 14, fontWeight: 600, color: '#262527', textAlign: 'center' }}>
-                            Add another product
+                            Add Product
                           </Typography>
                         </Button>
                       </Stack>
@@ -2391,33 +2393,6 @@ export function CreateDispatchPage() {
                             options={paymentTermsOptions}
                           />
                         </Grid>
-                        {paymentMethod === 'Credit Card' ? (
-                          <Grid size={12}>
-                            <Button
-                              type="button"
-                              variant="outlined"
-                              fullWidth
-                              startIcon={<AddOutlined />}
-                              sx={{
-                                height: 36,
-                                minHeight: 36,
-                                px: '14px',
-                                py: 0,
-                                fontSize: 14,
-                                fontWeight: 500,
-                                lineHeight: '20px',
-                                color: '#444446',
-                                textTransform: 'none',
-                                borderRadius: '8px',
-                                borderColor: '#E6E6E7',
-                                gap: 1,
-                                '&:hover': { backgroundColor: 'rgba(0,0,0,0.04)', borderColor: '#E6E6E7' },
-                              }}
-                            >
-                              Add Payment Method
-                            </Button>
-                          </Grid>
-                        ) : null}
                       </Grid>
                     </Stack>
                   </Grid>
@@ -2624,6 +2599,51 @@ export function CreateDispatchPage() {
                       ) : null}
                     </Stack>
                   </Grid>
+                  {paymentMethod === 'Credit Card' ? (
+                    <Grid size={12}>
+                      <Button
+                        type="button"
+                        variant="outlined"
+                        sx={{
+                          width: '100%',
+                          minHeight: 0,
+                          border: '1px solid #E6E6E7',
+                          borderStyle: 'dashed',
+                          borderRadius: '8px',
+                          textTransform: 'none',
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 1.5,
+                          px: 2,
+                          py: 1.5,
+                          bgcolor: 'transparent',
+                          color: 'inherit',
+                          alignSelf: 'stretch',
+                          boxSizing: 'border-box',
+                          '&:hover': { borderColor: '#D0CFD2', bgcolor: 'rgba(0,0,0,0.03)' },
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            width: 20,
+                            height: 20,
+                            flexShrink: 0,
+                            borderRadius: '50%',
+                            bgcolor: '#E5F6FF',
+                            border: '1px solid #146DFF',
+                            display: 'grid',
+                            placeItems: 'center',
+                          }}
+                        >
+                          <AddOutlined sx={{ fontSize: 14, color: '#146DFF' }} />
+                        </Box>
+                        <Typography sx={{ fontSize: 14, fontWeight: 600, color: '#262527', textAlign: 'center' }}>
+                          Add Payment Method
+                        </Typography>
+                      </Button>
+                    </Grid>
+                  ) : null}
                 </Grid>
               </FormSection>
 
