@@ -30,6 +30,7 @@ import Grid from '@mui/material/Grid';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import AddOutlined from '@mui/icons-material/AddOutlined';
 import ApartmentOutlined from '@mui/icons-material/ApartmentOutlined';
+import AccessTimeOutlined from '@mui/icons-material/AccessTimeOutlined';
 import CalendarTodayOutlined from '@mui/icons-material/CalendarTodayOutlined';
 import CloseOutlined from '@mui/icons-material/CloseOutlined';
 import DashboardOutlined from '@mui/icons-material/DashboardOutlined';
@@ -48,6 +49,7 @@ import PlaceOutlined from '@mui/icons-material/PlaceOutlined';
 import MapOutlined from '@mui/icons-material/MapOutlined';
 import DirectionsCarOutlined from '@mui/icons-material/DirectionsCarOutlined';
 import PersonOutlineOutlined from '@mui/icons-material/PersonOutlineOutlined';
+import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined';
 import PublicOutlined from '@mui/icons-material/PublicOutlined';
 import Security from '@mui/icons-material/Security';
 import SettingsOutlined from '@mui/icons-material/SettingsOutlined';
@@ -152,6 +154,30 @@ const figmaTextFieldSx = {
   '& .MuiInputBase-input.Mui-disabled': { WebkitTextFillColor: '#86868B', color: '#86868B' },
   '& .MuiSelect-icon .MuiSvgIcon-root': { fontSize: 16 },
 } as const;
+
+/** Time inputs: hide the browser's own indicator in favour of the clock adornment. */
+const figmaTimeFieldSx = {
+  ...figmaTextFieldSx,
+  '& input[type="time"]::-webkit-calendar-picker-indicator': { display: 'none' },
+} as const;
+
+/** Opens the native time picker when the clock adornment is clicked. */
+function TimeFieldClockAdornment() {
+  return (
+    <InputAdornment position="end">
+      <AccessTimeOutlined
+        sx={{ fontSize: 14, color: '#86868B', cursor: 'pointer' }}
+        onClick={(event) => {
+          const input = event.currentTarget
+            .closest('.MuiInputBase-root')
+            ?.querySelector('input');
+          input?.focus();
+          input?.showPicker?.();
+        }}
+      />
+    </InputAdornment>
+  );
+}
 
 const figmaLabelSx = { color: '#86868B', fontSize: 12, fontWeight: 500, lineHeight: '18px' } as const;
 
@@ -1112,7 +1138,9 @@ function LabeledDatePicker(props: {
             ...(props.placeholder ? { placeholder: props.placeholder } : {}),
             // PickersTextField slot typings omit `placeholder`; underlying field supports it.
           } as Record<string, unknown>,
-          openPickerIcon: { sx: { color: '#6A6A70', fontSize: 16 } },
+          // Matches the clock adornment on time fields: 14px glyph, no button padding.
+          openPickerButton: { sx: { p: 0, mr: 0.25 } },
+          openPickerIcon: { sx: { color: '#86868B', fontSize: 14 } },
         }}
       />
     </Stack>
@@ -1508,6 +1536,7 @@ export function CreateDispatchPage({
   // Mobile only: add/edit a signee in a bottom sheet instead of an inline table row.
   const [signeeSheetOpen, setSigneeSheetOpen] = useState(false);
   const [signeeSheetEditId, setSigneeSheetEditId] = useState<string | null>(null);
+  const [termsConditionsModalOpen, setTermsConditionsModalOpen] = useState(false);
 
   const [contactDirectory, setContactDirectory] = useState<ContactDirectoryUser[]>(() => [...CONTACT_DIRECTORY_USERS]);
   const [createContactModalOpen, setCreateContactModalOpen] = useState(false);
@@ -1871,6 +1900,7 @@ export function CreateDispatchPage({
     setNewSigneeTitle('');
     setSigneeSheetOpen(false);
     setSigneeSheetEditId(null);
+    setTermsConditionsModalOpen(false);
     setCreateContactModalOpen(false);
     setCreateContactEmail('');
     setCreateContactFirstName('');
@@ -3735,8 +3765,11 @@ export function CreateDispatchPage({
                                     name={`startTime_${svc.id}`}
                                     value={svc.startTime}
                                     onChange={(e) => updateSignalService(svc.id, { startTime: e.target.value })}
-                                    sx={figmaTextFieldSx}
-                                    slotProps={{ htmlInput: { step: 300 } }}
+                                    sx={figmaTimeFieldSx}
+                                    slotProps={{
+                                      htmlInput: { step: 300 },
+                                      input: { endAdornment: <TimeFieldClockAdornment /> },
+                                    }}
                                   />
                                 </Stack>
                               </Grid>
@@ -3752,8 +3785,11 @@ export function CreateDispatchPage({
                                     name={`endTime_${svc.id}`}
                                     value={svc.endTime}
                                     onChange={(e) => updateSignalService(svc.id, { endTime: e.target.value })}
-                                    sx={figmaTextFieldSx}
-                                    slotProps={{ htmlInput: { step: 300 } }}
+                                    sx={figmaTimeFieldSx}
+                                    slotProps={{
+                                      htmlInput: { step: 300 },
+                                      input: { endAdornment: <TimeFieldClockAdornment /> },
+                                    }}
                                   />
                                 </Stack>
                               </Grid>
@@ -3891,8 +3927,11 @@ export function CreateDispatchPage({
                                         onChange={(e) =>
                                           updatePatrolVisitSet(svc.id, visitSet.id, { startTime: e.target.value })
                                         }
-                                        sx={figmaTextFieldSx}
-                                        slotProps={{ htmlInput: { step: 300 } }}
+                                        sx={figmaTimeFieldSx}
+                                        slotProps={{
+                                          htmlInput: { step: 300 },
+                                          input: { endAdornment: <TimeFieldClockAdornment /> },
+                                        }}
                                       />
                                     </Stack>
                                   </Grid>
@@ -3911,8 +3950,11 @@ export function CreateDispatchPage({
                                         onChange={(e) =>
                                           updatePatrolVisitSet(svc.id, visitSet.id, { endTime: e.target.value })
                                         }
-                                        sx={figmaTextFieldSx}
-                                        slotProps={{ htmlInput: { step: 300 } }}
+                                        sx={figmaTimeFieldSx}
+                                        slotProps={{
+                                          htmlInput: { step: 300 },
+                                          input: { endAdornment: <TimeFieldClockAdornment /> },
+                                        }}
                                       />
                                     </Stack>
                                   </Grid>
@@ -5267,7 +5309,42 @@ export function CreateDispatchPage({
                 </Stack>
               </FormSection>
               ) : (
-              <FormSection id="section-signee" title="Signee">
+              <FormSection
+                id="section-signee"
+                title="Signee"
+                titleEnd={
+                  <Button
+                    type="button"
+                    variant="outlined"
+                    disableRipple
+                    startIcon={<PictureAsPdfOutlined sx={{ fontSize: 16 }} />}
+                    onClick={() => setTermsConditionsModalOpen(true)}
+                    sx={{
+                      height: 32,
+                      minHeight: 32,
+                      px: 1.5,
+                      py: 0,
+                      textTransform: 'none',
+                      fontSize: 13,
+                      fontWeight: 500,
+                      lineHeight: '18px',
+                      color: '#262527',
+                      borderColor: '#E6E6E7',
+                      borderRadius: '8px',
+                      bgcolor: '#FFFFFF',
+                      boxShadow: 'none',
+                      flexShrink: 0,
+                      '& .MuiButton-startIcon': { mr: 0.75, color: '#B32318' },
+                      '&:hover': {
+                        borderColor: '#D0CFD2',
+                        bgcolor: '#F8F8F9',
+                      },
+                    }}
+                  >
+                    Terms & Conditions
+                  </Button>
+                }
+              >
                 <Box sx={{ width: '100%', overflowX: 'auto' }}>
                   <Stack sx={{ minWidth: { xs: 560, sm: 640 }, gap: 2, alignItems: 'stretch' }}>
                     {signeeCards.length === 0 && !addSigneeRowOpen ? (
@@ -5562,6 +5639,68 @@ export function CreateDispatchPage({
                 {snackbar.message}
               </Alert>
             </Snackbar>
+
+            {termsConditionsModalOpen ? (
+              <Box
+                role="presentation"
+                onClick={() => setTermsConditionsModalOpen(false)}
+                sx={{
+                  position: 'fixed',
+                  inset: 0,
+                  zIndex: (t) => t.zIndex.modal,
+                  bgcolor: 'rgba(0, 0, 0, 0.5)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  p: { xs: 1.5, sm: 3 },
+                }}
+              >
+                <Box
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label="Terms and Conditions"
+                  onClick={(e) => e.stopPropagation()}
+                  sx={{
+                    position: 'relative',
+                    width: '100%',
+                    height: '100%',
+                    maxWidth: 1100,
+                    maxHeight: '100%',
+                    bgcolor: '#323639',
+                    boxShadow: '0 24px 64px rgba(0, 0, 0, 0.45)',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <IconButton
+                    aria-label="Close terms and conditions"
+                    onClick={() => setTermsConditionsModalOpen(false)}
+                    sx={{
+                      position: 'absolute',
+                      top: 6,
+                      right: 6,
+                      zIndex: 2,
+                      color: '#FFFFFF',
+                      bgcolor: 'rgba(0, 0, 0, 0.35)',
+                      '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.55)' },
+                    }}
+                  >
+                    <CloseOutlined sx={{ fontSize: 20 }} />
+                  </IconButton>
+                  <Box
+                    component="iframe"
+                    title="Terms and Conditions"
+                    src="/terms-and-conditions.pdf#toolbar=1&navpanes=0"
+                    sx={{
+                      display: 'block',
+                      width: '100%',
+                      height: '100%',
+                      border: 0,
+                      bgcolor: '#323639',
+                    }}
+                  />
+                </Box>
+              </Box>
+            ) : null}
 
             <Dialog
               open={createContactModalOpen}
