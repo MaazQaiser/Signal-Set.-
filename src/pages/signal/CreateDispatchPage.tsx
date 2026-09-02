@@ -254,9 +254,7 @@ const FORM_PROGRESS_SECTIONS = [
   { id: 'section-proposal', label: 'Proposal Details' },
   { id: 'section-contacts', label: 'Contact Details' },
   { id: 'section-services', label: 'Services' },
-  { id: 'section-on-demand', label: 'On Demand' },
   { id: 'section-billing', label: 'Billing & Payment Details' },
-  { id: 'section-signee', label: 'Signee' },
 ] as const;
 
 /** Figma 44329:162823 — Affiliation (multi-select pills). */
@@ -1613,26 +1611,6 @@ export function CreateDispatchPage({
       );
     };
 
-    const isOnDemandComplete = (item: OnDemandItem) => {
-      if (item.kind === 'invoice_line') {
-        if (item.isEditing) return false;
-        return (
-          Boolean(item.lineTitle.trim()) &&
-          Boolean(item.invoiceLineItem) &&
-          Boolean(item.price.trim()) &&
-          Boolean(item.quantity.trim())
-        );
-      }
-      if (item.kind === 'extra_job') {
-        return parseMoneyInput(item.pricePerHour) > 0;
-      }
-      if (!item.billingType) return false;
-      if (item.billingType === 'Flat-Rate' || item.billingType === 'Charge Per Alarm') {
-        return Boolean(item.rate.trim());
-      }
-      return true;
-    };
-
     const billingAddressComplete = sameAsPropertyAddress
       ? true
       : Boolean(
@@ -1660,7 +1638,6 @@ export function CreateDispatchPage({
       'section-services':
         serviceScope === 'dispatch_only' ||
         (serviceProducts.length > 0 && serviceProducts.every(isServiceComplete)),
-      'section-on-demand': onDemandItems.length > 0 && onDemandItems.every(isOnDemandComplete),
       'section-billing':
         Boolean(billingOccurrence) &&
         cycleReferenceDateInput != null &&
@@ -1677,9 +1654,6 @@ export function CreateDispatchPage({
         Boolean(billEmail.trim()) &&
         Boolean(billPhoneNumber.trim()) &&
         billingAddressComplete,
-      'section-signee':
-        signeeCards.length > 0 &&
-        signeeCards.every((s) => Boolean(s.name.trim()) && Boolean((s.email ?? '').trim())),
     } as Record<(typeof FORM_PROGRESS_SECTIONS)[number]['id'], boolean>;
   }, [
     companyName,
@@ -1694,7 +1668,6 @@ export function CreateDispatchPage({
     contactUserByRole,
     serviceScope,
     serviceProducts,
-    onDemandItems,
     billingOccurrence,
     cycleReferenceDateInput,
     paymentTerms,
@@ -1715,7 +1688,6 @@ export function CreateDispatchPage({
     billState,
     billCity,
     billZip,
-    signeeCards,
   ]);
 
   const scrollToSection = useCallback((sectionId: string) => {
