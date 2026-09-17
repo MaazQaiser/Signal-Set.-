@@ -1365,6 +1365,7 @@ export function CreateDispatchPage({
   const [contractType, setContractType] = useState('');
   const [billingFrequency, setBillingFrequency] = useState('');
   const [paymentMode, setPaymentMode] = useState('');
+  const [compliancePortal, setCompliancePortal] = useState('');
   const [billingOccurrence, setBillingOccurrence] = useState<'monthly' | 'biweekly' | 'weekly' | 'event' | 'flat'>('weekly');
   const [billingTaxRate, setBillingTaxRate] = useState('0');
   const [flatBillingAmount, setFlatBillingAmount] = useState('');
@@ -1454,6 +1455,32 @@ export function CreateDispatchPage({
         'VendorCafe',
         'VendorCafe (CBRE properties only)',
         'Workday',
+        'Others',
+      ].map((label) => ({ label, value: label })),
+    [],
+  );
+  const compliancePortalOptions = useMemo<UiOption[]>(
+    () =>
+      [
+        'Ariba',
+        'CERTIFICIAL',
+        'Conservice (CONTROL)',
+        'Login.gov',
+        'MyCOI',
+        'NetVendor',
+        'Real Page Vendor Credentialing (Compliance Depot)',
+        'Revyse',
+        'RMIS (Registry Monitoring Insurance Services)',
+        'Sam.gov',
+        'Screens',
+        'Trulieve',
+        'VendorCafe',
+        'Vendorply',
+        'VendorPM',
+        'Vendorpro',
+        'Vendorshield',
+        'VIVE',
+        'V-Verify',
         'Others',
       ].map((label) => ({ label, value: label })),
     [],
@@ -1863,6 +1890,7 @@ export function CreateDispatchPage({
     setContractType('');
     setBillingFrequency('');
     setPaymentMode('');
+    setCompliancePortal('');
     setBillFirstName('');
     setBillLastName('');
     setBillEmail('');
@@ -1985,6 +2013,7 @@ export function CreateDispatchPage({
         contractType,
         billingFrequency,
         paymentMode,
+        compliancePortal,
       },
       signees: signeeCards,
     };
@@ -4956,6 +4985,56 @@ export function CreateDispatchPage({
                                 name="paymentMode"
                                 size="small"
                                 placeholder="Select payment portal"
+                                sx={figmaTextFieldSx}
+                              />
+                            )}
+                          />
+                        </Stack>
+                        <Stack spacing={0.75} sx={{ width: '100%' }}>
+                          <Typography sx={figmaLabelSx}>Compliance Portal</Typography>
+                          <Autocomplete
+                            options={compliancePortalOptions}
+                            value={compliancePortalOptions.find((o) => o.value === compliancePortal) ?? null}
+                            onChange={(_, next) => setCompliancePortal(next?.value ?? '')}
+                            getOptionLabel={(o) => o.label}
+                            isOptionEqualToValue={(a, b) => a.value === b.value}
+                            filterOptions={(options, { inputValue }) => {
+                              const q = inputValue.trim().toLowerCase();
+                              if (!q) return options;
+                              return options.filter(
+                                (o) =>
+                                  o.label.toLowerCase().includes(q) ||
+                                  o.value.toLowerCase().includes(q),
+                              );
+                            }}
+                            popupIcon={<KeyboardArrowDownOutlined sx={{ fontSize: 16, color: '#6A6A70' }} />}
+                            slotProps={{
+                              paper: {
+                                sx: {
+                                  borderRadius: '8px',
+                                  mt: 0.5,
+                                  boxShadow: '0px 8px 24px rgba(15, 23, 42, 0.12)',
+                                },
+                              },
+                              listbox: {
+                                sx: {
+                                  py: 0.5,
+                                  '& .MuiAutocomplete-option': {
+                                    fontSize: 12,
+                                    lineHeight: '18px',
+                                    minHeight: 36,
+                                    py: 1,
+                                    px: 1.5,
+                                  },
+                                },
+                              },
+                            }}
+                            renderInput={(params) => (
+                              <TextField
+                                {...params}
+                                name="compliancePortal"
+                                size="small"
+                                placeholder="Select compliance portal"
                                 sx={figmaTextFieldSx}
                               />
                             )}

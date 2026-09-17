@@ -14,6 +14,7 @@ import {
   FormControlLabel,
   Paper,
   IconButton,
+  Radio,
   InputAdornment,
   MenuItem,
   Snackbar,
@@ -38,6 +39,7 @@ import DescriptionOutlined from '@mui/icons-material/DescriptionOutlined';
 import EditOutlined from '@mui/icons-material/EditOutlined';
 import ExploreOutlined from '@mui/icons-material/ExploreOutlined';
 import GroupsOutlined from '@mui/icons-material/GroupsOutlined';
+import InfoOutlined from '@mui/icons-material/InfoOutlined';
 import KeyboardArrowDown from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowDownOutlined from '@mui/icons-material/KeyboardArrowDownOutlined';
 import NotificationsNoneOutlined from '@mui/icons-material/NotificationsNoneOutlined';
@@ -341,6 +343,35 @@ function parseMoneyInput(s: string) {
   return Number.isFinite(n) ? n : 0;
 }
 
+type BillingFrequencyId = 'annually' | 'semiAnnually' | 'quarterly' | 'monthly';
+
+/**
+ * Recurring billing plans. `months` drives both the period price (monthly
+ * recurring x months) and the payment schedule; `discountPct` is the term
+ * discount a customer earns for paying further ahead.
+ */
+const BILLING_FREQUENCY_PLANS: {
+  id: BillingFrequencyId;
+  label: string;
+  months: number;
+  discountPct: number;
+  cadence: string;
+}[] = [
+  { id: 'annually', label: 'Annually', months: 12, discountPct: 10, cadence: 'year' },
+  { id: 'semiAnnually', label: 'Semi-Annually', months: 6, discountPct: 0, cadence: 'six months' },
+  { id: 'quarterly', label: 'Quarterly', months: 3, discountPct: 5, cadence: 'quarter' },
+  { id: 'monthly', label: 'Monthly', months: 1, discountPct: 0, cadence: 'month' },
+];
+
+function formatBillingAmount(n: number) {
+  return n.toLocaleString('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+}
+
 function LabeledField(props: {
   label?: string;
   required?: boolean;
@@ -630,6 +661,7 @@ export function CreateDispatchPage() {
   ]);
 
   const [contractStartDate, setContractStartDate] = useState<Dayjs | null>(null);
+  const [contractEndDate, setContractEndDate] = useState<Dayjs | null>(null);
   const [cycleReferenceDate, setCycleReferenceDate] = useState<Dayjs | null>(null);
   const [serviceStartDate, setServiceStartDate] = useState<Dayjs | null>(null);
   const [sameAsContractDate, setSameAsContractDate] = useState(false);
@@ -671,6 +703,72 @@ export function CreateDispatchPage() {
       }, 0),
     [serviceProducts],
   );
+
+  const [billingPlanMode, setBillingPlanMode] = useState<'recurring' | 'perService'>('recurring');
+  const [billingFrequency, setBillingFrequency] = useState<BillingFrequencyId>('annually');
+  const [billingDiscountValue, setBillingDiscountValue] = useState('');
+  const [billingDiscountType, setBillingDiscountType] = useState<'percentage' | 'fixed'>('percentage');
+  const [billingExemptTax, setBillingExemptTax] = useState(false);
+
+  /** Period price per plan: monthly recurring x months, less the term discount. */
+  const billingFrequencyPricing = useMemo(
+    () =>
+      BILLING_FREQUENCY_PLANS.map((plan) => {
+        const listPrice = serviceProductsSubtotal * plan.months;
+        return {
+          ...plan,
+          listPrice,
+          price: listPrice * (1 - plan.discountPct / 100),
+        };
+      }),
+    [serviceProductsSubtotal],
+  );
+
+  const selectedBillingPlan =
+    billingFrequencyPricing.find((p) => p.id === billingFrequency) ?? billingFrequencyPricing[0];
+
+  /** Manual discount from the Discount field, applied on top of the term price. */
+  const applyManualDiscount = useCallback(
+    (amount: number) => {
+      const entered = parseMoneyInput(billingDiscountValue);
+      if (entered <= 0) return amount;
+      const off = billingDiscountType === 'percentage' ? amount * (entered / 100) : entered;
+      return Math.max(0, amount - off);
+    },
+    [billingDiscountValue, billingDiscountType],
+  );
+
+  /** Billing starts on the service start date, falling back to the contract start. */
+  const billingStartDate = cycleReferenceDate ?? serviceStartDate ?? contractStartDate;
+
+  /** Payment dates for the selected plan, capped by the contract end date. */
+  const billingSchedule = useMemo(() => {
+    if (!billingStartDate || !contractEndDate || !contractEndDate.isAfter(billingStartDate)) {
+      return [] as Dayjs[];
+    }
+    const dates: Dayjs[] = [];
+    // Guard against a runaway loop on a very long contract / short period.
+    for (let i = 0; i < 240; i += 1) {
+      const next = billingStartDate.add(i * selectedBillingPlan.months, 'month');
+      if (next.isAfter(contractEndDate)) break;
+      dates.push(next);
+    }
+    return dates;
+  }, [billingStartDate, contractEndDate, selectedBillingPlan.months]);
+
+  /** Service visits across the contract, driven by the Service Occurrence interval. */
+  const serviceVisitCount = useMemo(() => {
+    const every = Number.parseInt(occurrenceEvery, 10);
+    const step = Number.isFinite(every) && every > 0 ? every : 1;
+    if (!billingStartDate || !contractEndDate || !contractEndDate.isAfter(billingStartDate)) return 0;
+    let count = 0;
+    for (let i = 0; i < 240; i += 1) {
+      const next = billingStartDate.add(i * step, 'month');
+      if (next.isAfter(contractEndDate)) break;
+      count += 1;
+    }
+    return count;
+  }, [billingStartDate, contractEndDate, occurrenceEvery]);
 
   const [billingType, setBillingType] = useState('');
   const [cycleReferenceDateInput, setCycleReferenceDateInput] = useState<Dayjs | null>(null);
@@ -948,6 +1046,7 @@ export function CreateDispatchPage() {
     setContactUserByRole({ ...EMPTY_CONTACT_ROLE_SELECTIONS });
     setContactDirectory([...CONTACT_DIRECTORY_USERS]);
     setContractStartDate(null);
+    setContractEndDate(null);
     setCycleReferenceDate(null);
     setServiceStartDate(null);
     setSameAsContractDate(false);
@@ -960,6 +1059,11 @@ export function CreateDispatchPage() {
     setPreferredStartTime(null);
     setPreferredEndTime(null);
     setServiceProducts(DEFAULT_SERVICE_PRODUCTS.map((p) => ({ ...p })));
+    setBillingPlanMode('recurring');
+    setBillingFrequency('annually');
+    setBillingDiscountValue('');
+    setBillingDiscountType('percentage');
+    setBillingExemptTax(false);
     setBillingType('');
     setCycleReferenceDateInput(null);
     setPaymentMethod('Credit Card');
@@ -1030,6 +1134,7 @@ export function CreateDispatchPage() {
         ),
       },
       contractStartDate: contractStartDate?.toISOString(),
+      contractEndDate: contractEndDate?.toISOString(),
       cycleReferenceDate: cycleReferenceDate?.toISOString(),
       serviceStartDate: serviceStartDate?.toISOString(),
       sameAsContractDate,
@@ -1059,6 +1164,19 @@ export function CreateDispatchPage() {
         state: billState,
         zip: billZip,
         address: billAddress,
+      },
+      billingFrequency: {
+        mode: billingPlanMode,
+        plan: billingPlanMode === 'recurring' ? billingFrequency : null,
+        termDiscountPct: billingPlanMode === 'recurring' ? selectedBillingPlan.discountPct : 0,
+        amountPerPayment:
+          billingPlanMode === 'recurring'
+            ? applyManualDiscount(selectedBillingPlan.price)
+            : applyManualDiscount(serviceProductsSubtotal),
+        discount: { value: parseMoneyInput(billingDiscountValue), type: billingDiscountType },
+        exemptTax: billingExemptTax,
+        schedule: billingSchedule.map((d) => d.format('YYYY-MM-DD')),
+        visits: billingPlanMode === 'perService' ? serviceVisitCount : null,
       },
       payment: {
         cycleReferenceDate: cycleReferenceDateInput?.format('YYYY-MM-DD') ?? '',
@@ -1997,6 +2115,15 @@ export function CreateDispatchPage() {
                       helperText={fieldErrors.cycleReferenceDate}
                     />
                   </Grid>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <LabeledDatePicker
+                      name="contractEndDate"
+                      label="Contract end date"
+                      placeholder="Select contract end date"
+                      value={contractEndDate}
+                      onChange={setContractEndDate}
+                    />
+                  </Grid>
                 </Grid>
                 <FormControlLabel
                   sx={{ mt: 1.5, alignItems: 'center' }}
@@ -2344,6 +2471,327 @@ export function CreateDispatchPage() {
 
               <FormSection title="Billing and Payment details">
                 <Grid container spacing={2}>
+                  <Grid size={12}>
+                    <Stack
+                      spacing={2}
+                      sx={{
+                        width: '100%',
+                        p: 2,
+                        borderRadius: '12px',
+                        border: '1px solid #E6E6E7',
+                        bgcolor: '#F8F8F9',
+                      }}
+                    >
+                      <Stack
+                        direction="row"
+                        spacing={1.5}
+                        sx={{ alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', rowGap: 1 }}
+                      >
+                        <Typography sx={{ fontSize: 14, fontWeight: 600, lineHeight: '20px', color: '#262527' }}>
+                          Billing Frequency
+                        </Typography>
+                        {contractStartDate && contractEndDate ? (
+                          <Box
+                            sx={{
+                              px: 1.5,
+                              py: 0.5,
+                              borderRadius: '999px',
+                              bgcolor: '#FFFFFF',
+                              border: '1px solid #E6E6E7',
+                            }}
+                          >
+                            <Typography sx={{ fontSize: 12, lineHeight: '18px', color: '#444446' }}>
+                              Contract Duration: {contractStartDate.format('M/D/YYYY')} -{' '}
+                              {contractEndDate.format('M/D/YYYY')}
+                            </Typography>
+                          </Box>
+                        ) : null}
+                      </Stack>
+
+                      <Stack
+                        direction="row"
+                        sx={{
+                          alignSelf: 'flex-start',
+                          p: '3px',
+                          gap: '2px',
+                          borderRadius: '999px',
+                          bgcolor: '#FFFFFF',
+                          border: '1px solid #E6E6E7',
+                        }}
+                      >
+                        {([
+                          { id: 'recurring', label: 'Recurring Plan' },
+                          { id: 'perService', label: 'Per Service Completion' },
+                        ] as const).map((mode) => {
+                          const selected = billingPlanMode === mode.id;
+                          return (
+                            <Button
+                              key={mode.id}
+                              type="button"
+                              disableRipple
+                              onClick={() => setBillingPlanMode(mode.id)}
+                              aria-pressed={selected}
+                              sx={{
+                                minHeight: 24,
+                                height: 24,
+                                px: 1.25,
+                                py: 0,
+                                borderRadius: '999px',
+                                textTransform: 'none',
+                                fontSize: 11,
+                                fontWeight: selected ? 600 : 500,
+                                lineHeight: '16px',
+                                letterSpacing: 0,
+                                whiteSpace: 'nowrap',
+                                minWidth: 0,
+                                boxShadow: 'none',
+                                color: selected ? '#FFFFFF' : '#444446',
+                                bgcolor: selected ? '#146DFF' : 'transparent',
+                                '&:hover': { bgcolor: selected ? '#0F5AD6' : 'rgba(0,0,0,0.04)' },
+                              }}
+                            >
+                              {mode.label}
+                            </Button>
+                          );
+                        })}
+                      </Stack>
+
+                      {billingPlanMode === 'recurring' ? (
+                        <Grid container spacing={1.5}>
+                          {billingFrequencyPricing.map((plan) => {
+                            const selected = billingFrequency === plan.id;
+                            const discounted = plan.discountPct > 0;
+                            return (
+                              <Grid key={plan.id} size={{ xs: 12, sm: 6, lg: 3 }}>
+                                <Box
+                                  role="radio"
+                                  aria-checked={selected}
+                                  tabIndex={0}
+                                  onClick={() => setBillingFrequency(plan.id)}
+                                  onKeyDown={(ev) => {
+                                    if (ev.key === 'Enter' || ev.key === ' ') {
+                                      ev.preventDefault();
+                                      setBillingFrequency(plan.id);
+                                    }
+                                  }}
+                                  sx={{
+                                    height: '100%',
+                                    display: 'flex',
+                                    alignItems: 'flex-start',
+                                    gap: 1,
+                                    px: 1.5,
+                                    py: 1.25,
+                                    cursor: 'pointer',
+                                    borderRadius: '10px',
+                                    bgcolor: '#FFFFFF',
+                                    border: selected ? '1.5px solid #146DFF' : '1px solid #E6E6E7',
+                                    '&:hover': { borderColor: selected ? '#146DFF' : '#D0CFD2' },
+                                  }}
+                                >
+                                  <Radio
+                                    size="small"
+                                    checked={selected}
+                                    tabIndex={-1}
+                                    slotProps={{ input: { 'aria-label': plan.label } }}
+                                    sx={{ p: 0, mt: '2px', color: '#86868B', '&.Mui-checked': { color: '#146DFF' } }}
+                                  />
+                                  <Box sx={{ minWidth: 0 }}>
+                                    <Stack
+                                      direction="row"
+                                      spacing={0.75}
+                                      sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 0.5 }}
+                                    >
+                                      <Typography
+                                        sx={{ fontSize: 13, fontWeight: 600, lineHeight: '20px', color: '#262527' }}
+                                      >
+                                        {plan.label}
+                                      </Typography>
+                                      {discounted ? (
+                                        <Box
+                                          sx={{
+                                            px: 0.75,
+                                            py: '1px',
+                                            borderRadius: '6px',
+                                            bgcolor: '#E5EFFF',
+                                          }}
+                                        >
+                                          <Typography
+                                            sx={{ fontSize: 11, fontWeight: 600, lineHeight: '16px', color: '#146DFF' }}
+                                          >
+                                            {plan.discountPct}% off
+                                          </Typography>
+                                        </Box>
+                                      ) : null}
+                                    </Stack>
+                                    <Stack direction="row" spacing={0.75} sx={{ alignItems: 'baseline', mt: 0.25 }}>
+                                      {discounted ? (
+                                        <Typography
+                                          sx={{
+                                            fontSize: 12,
+                                            lineHeight: '18px',
+                                            color: '#86868B',
+                                            textDecoration: 'line-through',
+                                          }}
+                                        >
+                                          {formatBillingAmount(plan.listPrice)}
+                                        </Typography>
+                                      ) : null}
+                                      <Typography
+                                        sx={{
+                                          fontSize: 13,
+                                          fontWeight: discounted ? 600 : 500,
+                                          lineHeight: '18px',
+                                          color: discounted ? '#146DFF' : '#262527',
+                                        }}
+                                      >
+                                        {formatBillingAmount(plan.price)}
+                                      </Typography>
+                                    </Stack>
+                                  </Box>
+                                </Box>
+                              </Grid>
+                            );
+                          })}
+                        </Grid>
+                      ) : null}
+
+                      <Stack spacing={0.75} sx={{ width: '100%' }}>
+                        <Typography sx={figmaLabelSx}>Discount</Typography>
+                        <Stack
+                          direction={{ xs: 'column', sm: 'row' }}
+                          spacing={2}
+                          sx={{ alignItems: { xs: 'stretch', sm: 'center' } }}
+                        >
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              width: { xs: '100%', sm: 300 },
+                              borderRadius: '8px',
+                              border: '1px solid #E6E6E7',
+                              bgcolor: '#FFFFFF',
+                              overflow: 'hidden',
+                            }}
+                          >
+                            <TextField
+                              size="small"
+                              placeholder="E.g., 10"
+                              value={billingDiscountValue}
+                              onChange={(ev) => setBillingDiscountValue(ev.target.value)}
+                              slotProps={{ htmlInput: { inputMode: 'decimal', 'aria-label': 'Discount value' } }}
+                              sx={{
+                                flex: 1,
+                                minWidth: 0,
+                                '& .MuiOutlinedInput-root': { fontSize: 12 },
+                                '& .MuiOutlinedInput-notchedOutline': { border: 'none' },
+                              }}
+                            />
+                            <Divider orientation="vertical" flexItem sx={{ borderColor: '#E6E6E7' }} />
+                            <TextField
+                              select
+                              size="small"
+                              value={billingDiscountType}
+                              onChange={(ev) =>
+                                setBillingDiscountType(ev.target.value as 'percentage' | 'fixed')
+                              }
+                              slotProps={{
+                                select: { IconComponent: FieldSelectChevronIcon },
+                                htmlInput: { 'aria-label': 'Discount type' },
+                              }}
+                              sx={{
+                                width: 132,
+                                flexShrink: 0,
+                                '& .MuiSelect-select': { fontSize: 12 },
+                                '& .MuiOutlinedInput-notchedOutline': { border: 'none' },
+                              }}
+                            >
+                              <MenuItem value="percentage" sx={{ fontSize: 12 }}>
+                                Percentage
+                              </MenuItem>
+                              <MenuItem value="fixed" sx={{ fontSize: 12 }}>
+                                Fixed
+                              </MenuItem>
+                            </TextField>
+                          </Box>
+                          <FormControlLabel
+                            sx={{ m: 0, gap: 1, width: 'fit-content' }}
+                            control={
+                              <Checkbox
+                                size="small"
+                                checked={billingExemptTax}
+                                onChange={(_, checked) => setBillingExemptTax(checked)}
+                                sx={{ p: 0, color: '#86868B', '&.Mui-checked': { color: '#146dff' } }}
+                              />
+                            }
+                            label={
+                              <Typography sx={{ fontSize: 12, lineHeight: '18px', color: '#262527' }}>
+                                Exempt tax
+                              </Typography>
+                            }
+                          />
+                        </Stack>
+                      </Stack>
+
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        sx={{ alignItems: 'flex-start', px: 1.5, py: 1.25, borderRadius: '8px', bgcolor: '#EAF2FF' }}
+                      >
+                        <InfoOutlined sx={{ fontSize: 16, color: '#146DFF', mt: '1px', flexShrink: 0 }} />
+                        <Typography sx={{ fontSize: 12, lineHeight: '18px', color: '#444446' }}>
+                          {billingPlanMode === 'perService' ? (
+                            <>
+                              Each job is billed at{' '}
+                              <Box component="span" sx={{ fontWeight: 600, color: '#262527' }}>
+                                {formatBillingAmount(applyManualDiscount(serviceProductsSubtotal))}
+                              </Box>{' '}
+                              after completion. You&rsquo;ll receive an invoice after every visit
+                              {serviceVisitCount > 0 ? (
+                                <>
+                                  , and billing ends once all{' '}
+                                  <Box component="span" sx={{ fontWeight: 600, color: '#262527' }}>
+                                    {serviceVisitCount}
+                                  </Box>{' '}
+                                  visits are done.
+                                </>
+                              ) : (
+                                '.'
+                              )}
+                            </>
+                          ) : billingSchedule.length === 0 ? (
+                            'Add a service starting date and a contract end date to preview the payment schedule.'
+                          ) : (
+                            <>
+                              Billing starts on{' '}
+                              <Box component="span" sx={{ fontWeight: 600, color: '#262527' }}>
+                                {billingSchedule[0].format('M/D/YYYY')}
+                              </Box>
+                              . You&rsquo;ll pay{' '}
+                              <Box component="span" sx={{ fontWeight: 600, color: '#262527' }}>
+                                {formatBillingAmount(applyManualDiscount(selectedBillingPlan.price))}
+                              </Box>{' '}
+                              every {selectedBillingPlan.cadence}{' '}
+                              {billingType === 'Post Bill' ? 'in arrears' : 'in advance'} on{' '}
+                              <Box component="span" sx={{ fontWeight: 600, color: '#262527' }}>
+                                {billingSchedule
+                                  .slice(0, 4)
+                                  .map((d) => d.format('M/D/YYYY'))
+                                  .join(', ')}
+                                {billingSchedule.length > 4
+                                  ? `, and ${billingSchedule.length - 4} more`
+                                  : ''}
+                              </Box>
+                              . Billing ends after{' '}
+                              <Box component="span" sx={{ fontWeight: 600, color: '#262527' }}>
+                                {billingSchedule.length}
+                              </Box>{' '}
+                              {billingSchedule.length === 1 ? 'payment' : 'payments'}.
+                            </>
+                          )}
+                        </Typography>
+                      </Stack>
+                    </Stack>
+                  </Grid>
                   <Grid size={12}>
                     <Stack spacing={2} sx={{ width: '100%' }}>
                       <Typography sx={{ fontSize: 14, fontWeight: 600, lineHeight: '20px', color: '#262527' }}>
