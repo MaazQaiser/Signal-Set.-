@@ -1675,6 +1675,7 @@ export function CreateDispatchPage({
         Boolean(contractType) &&
         Boolean(billingFrequency) &&
         Boolean(paymentMode) &&
+        Boolean(compliancePortal) &&
         Boolean(billingContactId) &&
         Boolean(billFirstName.trim()) &&
         Boolean(billLastName.trim()) &&
@@ -1704,6 +1705,7 @@ export function CreateDispatchPage({
     contractType,
     billingFrequency,
     paymentMode,
+    compliancePortal,
     billingContactId,
     billFirstName,
     billLastName,
@@ -4991,7 +4993,10 @@ export function CreateDispatchPage({
                           />
                         </Stack>
                         <Stack spacing={0.75} sx={{ width: '100%' }}>
-                          <Typography sx={figmaLabelSx}>Compliance Portal</Typography>
+                          <Typography sx={figmaLabelSx}>
+                            Compliance Portal
+                            <RequiredAsterisk />
+                          </Typography>
                           <Autocomplete
                             options={compliancePortalOptions}
                             value={compliancePortalOptions.find((o) => o.value === compliancePortal) ?? null}
