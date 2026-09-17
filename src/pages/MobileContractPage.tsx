@@ -25,6 +25,16 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import dayjs from 'dayjs';
+import {
+  applyBillingDiscount,
+  buildBillingPlanPricing,
+  buildBillingSchedule,
+  countServiceVisits,
+  formatBillingAmount,
+  type BillingFrequencyId,
+  type DiscountType,
+} from '../billing/frequencyPlans';
 
 const C = {
   bg: '#F6F6F8',
@@ -259,6 +269,7 @@ export function MobileContractPage() {
 
   /* ── Contract & dates ── */
   const [contractStartDate, setContractStartDate]   = useState('');
+  const [contractEndDate, setContractEndDate]       = useState('');
   const [serviceStartDate, setServiceStartDate]     = useState('');
   const [sameAsContract, setSameAsContract]         = useState(false);
   const [occurrenceEvery, setOccurrenceEvery]       = useState('01');
@@ -304,6 +315,31 @@ export function MobileContractPage() {
   const [billingType, setBillingType]         = useState('');
   const [paymentMethod, setPaymentMethod]     = useState('Credit Card');
   const [paymentTerms, setPaymentTerms]       = useState('');
+
+  /* ── Billing frequency ── */
+  const [billingPlanMode, setBillingPlanMode] = useState<'recurring' | 'perService'>('recurring');
+  const [billingFrequency, setBillingFrequency] = useState<BillingFrequencyId>('annually');
+  const [billingDiscountValue, setBillingDiscountValue] = useState('');
+  const [billingDiscountType, setBillingDiscountType] = useState<DiscountType>('percentage');
+  const [billingExemptTax, setBillingExemptTax] = useState(false);
+
+  const billingPlanPricing = buildBillingPlanPricing(subtotal);
+  const selectedBillingPlan =
+    billingPlanPricing.find((p) => p.id === billingFrequency) ?? billingPlanPricing[0];
+
+  const discountedAmount = (amount: number) =>
+    applyBillingDiscount(amount, parseFloat(billingDiscountValue.replace(/[^0-9.]/g, '')), billingDiscountType);
+
+  // Native date inputs give ISO strings; empty strings parse to an invalid date,
+  // which the schedule helpers treat as "not set".
+  const billingStartDate = serviceStartDate || contractStartDate ? dayjs(serviceStartDate || contractStartDate) : null;
+  const contractEnd = contractEndDate ? dayjs(contractEndDate) : null;
+  const billingSchedule = buildBillingSchedule(billingStartDate, contractEnd, selectedBillingPlan.months);
+  const serviceVisitCount = countServiceVisits(
+    billingStartDate,
+    contractEnd,
+    Number.parseInt(occurrenceEvery, 10),
+  );
 
   /* ── Signees ── */
   const [signees, setSignees]     = useState<Signee[]>([]);
@@ -566,6 +602,7 @@ export function MobileContractPage() {
             <Collapse in={openContractDates}>
               <Stack sx={{ gap: 1.5, pt: 1.5 }}>
                 <Field label="Contract start date" placeholder="MM/DD/YYYY" type="date" value={contractStartDate} onChange={setContractStartDate} required />
+                <Field label="Contract end date" placeholder="MM/DD/YYYY" type="date" value={contractEndDate} onChange={setContractEndDate} />
                 <Stack sx={{ gap: 0.5 }}>
                   <Typography sx={{ fontSize: 12, fontWeight: 500, color: C.grey700 }}>Service starting date</Typography>
                   <FormControlLabel
@@ -683,6 +720,226 @@ export function MobileContractPage() {
             <SectionHeader title="Billing & Payment Details" open={openBilling} onToggle={() => setOpenBilling((v) => !v)} />
             <Collapse in={openBilling}>
               <Stack sx={{ gap: 1.5, pt: 1.5 }}>
+                {/* ── Billing frequency ── */}
+                <Stack
+                  sx={{
+                    gap: 1.25,
+                    p: 1.5,
+                    bgcolor: C.bg,
+                    border: `1px solid ${C.border}`,
+                    borderRadius: '12px',
+                  }}
+                >
+                  <Stack sx={{ gap: 0.25 }}>
+                    <Typography sx={{ fontSize: 13, fontWeight: 700, color: C.black }}>
+                      Billing Frequency
+                    </Typography>
+                    {contractStartDate && contractEndDate ? (
+                      <Typography sx={{ fontSize: 11, color: C.grey400 }}>
+                        Contract Duration: {dayjs(contractStartDate).format('M/D/YYYY')} -{' '}
+                        {dayjs(contractEndDate).format('M/D/YYYY')}
+                      </Typography>
+                    ) : null}
+                  </Stack>
+
+                  <Stack
+                    direction="row"
+                    sx={{
+                      alignSelf: 'flex-start',
+                      p: '3px',
+                      gap: '2px',
+                      bgcolor: C.white,
+                      border: `1px solid ${C.border}`,
+                      borderRadius: '999px',
+                    }}
+                  >
+                    {([
+                      { id: 'recurring', label: 'Recurring Plan' },
+                      { id: 'perService', label: 'Per Service Completion' },
+                    ] as const).map((mode) => {
+                      const selected = billingPlanMode === mode.id;
+                      return (
+                        <Button
+                          key={mode.id}
+                          disableRipple
+                          onClick={() => setBillingPlanMode(mode.id)}
+                          aria-pressed={selected}
+                          sx={{
+                            minHeight: 24,
+                            height: 24,
+                            minWidth: 0,
+                            px: 1.25,
+                            py: 0,
+                            borderRadius: '999px',
+                            textTransform: 'none',
+                            fontSize: 11,
+                            fontWeight: selected ? 600 : 500,
+                            lineHeight: '16px',
+                            whiteSpace: 'nowrap',
+                            boxShadow: 'none',
+                            color: selected ? C.white : C.grey700,
+                            bgcolor: selected ? C.blue : 'transparent',
+                            '&:hover': { bgcolor: selected ? C.blue : 'rgba(0,0,0,0.04)' },
+                          }}
+                        >
+                          {mode.label}
+                        </Button>
+                      );
+                    })}
+                  </Stack>
+
+                  {billingPlanMode === 'recurring' ? (
+                    <Stack sx={{ gap: 1 }}>
+                      {billingPlanPricing.map((plan) => {
+                        const selected = billingFrequency === plan.id;
+                        const discounted = plan.discountPct > 0;
+                        return (
+                          <Stack
+                            key={plan.id}
+                            direction="row"
+                            role="radio"
+                            aria-checked={selected}
+                            onClick={() => setBillingFrequency(plan.id)}
+                            sx={{
+                              alignItems: 'center',
+                              gap: 1,
+                              px: 1.25,
+                              py: 1,
+                              cursor: 'pointer',
+                              bgcolor: C.white,
+                              borderRadius: '10px',
+                              border: selected ? `1.5px solid ${C.blue}` : `1px solid ${C.border}`,
+                            }}
+                          >
+                            <Radio
+                              size="small"
+                              checked={selected}
+                              tabIndex={-1}
+                              slotProps={{ input: { 'aria-label': plan.label } }}
+                              sx={{ p: 0, color: C.grey400, '&.Mui-checked': { color: C.blue } }}
+                            />
+                            <Typography sx={{ fontSize: 13, fontWeight: 600, color: C.black }}>
+                              {plan.label}
+                            </Typography>
+                            {discounted ? (
+                              <Box sx={{ px: 0.75, py: '1px', borderRadius: '6px', bgcolor: '#E5EFFF' }}>
+                                <Typography sx={{ fontSize: 10, fontWeight: 600, color: C.blue }}>
+                                  {plan.discountPct}% off
+                                </Typography>
+                              </Box>
+                            ) : null}
+                            <Stack direction="row" sx={{ gap: 0.75, alignItems: 'baseline', ml: 'auto' }}>
+                              {discounted ? (
+                                <Typography
+                                  sx={{ fontSize: 11, color: C.grey400, textDecoration: 'line-through' }}
+                                >
+                                  {formatBillingAmount(plan.listPrice)}
+                                </Typography>
+                              ) : null}
+                              <Typography
+                                sx={{
+                                  fontSize: 13,
+                                  fontWeight: discounted ? 600 : 500,
+                                  color: discounted ? C.blue : C.black,
+                                }}
+                              >
+                                {formatBillingAmount(plan.price)}
+                              </Typography>
+                            </Stack>
+                          </Stack>
+                        );
+                      })}
+                    </Stack>
+                  ) : null}
+
+                  <Stack sx={{ gap: 0.5 }}>
+                    <Typography sx={{ fontSize: 12, fontWeight: 500, color: C.grey700 }}>Discount</Typography>
+                    <Stack direction="row" sx={{ gap: 1 }}>
+                      <Box
+                        sx={{
+                          flex: 1,
+                          bgcolor: C.white,
+                          border: `1px solid ${C.border}`,
+                          borderRadius: '8px',
+                          px: 1.5,
+                          minHeight: 42,
+                          display: 'flex',
+                          alignItems: 'center',
+                        }}
+                      >
+                        <InputBase
+                          fullWidth
+                          placeholder="E.g., 10"
+                          inputMode="decimal"
+                          value={billingDiscountValue}
+                          onChange={(e) => setBillingDiscountValue(e.target.value)}
+                          inputProps={{ 'aria-label': 'Discount value' }}
+                          sx={{ fontSize: 14, color: C.black, '& input': { p: 0 } }}
+                        />
+                      </Box>
+                      <Box sx={{ width: 132 }}>
+                        <Select
+                          size="small"
+                          fullWidth
+                          value={billingDiscountType}
+                          onChange={(e) => setBillingDiscountType(e.target.value as DiscountType)}
+                          IconComponent={ExpandMoreIcon}
+                          MenuProps={{ disableScrollLock: true }}
+                          inputProps={{ 'aria-label': 'Discount type' }}
+                          sx={{
+                            bgcolor: C.white,
+                            borderRadius: '8px',
+                            fontSize: 14,
+                            height: 42,
+                            '& .MuiOutlinedInput-notchedOutline': { borderColor: C.border },
+                            '& .MuiSelect-select': { py: 0, px: 1.5, display: 'flex', alignItems: 'center' },
+                          }}
+                        >
+                          <MenuItem value="percentage" sx={{ fontSize: 14 }}>Percentage</MenuItem>
+                          <MenuItem value="fixed" sx={{ fontSize: 14 }}>Fixed</MenuItem>
+                        </Select>
+                      </Box>
+                    </Stack>
+                    <FormControlLabel
+                      sx={{ m: 0, gap: 1, width: 'fit-content' }}
+                      control={
+                        <Checkbox
+                          size="small"
+                          checked={billingExemptTax}
+                          onChange={(e) => setBillingExemptTax(e.target.checked)}
+                          sx={{ p: 0, color: C.grey400, '&.Mui-checked': { color: C.blue } }}
+                        />
+                      }
+                      label={<Typography sx={{ fontSize: 13, color: C.grey700 }}>Exempt tax</Typography>}
+                    />
+                  </Stack>
+
+                  <Box sx={{ bgcolor: '#EAF2FF', borderRadius: '8px', px: 1.25, py: 1 }}>
+                    <Typography sx={{ fontSize: 11, lineHeight: '16px', color: C.grey700 }}>
+                      {billingPlanMode === 'perService'
+                        ? `Each job is billed at ${formatBillingAmount(discountedAmount(subtotal))} after completion. You'll receive an invoice after every visit${
+                            serviceVisitCount > 0
+                              ? `, and billing ends once all ${serviceVisitCount} visits are done.`
+                              : '.'
+                          }`
+                        : billingSchedule.length === 0
+                          ? 'Add a service starting date and a contract end date to preview the payment schedule.'
+                          : `Billing starts on ${billingSchedule[0].format('M/D/YYYY')}. You'll pay ${formatBillingAmount(
+                              discountedAmount(selectedBillingPlan.price),
+                            )} every ${selectedBillingPlan.cadence} ${
+                              billingType === 'Post Bill' ? 'in arrears' : 'in advance'
+                            } on ${billingSchedule
+                              .slice(0, 4)
+                              .map((d) => d.format('M/D/YYYY'))
+                              .join(', ')}${
+                              billingSchedule.length > 4 ? `, and ${billingSchedule.length - 4} more` : ''
+                            }. Billing ends after ${billingSchedule.length} ${
+                              billingSchedule.length === 1 ? 'payment' : 'payments'
+                            }.`}
+                    </Typography>
+                  </Box>
+                </Stack>
+
                 <FormControlLabel
                   control={
                     <Checkbox

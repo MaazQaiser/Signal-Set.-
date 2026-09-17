@@ -52,6 +52,14 @@ import Refresh from '@mui/icons-material/Refresh';
 import SettingsOutlined from '@mui/icons-material/SettingsOutlined';
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined';
 import ViewKanbanOutlined from '@mui/icons-material/ViewKanbanOutlined';
+import {
+  applyBillingDiscount,
+  buildBillingPlanPricing,
+  buildBillingSchedule,
+  countServiceVisits,
+  formatBillingAmount,
+  type BillingFrequencyId,
+} from '../billing/frequencyPlans';
 import { AddressMapPickerModal } from '../components/createContract/AddressMapPickerModal';
 import { FormSection } from '../components/createContract/FormSection';
 import { useTheme } from '@mui/material/styles';
@@ -343,34 +351,6 @@ function parseMoneyInput(s: string) {
   return Number.isFinite(n) ? n : 0;
 }
 
-type BillingFrequencyId = 'annually' | 'semiAnnually' | 'quarterly' | 'monthly';
-
-/**
- * Recurring billing plans. `months` drives both the period price (monthly
- * recurring x months) and the payment schedule; `discountPct` is the term
- * discount a customer earns for paying further ahead.
- */
-const BILLING_FREQUENCY_PLANS: {
-  id: BillingFrequencyId;
-  label: string;
-  months: number;
-  discountPct: number;
-  cadence: string;
-}[] = [
-  { id: 'annually', label: 'Annually', months: 12, discountPct: 10, cadence: 'year' },
-  { id: 'semiAnnually', label: 'Semi-Annually', months: 6, discountPct: 0, cadence: 'six months' },
-  { id: 'quarterly', label: 'Quarterly', months: 3, discountPct: 5, cadence: 'quarter' },
-  { id: 'monthly', label: 'Monthly', months: 1, discountPct: 0, cadence: 'month' },
-];
-
-function formatBillingAmount(n: number) {
-  return n.toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  });
-}
 
 function LabeledField(props: {
   label?: string;
@@ -455,6 +435,66 @@ function LabeledField(props: {
             ))
           : null}
       </TextField>
+    </Stack>
+  );
+}
+
+/** Labeled searchable select, for option lists too long to scan in a plain select. */
+function LabeledAutocompleteField(props: {
+  name: string;
+  label: string;
+  required?: boolean;
+  placeholder: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: UiOption[];
+}) {
+  return (
+    <Stack spacing={0.75} sx={{ width: '100%' }}>
+      <Typography sx={figmaLabelSx}>
+        {props.label}
+        {props.required ? <RequiredAsterisk /> : null}
+      </Typography>
+      <Autocomplete
+        options={props.options}
+        value={props.options.find((o) => o.value === props.value) ?? null}
+        onChange={(_, next) => props.onChange(next?.value ?? '')}
+        getOptionLabel={(o) => o.label}
+        isOptionEqualToValue={(a, b) => a.value === b.value}
+        openOnFocus
+        filterOptions={(options, { inputValue }) => {
+          const q = inputValue.trim().toLowerCase();
+          if (!q) return options;
+          return options.filter((o) => o.label.toLowerCase().includes(q));
+        }}
+        popupIcon={<KeyboardArrowDownOutlined sx={{ fontSize: 16, color: '#6A6A70' }} />}
+        slotProps={{
+          paper: {
+            sx: { borderRadius: '8px', mt: 0.5, boxShadow: '0px 8px 24px rgba(15, 23, 42, 0.12)' },
+          },
+          listbox: {
+            sx: {
+              py: 0.5,
+              '& .MuiAutocomplete-option': {
+                fontSize: 12,
+                lineHeight: '18px',
+                minHeight: 36,
+                py: 1,
+                px: 1.5,
+              },
+            },
+          },
+        }}
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            name={props.name}
+            size="small"
+            placeholder={props.placeholder}
+            sx={figmaTextFieldSx}
+          />
+        )}
+      />
     </Stack>
   );
 }
@@ -710,17 +750,8 @@ export function CreateDispatchPage() {
   const [billingDiscountType, setBillingDiscountType] = useState<'percentage' | 'fixed'>('percentage');
   const [billingExemptTax, setBillingExemptTax] = useState(false);
 
-  /** Period price per plan: monthly recurring x months, less the term discount. */
   const billingFrequencyPricing = useMemo(
-    () =>
-      BILLING_FREQUENCY_PLANS.map((plan) => {
-        const listPrice = serviceProductsSubtotal * plan.months;
-        return {
-          ...plan,
-          listPrice,
-          price: listPrice * (1 - plan.discountPct / 100),
-        };
-      }),
+    () => buildBillingPlanPricing(serviceProductsSubtotal),
     [serviceProductsSubtotal],
   );
 
@@ -729,12 +760,8 @@ export function CreateDispatchPage() {
 
   /** Manual discount from the Discount field, applied on top of the term price. */
   const applyManualDiscount = useCallback(
-    (amount: number) => {
-      const entered = parseMoneyInput(billingDiscountValue);
-      if (entered <= 0) return amount;
-      const off = billingDiscountType === 'percentage' ? amount * (entered / 100) : entered;
-      return Math.max(0, amount - off);
-    },
+    (amount: number) =>
+      applyBillingDiscount(amount, parseMoneyInput(billingDiscountValue), billingDiscountType),
     [billingDiscountValue, billingDiscountType],
   );
 
@@ -742,33 +769,17 @@ export function CreateDispatchPage() {
   const billingStartDate = cycleReferenceDate ?? serviceStartDate ?? contractStartDate;
 
   /** Payment dates for the selected plan, capped by the contract end date. */
-  const billingSchedule = useMemo(() => {
-    if (!billingStartDate || !contractEndDate || !contractEndDate.isAfter(billingStartDate)) {
-      return [] as Dayjs[];
-    }
-    const dates: Dayjs[] = [];
-    // Guard against a runaway loop on a very long contract / short period.
-    for (let i = 0; i < 240; i += 1) {
-      const next = billingStartDate.add(i * selectedBillingPlan.months, 'month');
-      if (next.isAfter(contractEndDate)) break;
-      dates.push(next);
-    }
-    return dates;
-  }, [billingStartDate, contractEndDate, selectedBillingPlan.months]);
+  const billingSchedule = useMemo(
+    () => buildBillingSchedule(billingStartDate, contractEndDate, selectedBillingPlan.months),
+    [billingStartDate, contractEndDate, selectedBillingPlan.months],
+  );
 
   /** Service visits across the contract, driven by the Service Occurrence interval. */
-  const serviceVisitCount = useMemo(() => {
-    const every = Number.parseInt(occurrenceEvery, 10);
-    const step = Number.isFinite(every) && every > 0 ? every : 1;
-    if (!billingStartDate || !contractEndDate || !contractEndDate.isAfter(billingStartDate)) return 0;
-    let count = 0;
-    for (let i = 0; i < 240; i += 1) {
-      const next = billingStartDate.add(i * step, 'month');
-      if (next.isAfter(contractEndDate)) break;
-      count += 1;
-    }
-    return count;
-  }, [billingStartDate, contractEndDate, occurrenceEvery]);
+  const serviceVisitCount = useMemo(
+    () =>
+      countServiceVisits(billingStartDate, contractEndDate, Number.parseInt(occurrenceEvery, 10)),
+    [billingStartDate, contractEndDate, occurrenceEvery],
+  );
 
   const [billingType, setBillingType] = useState('');
   const [cycleReferenceDateInput, setCycleReferenceDateInput] = useState<Dayjs | null>(null);
@@ -796,6 +807,56 @@ export function CreateDispatchPage() {
       { label: 'Due upon invoice', value: 'Due upon invoice' },
       { label: 'Net 30', value: 'Net 30' },
     ],
+    [],
+  );
+  const [paymentPortal, setPaymentPortal] = useState('');
+  const [compliancePortal, setCompliancePortal] = useState('');
+  const paymentPortalOptions = useMemo<UiOption[]>(
+    () =>
+      [
+        'Aramark',
+        'Ariba',
+        'Bill.com',
+        'CiraNet',
+        'Coupa',
+        'Entrata (VendorAccess)',
+        'IRT',
+        'OpsTechnology (OpsMerchant)',
+        'Paymode (Bottom Technologies)',
+        'Payup',
+        'Retail Link',
+        'Tipalti',
+        'VendorCafe',
+        'VendorCafe (CBRE properties only)',
+        'Workday',
+        'Others',
+      ].map((label) => ({ label, value: label })),
+    [],
+  );
+  const compliancePortalOptions = useMemo<UiOption[]>(
+    () =>
+      [
+        'Ariba',
+        'CERTIFICIAL',
+        'Conservice (CONTROL)',
+        'Login.gov',
+        'MyCOI',
+        'NetVendor',
+        'Real Page Vendor Credentialing (Compliance Depot)',
+        'Revyse',
+        'RMIS (Registry Monitoring Insurance Services)',
+        'Sam.gov',
+        'Screens',
+        'Trulieve',
+        'VendorCafe',
+        'Vendorply',
+        'VendorPM',
+        'Vendorpro',
+        'Vendorshield',
+        'VIVE',
+        'V-Verify',
+        'Others',
+      ].map((label) => ({ label, value: label })),
     [],
   );
 
@@ -1068,6 +1129,8 @@ export function CreateDispatchPage() {
     setCycleReferenceDateInput(null);
     setPaymentMethod('Credit Card');
     setPaymentTerms('');
+    setPaymentPortal('');
+    setCompliancePortal('');
     setBillFirstName('');
     setBillLastName('');
     setBillEmail('');
@@ -1183,6 +1246,8 @@ export function CreateDispatchPage() {
         billingType,
         paymentMethod,
         paymentTerms,
+        paymentPortal,
+        compliancePortal,
       },
       signees: signeeCards,
     };
@@ -2839,6 +2904,28 @@ export function CreateDispatchPage() {
                             onChange={setPaymentTerms}
                             select
                             options={paymentTermsOptions}
+                          />
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 4 }}>
+                          <LabeledAutocompleteField
+                            name="paymentPortal"
+                            label="Payment Portal"
+                            required
+                            placeholder="Select payment portal"
+                            value={paymentPortal}
+                            onChange={setPaymentPortal}
+                            options={paymentPortalOptions}
+                          />
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 4 }}>
+                          <LabeledAutocompleteField
+                            name="compliancePortal"
+                            label="Compliance Portal"
+                            required
+                            placeholder="Select compliance portal"
+                            value={compliancePortal}
+                            onChange={setCompliancePortal}
+                            options={compliancePortalOptions}
                           />
                         </Grid>
                       </Grid>
