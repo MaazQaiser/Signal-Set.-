@@ -1,3 +1,6 @@
+const THUMB = '#9A9AA0';
+const THUMB_HOVER = '#76767C';
+
 /**
  * Persistent scrollbar for the scrolling form column.
  *
@@ -7,9 +10,6 @@
  * track on the right edge of the form at all times.
  */
 export const formScrollbarSx = {
-  // NB: no `scrollbar-width` / `scrollbar-color` here. Setting either makes
-  // Chromium use the standard scrollbar, which on macOS is an overlay that
-  // stays hidden and takes no layout space, and it ignores the rules below.
   '&::-webkit-scrollbar': {
     width: '10px',
   },
@@ -17,13 +17,22 @@ export const formScrollbarSx = {
     background: 'transparent',
   },
   '&::-webkit-scrollbar-thumb': {
-    backgroundColor: '#9A9AA0',
+    backgroundColor: THUMB,
     borderRadius: '999px',
     // Transparent border + content-box clip insets the thumb from the track.
     border: '3px solid transparent',
     backgroundClip: 'content-box',
   },
   '&::-webkit-scrollbar-thumb:hover': {
-    backgroundColor: '#76767C',
+    backgroundColor: THUMB_HOVER,
+  },
+  // Firefox has no ::-webkit-scrollbar and needs the standard properties. They
+  // cannot be set unconditionally: in Chromium they switch the element to the
+  // standard scrollbar, which on macOS is a hidden overlay that ignores the
+  // rules above. This query is false wherever ::-webkit-scrollbar exists, so
+  // each engine gets exactly one of the two styles.
+  '@supports not selector(::-webkit-scrollbar)': {
+    scrollbarWidth: 'thin',
+    scrollbarColor: `${THUMB} transparent`,
   },
 } as const;
