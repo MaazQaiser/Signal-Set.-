@@ -1561,10 +1561,10 @@ export function CreateDispatchPage() {
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
-            // Right padding lives on the scrolling form instead, so its
-            // scrollbar sits flush against the window edge.
+            // Most of the right padding lives on the scrolling form instead,
+            // leaving just a 16px gutter to the right of its scrollbar.
             pl: { xs: 1.5, sm: 3, md: 4 },
-            pr: 0,
+            pr: 2,
             py: { xs: 1.5, sm: 2, md: 2.5 },
           }}
         >

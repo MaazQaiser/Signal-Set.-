@@ -1,5 +1,5 @@
-const THUMB = '#9A9AA0';
-const THUMB_HOVER = '#76767C';
+const THUMB = '#6E6E75';
+const THUMB_HOVER = '#4D4D52';
 
 /**
  * Persistent scrollbar for the scrolling form column.
@@ -11,7 +11,7 @@ const THUMB_HOVER = '#76767C';
  */
 export const formScrollbarSx = {
   '&::-webkit-scrollbar': {
-    width: '10px',
+    width: '12px',
   },
   '&::-webkit-scrollbar-track': {
     background: 'transparent',
