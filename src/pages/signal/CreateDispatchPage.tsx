@@ -58,6 +58,7 @@ import RadioButtonUnchecked from '@mui/icons-material/RadioButtonUnchecked';
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined';
 import ViewKanbanOutlined from '@mui/icons-material/ViewKanbanOutlined';
 import { FormSection } from '../../components/createContract/FormSection';
+import { formScrollbarSx } from '../../styles/scrollbars';
 import { AddressMapPickerModal } from '../../components/createContract/AddressMapPickerModal';
 import {
   MOBILE_HOME_INDICATOR,
@@ -2476,7 +2477,10 @@ export function CreateDispatchPage({
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
-            px: isMobileVariant ? 1.5 : { xs: 1.5, sm: 3, md: 4 },
+            // Right padding lives on the scrolling form instead, so its
+            // scrollbar sits flush against the window edge.
+            pl: isMobileVariant ? 1.5 : { xs: 1.5, sm: 3, md: 4 },
+            pr: 0,
             py: isMobileVariant ? 1.5 : { xs: 1.5, sm: 2, md: 2.5 },
           }}
         >
@@ -2609,6 +2613,10 @@ export function CreateDispatchPage({
                 overflowY: 'auto',
                 overflowX: 'hidden',
                 WebkitOverflowScrolling: 'touch',
+                // Padding inside the scroll container keeps content off the
+                // scrollbar, which still paints at the container's right edge.
+                pr: isMobileVariant ? 1.5 : { xs: 1.5, sm: 3, md: 4 },
+                ...formScrollbarSx,
                 '& .MuiOutlinedInput-notchedOutline, & .MuiPickersOutlinedInput-notchedOutline': {
                   borderColor: `${FIELD_STROKE} !important`,
                   borderWidth: '1px !important',

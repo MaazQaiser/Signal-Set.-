@@ -60,6 +60,7 @@ import {
   formatBillingAmount,
   type BillingFrequencyId,
 } from '../billing/frequencyPlans';
+import { formScrollbarSx } from '../styles/scrollbars';
 import { AddressMapPickerModal } from '../components/createContract/AddressMapPickerModal';
 import { FormSection } from '../components/createContract/FormSection';
 import { useTheme } from '@mui/material/styles';
@@ -1560,7 +1561,10 @@ export function CreateDispatchPage() {
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
-            px: { xs: 1.5, sm: 3, md: 4 },
+            // Right padding lives on the scrolling form instead, so its
+            // scrollbar sits flush against the window edge.
+            pl: { xs: 1.5, sm: 3, md: 4 },
+            pr: 0,
             py: { xs: 1.5, sm: 2, md: 2.5 },
           }}
         >
@@ -1580,6 +1584,10 @@ export function CreateDispatchPage() {
               overflowY: 'auto',
               overflowX: 'hidden',
               WebkitOverflowScrolling: 'touch',
+              // Padding inside the scroll container keeps content off the
+              // scrollbar, which still paints at the container's right edge.
+              pr: { xs: 1.5, sm: 3, md: 4 },
+              ...formScrollbarSx,
             }}
           >
             <Stack
