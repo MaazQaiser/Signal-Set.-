@@ -15,6 +15,7 @@ import {
   Paper,
   IconButton,
   Radio,
+  RadioGroup,
   InputAdornment,
   MenuItem,
   Snackbar,
@@ -735,14 +736,26 @@ export function CreateDispatchPage() {
     { id: string; dimension: string; rate: string; quantity: string }[]
   >(() => DEFAULT_SERVICE_PRODUCTS.map((p) => ({ ...p })));
 
+  /** 'byProduct' prices each product size on its own row; 'total' prices one flat rate x quantity. */
+  const [productEntryMode, setProductEntryMode] = useState<'total' | 'byProduct'>('byProduct');
+  const [totalQuantityRate, setTotalQuantityRate] = useState('');
+  const [totalQuantityCount, setTotalQuantityCount] = useState('');
+
+  const totalQuantityAmount = useMemo(
+    () => parseMoneyInput(totalQuantityRate) * (parseInt(totalQuantityCount, 10) || 0),
+    [totalQuantityRate, totalQuantityCount],
+  );
+
   const serviceProductsSubtotal = useMemo(
     () =>
-      serviceProducts.reduce((sum, p) => {
-        const r = parseMoneyInput(p.rate);
-        const q = parseInt(p.quantity, 10) || 0;
-        return sum + r * q;
-      }, 0),
-    [serviceProducts],
+      productEntryMode === 'total'
+        ? totalQuantityAmount
+        : serviceProducts.reduce((sum, p) => {
+            const r = parseMoneyInput(p.rate);
+            const q = parseInt(p.quantity, 10) || 0;
+            return sum + r * q;
+          }, 0),
+    [productEntryMode, totalQuantityAmount, serviceProducts],
   );
 
   const [billingPlanMode, setBillingPlanMode] = useState<'recurring' | 'perService'>('recurring');
@@ -1063,13 +1076,23 @@ export function CreateDispatchPage() {
     if (!occurrenceEvery.trim() || Number.isNaN(n) || n < 1) e.occurrenceEvery = 'Enter a valid number (1+).';
     if (!occurrenceUnit.trim()) e.occurrenceUnit = 'Select week or month.';
     if (!serviceLabel.trim()) e.serviceLabel = 'Service name is required.';
-    if (serviceProducts.length === 0) e.serviceProducts = 'Add at least one product.';
-    for (let i = 0; i < serviceProducts.length; i++) {
-      const p = serviceProducts[i];
-      if (!p.dimension.trim()) e[`product_${i}_dimension`] = 'Select a product size.';
-      if (!p.rate.trim() || parseMoneyInput(p.rate) <= 0) e[`product_${i}_rate`] = 'Enter a valid rate.';
-      const qn = parseInt(p.quantity, 10);
-      if (!p.quantity.trim() || Number.isNaN(qn) || qn < 1) e[`product_${i}_quantity`] = 'Enter quantity (1+).';
+    if (productEntryMode === 'total') {
+      if (!totalQuantityRate.trim() || parseMoneyInput(totalQuantityRate) <= 0) {
+        e.totalQuantityRate = 'Enter a valid rate.';
+      }
+      const tq = parseInt(totalQuantityCount, 10);
+      if (!totalQuantityCount.trim() || Number.isNaN(tq) || tq < 1) {
+        e.totalQuantityCount = 'Enter quantity (1+).';
+      }
+    } else {
+      if (serviceProducts.length === 0) e.serviceProducts = 'Add at least one product.';
+      for (let i = 0; i < serviceProducts.length; i++) {
+        const p = serviceProducts[i];
+        if (!p.dimension.trim()) e[`product_${i}_dimension`] = 'Select a product size.';
+        if (!p.rate.trim() || parseMoneyInput(p.rate) <= 0) e[`product_${i}_rate`] = 'Enter a valid rate.';
+        const qn = parseInt(p.quantity, 10);
+        if (!p.quantity.trim() || Number.isNaN(qn) || qn < 1) e[`product_${i}_quantity`] = 'Enter quantity (1+).';
+      }
     }
 
     setFieldErrors(e);
@@ -1090,6 +1113,9 @@ export function CreateDispatchPage() {
     occurrenceUnit,
     serviceLabel,
     serviceProducts,
+    productEntryMode,
+    totalQuantityRate,
+    totalQuantityCount,
     paymentMethod,
   ]);
 
@@ -1121,6 +1147,9 @@ export function CreateDispatchPage() {
     setPreferredStartTime(null);
     setPreferredEndTime(null);
     setServiceProducts(DEFAULT_SERVICE_PRODUCTS.map((p) => ({ ...p })));
+    setProductEntryMode('byProduct');
+    setTotalQuantityRate('');
+    setTotalQuantityCount('');
     setBillingPlanMode('recurring');
     setBillingFrequency('annually');
     setBillingDiscountValue('');
@@ -1211,7 +1240,15 @@ export function CreateDispatchPage() {
         serviceStartingDate: serviceStartDate?.toISOString(),
         preferredStartTime: preferredStartTime?.toISOString(),
         preferredEndTime: preferredEndTime?.toISOString(),
-        products: serviceProducts,
+        productEntryMode,
+        products: productEntryMode === 'total' ? [] : serviceProducts,
+        totalQuantity:
+          productEntryMode === 'total'
+            ? {
+                rate: parseMoneyInput(totalQuantityRate),
+                quantity: parseInt(totalQuantityCount, 10) || 0,
+              }
+            : null,
         productsTotal: serviceProductsSubtotal,
       },
       billingInfo: {
@@ -2256,6 +2293,139 @@ export function CreateDispatchPage() {
                       <Typography sx={{ fontSize: 14, fontWeight: 700, lineHeight: '20px', color: '#444446', pb: 0.75 }}>
                         Add Products
                       </Typography>
+                      <RadioGroup
+                        row
+                        name="productEntryMode"
+                        aria-label="Product entry mode"
+                        value={productEntryMode}
+                        onChange={(e) => {
+                          setProductEntryMode(e.target.value as 'total' | 'byProduct');
+                          clearFieldError('serviceProducts');
+                        }}
+                        sx={{ gap: 3, pb: 1 }}
+                      >
+                        {([
+                          { value: 'total', label: 'Total Quantity' },
+                          { value: 'byProduct', label: 'By Product Type' },
+                        ] as const).map((o) => (
+                          <FormControlLabel
+                            key={o.value}
+                            value={o.value}
+                            control={
+                              <Radio
+                                size="small"
+                                sx={{ p: 0, mr: 1, color: '#86868B', '&.Mui-checked': { color: '#2DA551' } }}
+                              />
+                            }
+                            label={
+                              <Typography sx={{ fontSize: 14, lineHeight: '20px', color: '#262527' }}>
+                                {o.label}
+                              </Typography>
+                            }
+                            sx={{ ml: 0, mr: 0 }}
+                          />
+                        ))}
+                      </RadioGroup>
+                      {productEntryMode === 'total' ? (
+                        <Box
+                          sx={{
+                            width: '100%',
+                            display: 'flex',
+                            flexDirection: { xs: 'column', sm: 'row' },
+                            flexWrap: 'wrap',
+                            alignItems: { xs: 'stretch', sm: 'flex-start' },
+                            gap: 1.5,
+                            py: 1.5,
+                            boxSizing: 'border-box',
+                            borderBottom: '1px solid #E6E6E7',
+                          }}
+                        >
+                          <Stack spacing={0.75} sx={{ flex: { sm: '1 1 0%' }, minWidth: { sm: 0 }, width: { xs: '100%', sm: 'auto' } }}>
+                            <Typography sx={figmaLabelSx}>
+                              Rate
+                              <Box component="span" sx={{ color: '#B32318' }}> *</Box>
+                            </Typography>
+                            <TextField
+                              name="totalQuantityRate"
+                              value={totalQuantityRate}
+                              onChange={(e) => {
+                                setTotalQuantityRate(e.target.value);
+                                clearFieldError('totalQuantityRate');
+                              }}
+                              size="small"
+                              fullWidth
+                              placeholder="00.00"
+                              error={Boolean((fieldErrors as Record<string, string>).totalQuantityRate)}
+                              helperText={(fieldErrors as Record<string, string>).totalQuantityRate}
+                              sx={[
+                                figmaTextFieldSx,
+                                {
+                                  '& .MuiInputAdornment-root': {
+                                    fontSize: 12,
+                                    lineHeight: '18px',
+                                    fontWeight: 400,
+                                    color: '#262527',
+                                    maxHeight: 'none',
+                                    mt: 0,
+                                    alignSelf: 'center',
+                                  },
+                                },
+                              ]}
+                              slotProps={{
+                                htmlInput: { 'aria-label': 'Rate' },
+                                input: {
+                                  startAdornment: (
+                                    <InputAdornment position="start" sx={{ mr: 0.5, maxHeight: 'none' }}>
+                                      <Box
+                                        component="span"
+                                        sx={{ fontSize: 12, lineHeight: '18px', fontWeight: 400, color: '#262527' }}
+                                      >
+                                        $
+                                      </Box>
+                                    </InputAdornment>
+                                  ),
+                                },
+                              }}
+                            />
+                          </Stack>
+                          <Stack spacing={0.75} sx={{ flex: { sm: '1 1 0%' }, minWidth: { sm: 0 }, width: { xs: '100%', sm: 'auto' } }}>
+                            <Typography sx={figmaLabelSx}>
+                              Quantity
+                              <Box component="span" sx={{ color: '#B32318' }}> *</Box>
+                            </Typography>
+                            <TextField
+                              name="totalQuantityCount"
+                              value={totalQuantityCount}
+                              onChange={(e) => {
+                                setTotalQuantityCount(e.target.value);
+                                clearFieldError('totalQuantityCount');
+                              }}
+                              size="small"
+                              fullWidth
+                              placeholder="00"
+                              error={Boolean((fieldErrors as Record<string, string>).totalQuantityCount)}
+                              helperText={(fieldErrors as Record<string, string>).totalQuantityCount}
+                              sx={figmaTextFieldSx}
+                              slotProps={{ htmlInput: { inputMode: 'numeric', min: 1, 'aria-label': 'Quantity' } }}
+                            />
+                          </Stack>
+                          <Stack spacing={0.75} sx={{ flex: { sm: '1 1 0%' }, minWidth: { sm: 0 }, width: { xs: '100%', sm: 'auto' } }}>
+                            <Typography sx={figmaLabelSx}>Total</Typography>
+                            <Box sx={{ minHeight: 40, display: 'flex', alignItems: 'center' }}>
+                              <Typography
+                                sx={{
+                                  fontSize: 14,
+                                  lineHeight: '20px',
+                                  color: '#262527',
+                                  fontVariantNumeric: 'tabular-nums',
+                                }}
+                              >
+                                {totalQuantityAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                              </Typography>
+                            </Box>
+                          </Stack>
+                        </Box>
+                      ) : (
                       <Stack spacing={1.5} sx={{ mt: 0 }}>
                         <Stack direction="column" spacing={0} sx={{ width: '100%' }}>
                           {serviceProducts.map((p, pIdx) => {
@@ -2521,19 +2691,22 @@ export function CreateDispatchPage() {
                           </Typography>
                         </Button>
                       </Stack>
+                      )}
                     </Box>
-                    <Box sx={{ borderTop: '1px solid #E6E6E7', pt: 0.5, mt: 0.5, display: 'flex', justifyContent: 'flex-end' }}>
-                      <Typography sx={{ fontSize: 18, fontWeight: 600, lineHeight: '26px', color: '#262527', textAlign: 'right' }}>
-                        Total value:{' '}
-                        {serviceProductsSubtotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
-                        {' '}/{' '}
-                        {occurrenceUnit === 'Month'
-                          ? 'monthly'
-                          : occurrenceUnit === 'Week'
-                            ? 'weekly'
-                            : '—'}
-                      </Typography>
-                    </Box>
+                    {productEntryMode === 'byProduct' ? (
+                      <Box sx={{ borderTop: '1px solid #E6E6E7', pt: 0.5, mt: 0.5, display: 'flex', justifyContent: 'flex-end' }}>
+                        <Typography sx={{ fontSize: 18, fontWeight: 600, lineHeight: '26px', color: '#262527', textAlign: 'right' }}>
+                          Total value:{' '}
+                          {serviceProductsSubtotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                          {' '}/{' '}
+                          {occurrenceUnit === 'Month'
+                            ? 'monthly'
+                            : occurrenceUnit === 'Week'
+                              ? 'weekly'
+                              : '—'}
+                        </Typography>
+                      </Box>
+                    ) : null}
                     {fieldErrors.serviceProducts ? (
                       <Typography variant="caption" color="error">
                         {fieldErrors.serviceProducts}
