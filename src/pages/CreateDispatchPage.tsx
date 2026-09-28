@@ -2792,8 +2792,8 @@ export function CreateDispatchPage() {
                                 minWidth: 0,
                                 boxShadow: 'none',
                                 color: selected ? '#FFFFFF' : '#444446',
-                                bgcolor: selected ? '#146DFF' : 'transparent',
-                                '&:hover': { bgcolor: selected ? '#0F5AD6' : 'rgba(0,0,0,0.04)' },
+                                bgcolor: selected ? '#2DA551' : 'transparent',
+                                '&:hover': { bgcolor: selected ? '#248B45' : 'rgba(0,0,0,0.04)' },
                               }}
                             >
                               {mode.label}
@@ -2830,8 +2830,8 @@ export function CreateDispatchPage() {
                                     cursor: 'pointer',
                                     borderRadius: '10px',
                                     bgcolor: '#FFFFFF',
-                                    border: selected ? '1.5px solid #146DFF' : '1px solid #E6E6E7',
-                                    '&:hover': { borderColor: selected ? '#146DFF' : '#D0CFD2' },
+                                    border: selected ? '1.5px solid #2DA551' : '1px solid #E6E6E7',
+                                    '&:hover': { borderColor: selected ? '#2DA551' : '#D0CFD2' },
                                   }}
                                 >
                                   <Radio
@@ -2839,7 +2839,7 @@ export function CreateDispatchPage() {
                                     checked={selected}
                                     tabIndex={-1}
                                     slotProps={{ input: { 'aria-label': plan.label } }}
-                                    sx={{ p: 0, mt: '2px', color: '#86868B', '&.Mui-checked': { color: '#146DFF' } }}
+                                    sx={{ p: 0, mt: '2px', color: '#86868B', '&.Mui-checked': { color: '#2DA551' } }}
                                   />
                                   <Box sx={{ minWidth: 0 }}>
                                     <Stack
