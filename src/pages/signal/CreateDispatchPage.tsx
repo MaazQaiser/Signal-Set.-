@@ -252,8 +252,9 @@ const EMPTY_CONTACT_ROLE_SELECTIONS: Record<string, string[]> = {
 
 const FORM_PROGRESS_SECTIONS = [
   { id: 'section-company-property', label: 'Company & Property Details' },
-  { id: 'section-proposal', label: 'Proposal Details' },
+  { id: 'section-property-occupancy', label: 'Property Occupancy' },
   { id: 'section-contacts', label: 'Contact Details' },
+  { id: 'section-proposal', label: 'Proposal Details' },
   { id: 'section-services', label: 'Services' },
   { id: 'section-billing', label: 'Billing & Payment Details' },
 ] as const;
@@ -1272,6 +1273,10 @@ export function CreateDispatchPage({
   const [franchiseAssociation, setFranchiseAssociation] = useState('');
   const [propertySource, setPropertySource] = useState('');
   const [companyAffiliations, setCompanyAffiliations] = useState<string[]>([]);
+  const [companyAtPropertyTillDate, setCompanyAtPropertyTillDate] = useState<Dayjs | null>(null);
+  const [propertyOccupancyFloor, setPropertyOccupancyFloor] = useState('');
+  const [propertyOccupancySpaceType, setPropertyOccupancySpaceType] = useState('Suite');
+  const [propertyOccupancySpaceId, setPropertyOccupancySpaceId] = useState('');
   const [createCompanyModalOpen, setCreateCompanyModalOpen] = useState(false);
   const [createCompanyDomain, setCreateCompanyDomain] = useState('');
   const [createCompanyName, setCreateCompanyName] = useState('');
@@ -1658,6 +1663,10 @@ export function CreateDispatchPage({
         Boolean(propertySource) &&
         Boolean(franchiseAssociation.trim()) &&
         companyAffiliations.length > 0,
+      'section-property-occupancy':
+        companyAtPropertyTillDate != null ||
+        Boolean(propertyOccupancyFloor.trim()) ||
+        Boolean(propertyOccupancySpaceId.trim()),
       'section-proposal': Boolean(proposalName.trim()) && Boolean(timeZone),
       'section-contacts':
         (contactUserByRole.decision_maker ?? []).length > 0 &&
@@ -1692,6 +1701,9 @@ export function CreateDispatchPage({
     propertySource,
     franchiseAssociation,
     companyAffiliations,
+    companyAtPropertyTillDate,
+    propertyOccupancyFloor,
+    propertyOccupancySpaceId,
     proposalName,
     timeZone,
     contactUserByRole,
@@ -1858,6 +1870,10 @@ export function CreateDispatchPage({
     setFranchiseAssociation('');
     setPropertySource('');
     setCompanyAffiliations([]);
+    setCompanyAtPropertyTillDate(null);
+    setPropertyOccupancyFloor('');
+    setPropertyOccupancySpaceType('Suite');
+    setPropertyOccupancySpaceId('');
     setContactName('');
     setContactEmail('');
     setContactPhone('');
@@ -1944,6 +1960,12 @@ export function CreateDispatchPage({
         franchiseAssociation: franchiseAssociation.trim(),
         propertySource: propertySource.trim(),
         affiliations: [...companyAffiliations],
+        companyAtPropertyTillDate: companyAtPropertyTillDate?.format('YYYY-MM-DD'),
+        propertyOccupancy: {
+          floor: propertyOccupancyFloor.trim(),
+          spaceType: propertyOccupancySpaceType,
+          spaceId: propertyOccupancySpaceId.trim(),
+        },
       },
       contact: {
         name: contactName.trim(),
@@ -3102,257 +3124,163 @@ export function CreateDispatchPage({
                 </Stack>
               </FormSection>
 
-              <FormSection
-                id="section-proposal"
-                title="Proposal Details"
-                titleEnd={
-                  <FormControlLabel
-                    sx={{ m: 0, alignItems: 'center', flexShrink: 0 }}
-                    control={
-                      <Checkbox
-                        size="small"
-                        checked={contractDatesToBeDecided}
-                        onChange={(_, checked) => {
-                          setContractDatesToBeDecided(checked);
-                          if (checked) setContractStartDate(null);
-                        }}
-                        sx={{ p: 0.5, mr: 0.5, '& .MuiSvgIcon-root': { fontSize: 17 } }}
-                      />
-                    }
-                    label={
-                      <Typography sx={{ fontSize: 12, lineHeight: '20px', color: '#262527' }}>
-                        Contract Dates to be decided
-                      </Typography>
-                    }
-                  />
-                }
-              >
+              <FormSection id="section-property-occupancy" title="Property Occupancy">
                 <Grid container spacing={2}>
                   <Grid size={thirdWidthField}>
-                    <LabeledField
-                      name="proposalName"
-                      label="Proposal Name"
-                      placeholder="Enter proposal name"
-                      value={proposalName}
-                      onChange={setProposalName}
-                    />
-                  </Grid>
-                  <Grid size={thirdWidthField}>
                     <Stack spacing={0.75} sx={{ width: '100%' }}>
-                      <Typography sx={figmaLabelSx}>
-                        Time Zone
-                        <RequiredAsterisk />
-                      </Typography>
-                      <Autocomplete
-                        options={timeZoneOptions}
-                        value={timeZoneOptions.find((o) => o.value === timeZone) ?? null}
-                        onChange={(_, next) => setTimeZone(next?.value ?? '')}
-                        getOptionLabel={(o) => o.label}
-                        isOptionEqualToValue={(a, b) => a.value === b.value}
-                        filterOptions={(options, { inputValue }) => {
-                          const q = inputValue.trim().toLowerCase();
-                          if (!q) return options;
-                          return options.filter(
-                            (o) =>
-                              o.label.toLowerCase().includes(q) ||
-                              o.value.toLowerCase().includes(q),
-                          );
-                        }}
-                        popupIcon={<KeyboardArrowDownOutlined sx={{ fontSize: 16, color: '#6A6A70' }} />}
-                        slotProps={{
-                          paper: {
-                            sx: {
-                              borderRadius: '8px',
-                              mt: 0.5,
-                              boxShadow: '0px 8px 24px rgba(15, 23, 42, 0.12)',
-                            },
-                          },
-                          listbox: {
-                            sx: {
-                              py: 0.5,
-                              '& .MuiAutocomplete-option': {
-                                fontSize: 12,
+                      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                        <Typography sx={figmaLabelSx}>Company at Property - Till Date</Typography>
+                        <Tooltip
+                          title="On the Company at Property - Till Date, the selected company is dissociated from this property. A company with active contracts cannot be dissociated; close or complete them first"
+                          arrow
+                          placement="bottom"
+                          slotProps={{
+                            tooltip: {
+                              sx: {
+                                bgcolor: '#000000',
+                                color: '#FFFFFF',
+                                fontSize: 13,
+                                fontWeight: 500,
                                 lineHeight: '18px',
-                                minHeight: 36,
-                                py: 1,
+                                maxWidth: 320,
                                 px: 1.5,
+                                py: 1.25,
+                                borderRadius: '8px',
                               },
                             },
-                          },
+                            arrow: { sx: { color: '#000000' } },
+                          }}
+                        >
+                          <InfoOutlined sx={{ fontSize: 16, color: '#86868B', cursor: 'help' }} />
+                        </Tooltip>
+                      </Stack>
+                      <DatePicker
+                        value={companyAtPropertyTillDate}
+                        onChange={setCompanyAtPropertyTillDate}
+                        format="MM/DD/YYYY"
+                        slots={{ openPickerIcon: CalendarTodayOutlined }}
+                        slotProps={{
+                          textField: { size: 'small', fullWidth: true, sx: figmaTextFieldSx },
+                          openPickerButton: { sx: { p: 0, mr: 0.25 } },
+                          openPickerIcon: { sx: { color: '#86868B', fontSize: 14 } },
                         }}
-                        renderInput={(params) => (
-                          <TextField
-                            {...params}
-                            name="timeZone"
-                            size="small"
-                            placeholder="Select time zone"
-                            sx={figmaTextFieldSx}
-                          />
-                        )}
                       />
                     </Stack>
                   </Grid>
-                  {!contractDatesToBeDecided ? (
-                    <>
-                      <Grid size={thirdWidthField}>
-                        <LabeledDatePicker
-                          name="contractStartDate"
-                          label="Contract start date"
-                          placeholder="Select contract start date"
-                          value={contractStartDate}
-                          onChange={setContractStartDate}
-                        />
-                      </Grid>
-                      <Grid size={thirdWidthField}>
-                        <Stack
-                          direction="row"
-                          spacing={3}
-                          sx={{
-                            alignItems: 'center',
-                            mt: isMobileVariant ? 0 : { md: '24px' },
-                            height: isMobileVariant ? 'auto' : { md: FIELD_HEIGHT },
+                  <Grid size={thirdWidthField}>
+                    <Stack spacing={0.75} sx={{ width: '100%' }}>
+                      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                        <Typography sx={figmaLabelSx}>Floor</Typography>
+                        <Tooltip
+                          title="The floor, suite, unit or apartment for this company. Cannot occupy the same space as another company"
+                          arrow
+                          placement="bottom"
+                          slotProps={{
+                            tooltip: {
+                              sx: {
+                                bgcolor: '#000000',
+                                color: '#FFFFFF',
+                                fontSize: 13,
+                                fontWeight: 500,
+                                lineHeight: '18px',
+                                maxWidth: 280,
+                                px: 1.5,
+                                py: 1.25,
+                                borderRadius: '8px',
+                              },
+                            },
+                            arrow: { sx: { color: '#000000' } },
                           }}
                         >
-                          {([
-                            { value: 'end_date', label: 'End Date' },
-                            { value: 'renewal_date', label: 'Renewal Date' },
-                          ] as const).map((mode) => (
-                            <FormControlLabel
-                              key={mode.value}
-                              sx={{ m: 0, alignItems: 'center' }}
-                              control={
-                                <Radio
-                                  size="small"
-                                  checked={contractEndMode === mode.value}
-                                  onChange={() => setContractEndMode(mode.value)}
-                                  sx={{ p: 0.5, mr: 0.5, '& .MuiSvgIcon-root': { fontSize: 17 } }}
-                                />
-                              }
-                              label={
-                                <Typography sx={{ fontSize: 14, lineHeight: '20px', color: '#262527' }}>
-                                  {mode.label}
-                                </Typography>
-                              }
-                            />
+                          <InfoOutlined sx={{ fontSize: 16, color: '#86868B', cursor: 'help' }} />
+                        </Tooltip>
+                      </Stack>
+                      <TextField
+                        name="propertyOccupancyFloor"
+                        size="small"
+                        fullWidth
+                        placeholder="5 or 1,3-5"
+                        value={propertyOccupancyFloor}
+                        onChange={(e) => setPropertyOccupancyFloor(e.target.value)}
+                        sx={figmaTextFieldSx}
+                      />
+                    </Stack>
+                  </Grid>
+                  <Grid size={thirdWidthField}>
+                    <Stack spacing={0.75} sx={{ width: '100%' }}>
+                      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                        <Typography sx={figmaLabelSx}>Suite / Unit / Apartment</Typography>
+                        <Tooltip
+                          title="The floor, suite, unit or apartment for this company. Cannot occupy the same space as another company"
+                          arrow
+                          placement="bottom"
+                          slotProps={{
+                            tooltip: {
+                              sx: {
+                                bgcolor: '#000000',
+                                color: '#FFFFFF',
+                                fontSize: 13,
+                                fontWeight: 500,
+                                lineHeight: '18px',
+                                maxWidth: 280,
+                                px: 1.5,
+                                py: 1.25,
+                                borderRadius: '8px',
+                              },
+                            },
+                            arrow: { sx: { color: '#000000' } },
+                          }}
+                        >
+                          <InfoOutlined sx={{ fontSize: 16, color: '#86868B', cursor: 'help' }} />
+                        </Tooltip>
+                      </Stack>
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          height: 37,
+                          border: '1px solid #E6E6E7',
+                          borderRadius: '8px',
+                          bgcolor: '#FFFFFF',
+                          overflow: 'hidden',
+                          '& .MuiOutlinedInput-notchedOutline': { border: 'none !important' },
+                        }}
+                      >
+                        <TextField
+                          select
+                          name="propertyOccupancySpaceType"
+                          value={propertyOccupancySpaceType}
+                          onChange={(e) => setPropertyOccupancySpaceType(e.target.value)}
+                          size="small"
+                          sx={{
+                            width: 108,
+                            flexShrink: 0,
+                            '& .MuiInputBase-input': { fontSize: 12, lineHeight: '18px', py: 0 },
+                          }}
+                          slotProps={{
+                            select: { IconComponent: FieldSelectChevronIcon },
+                          }}
+                        >
+                          {['Suite', 'Unit', 'Apartment'].map((option) => (
+                            <MenuItem key={option} value={option}>{option}</MenuItem>
                           ))}
-                        </Stack>
-                      </Grid>
-                      {contractEndMode === 'end_date' ? (
-                        <Grid size={thirdWidthField}>
-                          <LabeledDatePicker
-                            name="contractEndDate"
-                            label="End Date"
-                            placeholder="Select end date"
-                            value={contractEndDate}
-                            onChange={setContractEndDate}
-                          />
-                        </Grid>
-                      ) : (
-                        <Grid size={thirdWidthField}>
-                          <LabeledDatePicker
-                            name="renewalDate"
-                            label="Renewal Date"
-                            placeholder="Select renewal date"
-                            value={renewalDate}
-                            onChange={setRenewalDate}
-                          />
-                        </Grid>
-                      )}
-                      {contractEndMode === 'renewal_date' ? (
-                        <Grid size={12}>
-                          <Grid container spacing={2}>
-                            <Grid size={thirdWidthField}>
-                              <FormControlLabel
-                                sx={{
-                                  m: 0,
-                                  alignItems: 'center',
-                                  mt: isMobileVariant ? 0 : { md: '24px' },
-                                  height: isMobileVariant ? 'auto' : { md: FIELD_HEIGHT },
-                                }}
-                                control={
-                                  <Checkbox
-                                    size="small"
-                                    checked={autoRenewal}
-                                    onChange={(_, checked) => setAutoRenewal(checked)}
-                                    sx={{ p: 0.5, mr: 0.5, '& .MuiSvgIcon-root': { fontSize: 17 } }}
-                                  />
-                                }
-                                label={
-                                  <Typography sx={{ fontSize: 14, lineHeight: '20px', color: '#262527' }}>
-                                    Auto Renewal of Contract
-                                  </Typography>
-                                }
-                              />
-                            </Grid>
-                            {!autoRenewal ? (
-                              <Grid size={thirdWidthField}>
-                                <LabeledField
-                                  name="autoRenewalNotifyDays"
-                                  label="Notify for Auto-Renewal Before (Days)"
-                                  placeholder="Enter days"
-                                  value={autoRenewalNotifyDays}
-                                  onChange={setAutoRenewalNotifyDays}
-                                  htmlInput={{ inputMode: 'numeric', pattern: '[0-9]*' }}
-                                />
-                              </Grid>
-                            ) : (
-                              <>
-                                <Grid size={thirdWidthField}>
-                                  <LabeledField
-                                    name="draftsBeforeDays"
-                                    label="Drafts Before (Days)"
-                                    placeholder="Enter days"
-                                    value={draftsBeforeDays}
-                                    onChange={setDraftsBeforeDays}
-                                    htmlInput={{ inputMode: 'numeric', pattern: '[0-9]*' }}
-                                  />
-                                </Grid>
-                                <Grid size={thirdWidthField}>
-                                  <Stack spacing={0.75}>
-                                    <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-                                      <Typography sx={figmaLabelSx}>
-                                        Auto Publish Before (Days)
-                                        <RequiredAsterisk />
-                                      </Typography>
-                                      <Tooltip
-                                        title="Set how many days before the renewal date the draft will be auto-published"
-                                        arrow
-                                        placement="top"
-                                        slotProps={{
-                                          tooltip: {
-                                            sx: {
-                                              bgcolor: '#262527',
-                                              color: '#FFFFFF',
-                                              fontSize: 12,
-                                              lineHeight: '18px',
-                                              fontWeight: 400,
-                                              px: 1.5,
-                                              py: 1,
-                                              borderRadius: '8px',
-                                            },
-                                          },
-                                          arrow: { sx: { color: '#262527' } },
-                                        }}
-                                      >
-                                        <InfoOutlined sx={{ fontSize: 14, color: '#146dff', cursor: 'help' }} />
-                                      </Tooltip>
-                                    </Stack>
-                                    <LabeledField
-                                      name="autoPublishBeforeDays"
-                                      placeholder="Enter days"
-                                      value={autoPublishBeforeDays}
-                                      onChange={setAutoPublishBeforeDays}
-                                      htmlInput={{ inputMode: 'numeric', pattern: '[0-9]*' }}
-                                    />
-                                  </Stack>
-                                </Grid>
-                              </>
-                            )}
-                          </Grid>
-                        </Grid>
-                      ) : null}
-                    </>
-                  ) : null}
+                        </TextField>
+                        <Box sx={{ width: '1px', height: 20, bgcolor: '#E6E6E7', flexShrink: 0 }} />
+                        <TextField
+                          name="propertyOccupancySpaceId"
+                          size="small"
+                          fullWidth
+                          placeholder="210B or 210B,212B"
+                          value={propertyOccupancySpaceId}
+                          onChange={(e) => setPropertyOccupancySpaceId(e.target.value)}
+                          sx={{
+                            '& .MuiInputBase-input': { fontSize: 12, lineHeight: '18px', py: 0, px: 1.25 },
+                            '& .MuiInputBase-input::placeholder': { color: '#CCCCCC', opacity: 1, WebkitTextFillColor: '#CCCCCC' },
+                          }}
+                        />
+                      </Box>
+                    </Stack>
+                  </Grid>
                 </Grid>
               </FormSection>
 
@@ -3514,6 +3442,279 @@ export function CreateDispatchPage({
                     );
                   })}
                 </Stack>
+              </FormSection>
+
+              <FormSection
+                id="section-proposal"
+                title="Proposal Details"
+                titleEnd={
+                  <FormControlLabel
+                    sx={{ m: 0, alignItems: 'center', flexShrink: 0 }}
+                    control={
+                      <Checkbox
+                        size="small"
+                        checked={contractDatesToBeDecided}
+                        onChange={(_, checked) => {
+                          setContractDatesToBeDecided(checked);
+                          if (checked) setContractStartDate(null);
+                        }}
+                        sx={{ p: 0.5, mr: 0.5, '& .MuiSvgIcon-root': { fontSize: 17 } }}
+                      />
+                    }
+                    label={
+                      <Typography sx={{ fontSize: 12, lineHeight: '20px', color: '#262527' }}>
+                        Contract Dates to be decided
+                      </Typography>
+                    }
+                  />
+                }
+              >
+                <Grid container spacing={2}>
+                  <Grid size={thirdWidthField}>
+                    <LabeledField
+                      name="proposalName"
+                      label="Proposal Name"
+                      placeholder="Enter proposal name"
+                      value={proposalName}
+                      onChange={setProposalName}
+                    />
+                  </Grid>
+                  <Grid size={thirdWidthField}>
+                    <Stack spacing={0.75} sx={{ width: '100%' }}>
+                      <Typography sx={figmaLabelSx}>
+                        Time Zone
+                        <RequiredAsterisk />
+                      </Typography>
+                      <Autocomplete
+                        options={timeZoneOptions}
+                        value={timeZoneOptions.find((o) => o.value === timeZone) ?? null}
+                        onChange={(_, next) => setTimeZone(next?.value ?? '')}
+                        getOptionLabel={(o) => o.label}
+                        isOptionEqualToValue={(a, b) => a.value === b.value}
+                        filterOptions={(options, { inputValue }) => {
+                          const q = inputValue.trim().toLowerCase();
+                          if (!q) return options;
+                          return options.filter(
+                            (o) =>
+                              o.label.toLowerCase().includes(q) ||
+                              o.value.toLowerCase().includes(q),
+                          );
+                        }}
+                        popupIcon={<KeyboardArrowDownOutlined sx={{ fontSize: 16, color: '#6A6A70' }} />}
+                        slotProps={{
+                          paper: {
+                            sx: {
+                              borderRadius: '8px',
+                              mt: 0.5,
+                              boxShadow: '0px 8px 24px rgba(15, 23, 42, 0.12)',
+                            },
+                          },
+                          listbox: {
+                            sx: {
+                              py: 0.5,
+                              '& .MuiAutocomplete-option': {
+                                fontSize: 12,
+                                lineHeight: '18px',
+                                minHeight: 36,
+                                py: 1,
+                                px: 1.5,
+                              },
+                            },
+                          },
+                        }}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            name="timeZone"
+                            size="small"
+                            placeholder="Select time zone"
+                            sx={figmaTextFieldSx}
+                          />
+                        )}
+                      />
+                    </Stack>
+                  </Grid>
+                  {!contractDatesToBeDecided ? (
+                    <>
+                      <Grid size={thirdWidthField}>
+                        <LabeledDatePicker
+                          name="contractStartDate"
+                          label="Contract start date"
+                          placeholder="Select contract start date"
+                          value={contractStartDate}
+                          onChange={setContractStartDate}
+                        />
+                      </Grid>
+                      <Grid size={12}>
+                        <Stack
+                          direction="row"
+                          spacing={0.75}
+                          sx={{
+                            alignItems: 'center',
+                            width: 'fit-content',
+                            px: 1.25,
+                            py: '7px',
+                            borderRadius: '8px',
+                            bgcolor: '#E8F1FF',
+                          }}
+                        >
+                          <InfoOutlined sx={{ fontSize: 15, color: '#146dff', flexShrink: 0 }} />
+                          <Typography sx={{ fontSize: 12, fontWeight: 500, lineHeight: '16px', color: '#262527' }}>
+                            Contract dates cannot go beyond the Company at Property - Till Date.
+                          </Typography>
+                        </Stack>
+                      </Grid>
+                      <Grid size={thirdWidthField}>
+                        <Stack
+                          direction="row"
+                          spacing={3}
+                          sx={{
+                            alignItems: 'center',
+                            mt: isMobileVariant ? 0 : { md: '24px' },
+                            height: isMobileVariant ? 'auto' : { md: FIELD_HEIGHT },
+                          }}
+                        >
+                          {([
+                            { value: 'end_date', label: 'End Date' },
+                            { value: 'renewal_date', label: 'Renewal Date' },
+                          ] as const).map((mode) => (
+                            <FormControlLabel
+                              key={mode.value}
+                              sx={{ m: 0, alignItems: 'center' }}
+                              control={
+                                <Radio
+                                  size="small"
+                                  checked={contractEndMode === mode.value}
+                                  onChange={() => setContractEndMode(mode.value)}
+                                  sx={{ p: 0.5, mr: 0.5, '& .MuiSvgIcon-root': { fontSize: 17 } }}
+                                />
+                              }
+                              label={
+                                <Typography sx={{ fontSize: 14, lineHeight: '20px', color: '#262527' }}>
+                                  {mode.label}
+                                </Typography>
+                              }
+                            />
+                          ))}
+                        </Stack>
+                      </Grid>
+                      {contractEndMode === 'end_date' ? (
+                        <Grid size={thirdWidthField}>
+                          <LabeledDatePicker
+                            name="contractEndDate"
+                            label="End Date"
+                            placeholder="Select end date"
+                            value={contractEndDate}
+                            onChange={setContractEndDate}
+                          />
+                        </Grid>
+                      ) : (
+                        <Grid size={thirdWidthField}>
+                          <LabeledDatePicker
+                            name="renewalDate"
+                            label="Renewal Date"
+                            placeholder="Select renewal date"
+                            value={renewalDate}
+                            onChange={setRenewalDate}
+                          />
+                        </Grid>
+                      )}
+                      {contractEndMode === 'renewal_date' ? (
+                        <Grid size={12}>
+                          <Grid container spacing={2}>
+                            <Grid size={thirdWidthField}>
+                              <FormControlLabel
+                                sx={{
+                                  m: 0,
+                                  alignItems: 'center',
+                                  mt: isMobileVariant ? 0 : { md: '24px' },
+                                  height: isMobileVariant ? 'auto' : { md: FIELD_HEIGHT },
+                                }}
+                                control={
+                                  <Checkbox
+                                    size="small"
+                                    checked={autoRenewal}
+                                    onChange={(_, checked) => setAutoRenewal(checked)}
+                                    sx={{ p: 0.5, mr: 0.5, '& .MuiSvgIcon-root': { fontSize: 17 } }}
+                                  />
+                                }
+                                label={
+                                  <Typography sx={{ fontSize: 14, lineHeight: '20px', color: '#262527' }}>
+                                    Auto Renewal of Contract
+                                  </Typography>
+                                }
+                              />
+                            </Grid>
+                            {!autoRenewal ? (
+                              <Grid size={thirdWidthField}>
+                                <LabeledField
+                                  name="autoRenewalNotifyDays"
+                                  label="Notify for Auto-Renewal Before (Days)"
+                                  placeholder="Enter days"
+                                  value={autoRenewalNotifyDays}
+                                  onChange={setAutoRenewalNotifyDays}
+                                  htmlInput={{ inputMode: 'numeric', pattern: '[0-9]*' }}
+                                />
+                              </Grid>
+                            ) : (
+                              <>
+                                <Grid size={thirdWidthField}>
+                                  <LabeledField
+                                    name="draftsBeforeDays"
+                                    label="Drafts Before (Days)"
+                                    placeholder="Enter days"
+                                    value={draftsBeforeDays}
+                                    onChange={setDraftsBeforeDays}
+                                    htmlInput={{ inputMode: 'numeric', pattern: '[0-9]*' }}
+                                  />
+                                </Grid>
+                                <Grid size={thirdWidthField}>
+                                  <Stack spacing={0.75}>
+                                    <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                                      <Typography sx={figmaLabelSx}>
+                                        Auto Publish Before (Days)
+                                        <RequiredAsterisk />
+                                      </Typography>
+                                      <Tooltip
+                                        title="Set how many days before the renewal date the draft will be auto-published"
+                                        arrow
+                                        placement="top"
+                                        slotProps={{
+                                          tooltip: {
+                                            sx: {
+                                              bgcolor: '#262527',
+                                              color: '#FFFFFF',
+                                              fontSize: 12,
+                                              lineHeight: '18px',
+                                              fontWeight: 400,
+                                              px: 1.5,
+                                              py: 1,
+                                              borderRadius: '8px',
+                                            },
+                                          },
+                                          arrow: { sx: { color: '#262527' } },
+                                        }}
+                                      >
+                                        <InfoOutlined sx={{ fontSize: 14, color: '#146dff', cursor: 'help' }} />
+                                      </Tooltip>
+                                    </Stack>
+                                    <LabeledField
+                                      name="autoPublishBeforeDays"
+                                      placeholder="Enter days"
+                                      value={autoPublishBeforeDays}
+                                      onChange={setAutoPublishBeforeDays}
+                                      htmlInput={{ inputMode: 'numeric', pattern: '[0-9]*' }}
+                                    />
+                                  </Stack>
+                                </Grid>
+                              </>
+                            )}
+                          </Grid>
+                        </Grid>
+                      ) : null}
+                    </>
+                  ) : null}
+                </Grid>
               </FormSection>
 
               <FormSection

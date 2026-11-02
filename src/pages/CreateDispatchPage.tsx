@@ -13,9 +13,8 @@ import {
   Drawer,
   FormControlLabel,
   Paper,
-  IconButton,
   Radio,
-  RadioGroup,
+  IconButton,
   InputAdornment,
   MenuItem,
   Snackbar,
@@ -24,6 +23,7 @@ import {
   Toolbar,
   Tooltip,
   Typography,
+  Switch,
   useMediaQuery,
   type PaperProps,
 } from '@mui/material';
@@ -31,6 +31,7 @@ import Grid from '@mui/material/Grid';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import AddOutlined from '@mui/icons-material/AddOutlined';
 import ApartmentOutlined from '@mui/icons-material/ApartmentOutlined';
+import CheckCircle from '@mui/icons-material/CheckCircle';
 import CheckOutlined from '@mui/icons-material/CheckOutlined';
 import CalendarTodayOutlined from '@mui/icons-material/CalendarTodayOutlined';
 import CloseOutlined from '@mui/icons-material/CloseOutlined';
@@ -39,6 +40,7 @@ import DeleteOutlineOutlined from '@mui/icons-material/DeleteOutlineOutlined';
 import DescriptionOutlined from '@mui/icons-material/DescriptionOutlined';
 import EditOutlined from '@mui/icons-material/EditOutlined';
 import ExploreOutlined from '@mui/icons-material/ExploreOutlined';
+import FileUploadOutlined from '@mui/icons-material/FileUploadOutlined';
 import GroupsOutlined from '@mui/icons-material/GroupsOutlined';
 import InfoOutlined from '@mui/icons-material/InfoOutlined';
 import KeyboardArrowDown from '@mui/icons-material/KeyboardArrowDown';
@@ -49,24 +51,17 @@ import MenuRoundedIcon from '@mui/icons-material/MenuRounded';
 import PlaceOutlined from '@mui/icons-material/PlaceOutlined';
 import PersonOutlineOutlined from '@mui/icons-material/PersonOutlineOutlined';
 import PublicOutlined from '@mui/icons-material/PublicOutlined';
+import RadioButtonUnchecked from '@mui/icons-material/RadioButtonUnchecked';
 import Refresh from '@mui/icons-material/Refresh';
 import SettingsOutlined from '@mui/icons-material/SettingsOutlined';
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined';
 import ViewKanbanOutlined from '@mui/icons-material/ViewKanbanOutlined';
-import {
-  applyBillingDiscount,
-  buildBillingPlanPricing,
-  buildBillingSchedule,
-  countServiceVisits,
-  formatBillingAmount,
-  type BillingFrequencyId,
-} from '../billing/frequencyPlans';
-import { formScrollbarSx } from '../styles/scrollbars';
 import { AddressMapPickerModal } from '../components/createContract/AddressMapPickerModal';
 import { FormSection } from '../components/createContract/FormSection';
 import { useTheme } from '@mui/material/styles';
 import type { Dayjs } from 'dayjs';
-import { forwardRef, useCallback, useEffect, useMemo, useState, type InputHTMLAttributes } from 'react';
+import dayjs from 'dayjs';
+import { forwardRef, useCallback, useEffect, useMemo, useRef, useState, type InputHTMLAttributes } from 'react';
 import type { SvgIconProps } from '@mui/material/SvgIcon';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -115,11 +110,29 @@ const figmaTextFieldSx = {
     borderRadius: '8px',
     backgroundColor: 'transparent',
     '& fieldset': { borderColor: '#E6E6E7' },
-    '&:hover fieldset': { borderColor: '#D0CFD2' },
+    '&:hover:not(.Mui-disabled) fieldset': { borderColor: '#D0CFD2' },
     '&.Mui-focused fieldset': { borderColor: '#6A6A70' },
+    '&.Mui-disabled, &.Mui-disabled:hover': { backgroundColor: '#F5F5F6' },
   },
-  '& .MuiInputBase-input': { fontSize: 12, lineHeight: '18px' },
-  '& .MuiInputBase-input::placeholder': { color: '#CCCCCC', opacity: 1, fontSize: 12 },
+  '& .MuiPickersOutlinedInput-root': {
+    borderRadius: '8px',
+    backgroundColor: 'transparent',
+    '& .MuiPickersOutlinedInput-notchedOutline': { borderColor: '#E6E6E7', borderWidth: 1 },
+    '&:hover:not(.Mui-disabled) .MuiPickersOutlinedInput-notchedOutline': { borderColor: '#D0CFD2' },
+    '&.Mui-focused .MuiPickersOutlinedInput-notchedOutline': { borderColor: '#6A6A70', borderWidth: 2 },
+  },
+  '& .MuiInputBase-input': { fontSize: 12, lineHeight: '18px', color: '#262527' },
+  '& .MuiInputBase-input::placeholder': { color: '#CCCCCC', opacity: 1, fontSize: 12, WebkitTextFillColor: '#CCCCCC' },
+  '& .MuiInputBase-input.Mui-disabled': { WebkitTextFillColor: '#86868B', color: '#86868B' },
+  '& .MuiInputBase-input.Mui-disabled::placeholder': { color: '#CCCCCC', opacity: 1, WebkitTextFillColor: '#CCCCCC' },
+  '& .MuiPickersInputBase-sectionContent, & .MuiPickersSectionList-sectionContent': {
+    fontSize: 12,
+    lineHeight: '18px',
+    color: '#262527',
+  },
+  '& .MuiPickersSectionList-sectionContent[aria-valuetext="Empty"]': {
+    color: '#CCCCCC',
+  },
   '& .MuiSelect-icon .MuiSvgIcon-root': { fontSize: 16 },
 } as const;
 
@@ -138,6 +151,16 @@ const CONTACT_DIRECTORY_USERS: ContactDirectoryUser[] = [
   { id: 'don', name: 'Don Crowell', email: 'don.crowell@signal.com', phone: '+1-402-555-0166', avatar: 'https://www.figma.com/api/mcp/asset/9b865407-4730-4bbf-b832-b3b184922f4d' },
   { id: 'derrick', name: 'Derrick Dancy', email: 'derrick.dancy@signal.com', phone: '+1-402-555-0177', avatar: 'https://www.figma.com/api/mcp/asset/e44286c7-801e-4591-b759-428f2c4b259f' },
 ];
+
+const FORM_PROGRESS_SECTIONS = [
+  { id: 'section-company-property', label: 'Company & Property Details' },
+  { id: 'section-property-occupancy', label: 'Property Occupancy' },
+  { id: 'section-contacts', label: 'Contact Details' },
+  { id: 'section-contract', label: 'Contract Details' },
+  { id: 'section-products', label: 'Add Products' },
+  { id: 'section-billing', label: 'Billing And Payment Details' },
+  { id: 'section-signee', label: 'Signee' },
+] as const;
 
 const CONTACT_ROLE_ROWS = [
   { id: 'decision_maker', label: 'Decision Maker', color: '#9747FF', bg: '#F5EDFF' },
@@ -338,6 +361,24 @@ const DEFAULT_SERVICE_PRODUCTS: { id: string; dimension: string; rate: string; q
   { id: 'p1', dimension: '20*20*12', rate: '35.00', quantity: '1' },
 ];
 
+type BillingFrequencyPlan = 'annually' | 'semi_annually' | 'quarterly' | 'monthly';
+
+/** Monthly rate is the base. Longer plans are that rate times the months in the period. */
+const BILLING_MONTHLY_RATE = 120;
+
+function billingPlanQuote(id: BillingFrequencyPlan) {
+  const months = { annually: 12, semi_annually: 6, quarterly: 3, monthly: 1 }[id];
+  const discount = id === 'annually' ? 0.1 : id === 'quarterly' ? 0.05 : 0;
+  const compareAt = BILLING_MONTHLY_RATE * months;
+  const price = Math.round(compareAt * (1 - discount));
+  return {
+    price,
+    ...(discount > 0
+      ? { compareAt, off: `${Math.round(discount * 100)}% off` }
+      : {}),
+  };
+}
+
 type SigneeCard = {
   id: string;
   name: string;
@@ -352,7 +393,6 @@ function parseMoneyInput(s: string) {
   const n = parseFloat(s.replace(/[^0-9.]/g, ''));
   return Number.isFinite(n) ? n : 0;
 }
-
 
 function LabeledField(props: {
   label?: string;
@@ -413,13 +453,13 @@ function LabeledField(props: {
                       const emptyOpt = opts.find((o) => o.value === '');
                       return (
                         <Typography component="span" sx={{ fontSize: 12, lineHeight: '18px', color: '#CCCCCC' }}>
-                          {emptyOpt?.label ?? 'Select'}
+                          {props.placeholder || emptyOpt?.label || 'Select'}
                         </Typography>
                       );
                     }
                     const opt = opts.find((o) => o.value === v);
                     return (
-                      <Typography component="span" sx={{ fontSize: 12, lineHeight: '18px', color: '#262527' }}>
+                      <Typography component="span" sx={{ fontSize: 12, lineHeight: '18px', color: props.disabled ? '#86868B' : '#262527' }}>
                         {opt?.label ?? v}
                       </Typography>
                     );
@@ -430,73 +470,15 @@ function LabeledField(props: {
         }
       >
         {props.select
-          ? (props.options ?? []).map((o) => (
-              <MenuItem key={`${props.name ?? 'opt'}-${o.value || '_empty'}`} value={o.value}>
+          ? (props.options ?? [])
+              .filter((o) => o.value !== '')
+              .map((o) => (
+              <MenuItem key={`${props.name ?? 'opt'}-${o.value}`} value={o.value}>
                 {o.label}
               </MenuItem>
             ))
           : null}
       </TextField>
-    </Stack>
-  );
-}
-
-/** Labeled searchable select, for option lists too long to scan in a plain select. */
-function LabeledAutocompleteField(props: {
-  name: string;
-  label: string;
-  required?: boolean;
-  placeholder: string;
-  value: string;
-  onChange: (v: string) => void;
-  options: UiOption[];
-}) {
-  return (
-    <Stack spacing={0.75} sx={{ width: '100%' }}>
-      <Typography sx={figmaLabelSx}>
-        {props.label}
-        {props.required ? <RequiredAsterisk /> : null}
-      </Typography>
-      <Autocomplete
-        options={props.options}
-        value={props.options.find((o) => o.value === props.value) ?? null}
-        onChange={(_, next) => props.onChange(next?.value ?? '')}
-        getOptionLabel={(o) => o.label}
-        isOptionEqualToValue={(a, b) => a.value === b.value}
-        openOnFocus
-        filterOptions={(options, { inputValue }) => {
-          const q = inputValue.trim().toLowerCase();
-          if (!q) return options;
-          return options.filter((o) => o.label.toLowerCase().includes(q));
-        }}
-        popupIcon={<KeyboardArrowDownOutlined sx={{ fontSize: 16, color: '#6A6A70' }} />}
-        slotProps={{
-          paper: {
-            sx: { borderRadius: '8px', mt: 0.5, boxShadow: '0px 8px 24px rgba(15, 23, 42, 0.12)' },
-          },
-          listbox: {
-            sx: {
-              py: 0.5,
-              '& .MuiAutocomplete-option': {
-                fontSize: 12,
-                lineHeight: '18px',
-                minHeight: 36,
-                py: 1,
-                px: 1.5,
-              },
-            },
-          },
-        }}
-        renderInput={(params) => (
-          <TextField
-            {...params}
-            name={props.name}
-            size="small"
-            placeholder={props.placeholder}
-            sx={figmaTextFieldSx}
-          />
-        )}
-      />
     </Stack>
   );
 }
@@ -521,7 +503,7 @@ function LabeledDatePicker(props: {
       <DatePicker
         value={props.value}
         onChange={props.onChange}
-        format="D MMM, YYYY"
+        format="MM/DD/YY"
         name={props.name}
         disabled={props.disabled}
         slots={{ openPickerIcon: CalendarTodayOutlined }}
@@ -669,6 +651,10 @@ export function CreateDispatchPage() {
   const [createCompanyPartnershipStatus, setCreateCompanyPartnershipStatus] = useState('');
   const [createCompanyEmployees, setCreateCompanyEmployees] = useState('');
   const [createCompanyRevenue, setCreateCompanyRevenue] = useState('');
+  const [createCompanyTillDate, setCreateCompanyTillDate] = useState<Dayjs | null>(null);
+  const [createCompanyFloor, setCreateCompanyFloor] = useState('');
+  const [createCompanySpaceType, setCreateCompanySpaceType] = useState('Suite');
+  const [createCompanySpaceId, setCreateCompanySpaceId] = useState('');
 
   const propertyOptionsForCompany = useMemo(() => {
     const selected = companyName.trim();
@@ -703,10 +689,10 @@ export function CreateDispatchPage() {
   ]);
 
   const [contractStartDate, setContractStartDate] = useState<Dayjs | null>(null);
-  const [contractEndDate, setContractEndDate] = useState<Dayjs | null>(null);
   const [cycleReferenceDate, setCycleReferenceDate] = useState<Dayjs | null>(null);
   const [serviceStartDate, setServiceStartDate] = useState<Dayjs | null>(null);
   const [sameAsContractDate, setSameAsContractDate] = useState(false);
+  const [firstInstallOnServiceDate, setFirstInstallOnServiceDate] = useState(false);
 
   const [occurrenceEvery, setOccurrenceEvery] = useState('01');
   const [occurrenceUnit, setOccurrenceUnit] = useState('Month');
@@ -726,7 +712,6 @@ export function CreateDispatchPage() {
 
   const productDimensionOptions = useMemo<UiOption[]>(
     () => [
-      { label: 'Select product size', value: '' },
       { label: '20*20*12', value: '20*20*12' },
       { label: '10*10*8', value: '10*10*8' },
     ],
@@ -735,142 +720,53 @@ export function CreateDispatchPage() {
   const [serviceProducts, setServiceProducts] = useState<
     { id: string; dimension: string; rate: string; quantity: string }[]
   >(() => DEFAULT_SERVICE_PRODUCTS.map((p) => ({ ...p })));
+  const [flatRateEnabled, setFlatRateEnabled] = useState(false);
+  const [flatRateAmount, setFlatRateAmount] = useState('0.00');
 
-  /** 'byProduct' prices each product size on its own row; 'total' prices one flat rate x quantity. */
-  const [productEntryMode, setProductEntryMode] = useState<'total' | 'byProduct'>('byProduct');
-  const [totalQuantityRate, setTotalQuantityRate] = useState('');
-  const [totalQuantityCount, setTotalQuantityCount] = useState('');
-
-  const totalQuantityAmount = useMemo(
-    () => parseMoneyInput(totalQuantityRate) * (parseInt(totalQuantityCount, 10) || 0),
-    [totalQuantityRate, totalQuantityCount],
+  const flatRateFilterCount = useMemo(
+    () => serviceProducts.reduce((sum, p) => sum + (parseInt(p.quantity, 10) || 0), 0),
+    [serviceProducts],
   );
+  const flatRateTotal = flatRateFilterCount * parseMoneyInput(flatRateAmount);
 
   const serviceProductsSubtotal = useMemo(
     () =>
-      productEntryMode === 'total'
-        ? totalQuantityAmount
-        : serviceProducts.reduce((sum, p) => {
-            const r = parseMoneyInput(p.rate);
-            const q = parseInt(p.quantity, 10) || 0;
-            return sum + r * q;
-          }, 0),
-    [productEntryMode, totalQuantityAmount, serviceProducts],
+      serviceProducts.reduce((sum, p) => {
+        const r = parseMoneyInput(p.rate);
+        const q = parseInt(p.quantity, 10) || 0;
+        return sum + r * q;
+      }, 0),
+    [serviceProducts],
   );
 
-  const [billingPlanMode, setBillingPlanMode] = useState<'recurring' | 'perService'>('recurring');
-  const [billingFrequency, setBillingFrequency] = useState<BillingFrequencyId>('annually');
-  const [billingDiscountValue, setBillingDiscountValue] = useState('');
-  const [billingDiscountType, setBillingDiscountType] = useState<'percentage' | 'fixed'>('percentage');
-  const [billingExemptTax, setBillingExemptTax] = useState(false);
-
-  const billingFrequencyPricing = useMemo(
-    () => buildBillingPlanPricing(serviceProductsSubtotal),
-    [serviceProductsSubtotal],
-  );
-
-  const selectedBillingPlan =
-    billingFrequencyPricing.find((p) => p.id === billingFrequency) ?? billingFrequencyPricing[0];
-
-  /** Manual discount from the Discount field, applied on top of the term price. */
-  const applyManualDiscount = useCallback(
-    (amount: number) =>
-      applyBillingDiscount(amount, parseMoneyInput(billingDiscountValue), billingDiscountType),
-    [billingDiscountValue, billingDiscountType],
-  );
-
-  /** Billing starts on the service start date, falling back to the contract start. */
-  const billingStartDate = cycleReferenceDate ?? serviceStartDate ?? contractStartDate;
-
-  /** Payment dates for the selected plan, capped by the contract end date. */
-  const billingSchedule = useMemo(
-    () => buildBillingSchedule(billingStartDate, contractEndDate, selectedBillingPlan.months),
-    [billingStartDate, contractEndDate, selectedBillingPlan.months],
-  );
-
-  /** Service visits across the contract, driven by the Service Occurrence interval. */
-  const serviceVisitCount = useMemo(
-    () =>
-      countServiceVisits(billingStartDate, contractEndDate, Number.parseInt(occurrenceEvery, 10)),
-    [billingStartDate, contractEndDate, occurrenceEvery],
-  );
-
-  const [billingType, setBillingType] = useState('');
-  const [cycleReferenceDateInput, setCycleReferenceDateInput] = useState<Dayjs | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState('Credit Card');
+  const [billingPlanMode, setBillingPlanMode] = useState<'recurring' | 'at_service'>('recurring');
+  const [billingFrequencyPlan, setBillingFrequencyPlan] = useState<BillingFrequencyPlan>('annually');
+  const [billingDiscount, setBillingDiscount] = useState('');
+  const [billingDiscountUnit, setBillingDiscountUnit] = useState('Percentage');
+  const [discountFieldEl, setDiscountFieldEl] = useState<HTMLDivElement | null>(null);
+  const [billingTaxRate, setBillingTaxRate] = useState('');
+  const [exemptTax, setExemptTax] = useState(false);
+  const [taxExemptionDocumentName, setTaxExemptionDocumentName] = useState('');
+  const taxExemptionInputRef = useRef<HTMLInputElement>(null);
+  const [autoCharge, setAutoCharge] = useState(false);
+  const [nextPaymentDate, setNextPaymentDate] = useState<Dayjs | null>(null);
+  const [annualRateIncrease, setAnnualRateIncrease] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('Credit Card / ACH');
   const [paymentTerms, setPaymentTerms] = useState('');
-  const billingTypeOptions = useMemo<UiOption[]>(
-    () => [
-      { label: 'Select billing type', value: '' },
-      { label: 'Post Bill', value: 'Post Bill' },
-      { label: 'Pre Bill', value: 'Pre Bill' },
-    ],
-    [],
-  );
   const paymentMethodOptions = useMemo<UiOption[]>(
     () => [
-      { label: 'Select payment method', value: '' },
-      { label: 'Credit Card', value: 'Credit Card' },
-      { label: 'ACH', value: 'ACH' },
+      { label: 'Credit Card / ACH', value: 'Credit Card / ACH' },
+      ...(billingPlanMode === 'at_service' ? [{ label: 'Check', value: 'Check' }] : []),
     ],
-    [],
+    [billingPlanMode],
   );
   const paymentTermsOptions = useMemo<UiOption[]>(
     () => [
-      { label: 'Select payment terms', value: '' },
-      { label: 'Due upon invoice', value: 'Due upon invoice' },
-      { label: 'Net 30', value: 'Net 30' },
+      { label: 'Due Upon Invoice', value: 'Due Upon Invoice' },
+      { label: 'Net 10. Ten Days After Invoice Date', value: 'Net 10. Ten Days After Invoice Date' },
+      { label: 'Net 15. Fifteen Days After Invoice Date', value: 'Net 15. Fifteen Days After Invoice Date' },
+      { label: 'Net 30. Thirty Days After Invoice Date', value: 'Net 30. Thirty Days After Invoice Date' },
     ],
-    [],
-  );
-  const [paymentPortal, setPaymentPortal] = useState('');
-  const [compliancePortal, setCompliancePortal] = useState('');
-  const paymentPortalOptions = useMemo<UiOption[]>(
-    () =>
-      [
-        'Aramark',
-        'Ariba',
-        'Bill.com',
-        'CiraNet',
-        'Coupa',
-        'Entrata (VendorAccess)',
-        'IRT',
-        'OpsTechnology (OpsMerchant)',
-        'Paymode (Bottom Technologies)',
-        'Payup',
-        'Retail Link',
-        'Tipalti',
-        'VendorCafe',
-        'VendorCafe (CBRE properties only)',
-        'Workday',
-        'Others',
-      ].map((label) => ({ label, value: label })),
-    [],
-  );
-  const compliancePortalOptions = useMemo<UiOption[]>(
-    () =>
-      [
-        'Ariba',
-        'CERTIFICIAL',
-        'Conservice (CONTROL)',
-        'Login.gov',
-        'MyCOI',
-        'NetVendor',
-        'Real Page Vendor Credentialing (Compliance Depot)',
-        'Revyse',
-        'RMIS (Registry Monitoring Insurance Services)',
-        'Sam.gov',
-        'Screens',
-        'Trulieve',
-        'VendorCafe',
-        'Vendorply',
-        'VendorPM',
-        'Vendorpro',
-        'Vendorshield',
-        'VIVE',
-        'V-Verify',
-        'Others',
-      ].map((label) => ({ label, value: label })),
     [],
   );
 
@@ -915,6 +811,14 @@ export function CreateDispatchPage() {
       { label: 'None', value: 'None' },
       { label: 'IFA / Franchisee network', value: 'IFA / Franchisee network' },
       { label: 'Regional co-op', value: 'Regional co-op' },
+    ],
+    [],
+  );
+  const propertySourceOptions = useMemo<UiOption[]>(
+    () => [
+      { label: 'ALN', value: 'ALN' },
+      { label: 'Costar', value: 'Costar' },
+      { label: 'Referral', value: 'Referral' },
     ],
     [],
   );
@@ -1063,6 +967,7 @@ export function CreateDispatchPage() {
     if (!industryVertical) e.industryVertical = 'Industry vertical is required.';
     if (!propertyAddress.trim()) e.propertyAddress = 'Property address is required.';
     if (!propertyName.trim()) e.propertyName = 'Property name is required.';
+    if (!propertySource.trim()) e.propertySource = 'Property source is required.';
     if ((contactUserByRole.decision_maker ?? []).length === 0) {
       e.decisionMakerContacts = 'Select at least one Decision Maker contact.';
     }
@@ -1070,29 +975,19 @@ export function CreateDispatchPage() {
     if (!contactEmail.trim()) e.contactEmail = 'Email is required.';
     if (!contactPhone.trim()) e.contactPhone = 'Phone is required.';
     if (!contractStartDate) e.contractStartDate = 'Contract start date is required.';
-    if (!cycleReferenceDate) e.cycleReferenceDate = 'Service starting date is required.';
+    if (!cycleReferenceDate) e.cycleReferenceDate = 'Service start date is required.';
     if (!serviceStartDate) e.serviceStartDate = 'Service start date is required.';
     const n = Number.parseInt(occurrenceEvery, 10);
     if (!occurrenceEvery.trim() || Number.isNaN(n) || n < 1) e.occurrenceEvery = 'Enter a valid number (1+).';
     if (!occurrenceUnit.trim()) e.occurrenceUnit = 'Select week or month.';
     if (!serviceLabel.trim()) e.serviceLabel = 'Service name is required.';
-    if (productEntryMode === 'total') {
-      if (!totalQuantityRate.trim() || parseMoneyInput(totalQuantityRate) <= 0) {
-        e.totalQuantityRate = 'Enter a valid rate.';
-      }
-      const tq = parseInt(totalQuantityCount, 10);
-      if (!totalQuantityCount.trim() || Number.isNaN(tq) || tq < 1) {
-        e.totalQuantityCount = 'Enter quantity (1+).';
-      }
-    } else {
-      if (serviceProducts.length === 0) e.serviceProducts = 'Add at least one product.';
-      for (let i = 0; i < serviceProducts.length; i++) {
-        const p = serviceProducts[i];
-        if (!p.dimension.trim()) e[`product_${i}_dimension`] = 'Select a product size.';
-        if (!p.rate.trim() || parseMoneyInput(p.rate) <= 0) e[`product_${i}_rate`] = 'Enter a valid rate.';
-        const qn = parseInt(p.quantity, 10);
-        if (!p.quantity.trim() || Number.isNaN(qn) || qn < 1) e[`product_${i}_quantity`] = 'Enter quantity (1+).';
-      }
+    if (serviceProducts.length === 0) e.serviceProducts = 'Add at least one product.';
+    for (let i = 0; i < serviceProducts.length; i++) {
+      const p = serviceProducts[i];
+      if (!p.dimension.trim()) e[`product_${i}_dimension`] = 'Select a product size.';
+      if (!flatRateEnabled && (!p.rate.trim() || parseMoneyInput(p.rate) <= 0)) e[`product_${i}_rate`] = 'Enter a valid rate.';
+      const qn = parseInt(p.quantity, 10);
+      if (!p.quantity.trim() || Number.isNaN(qn) || qn < 1) e[`product_${i}_quantity`] = 'Enter quantity (1+).';
     }
 
     setFieldErrors(e);
@@ -1102,6 +997,7 @@ export function CreateDispatchPage() {
     industryVertical,
     propertyAddress,
     propertyName,
+    propertySource,
     contactUserByRole,
     contactName,
     contactEmail,
@@ -1113,9 +1009,7 @@ export function CreateDispatchPage() {
     occurrenceUnit,
     serviceLabel,
     serviceProducts,
-    productEntryMode,
-    totalQuantityRate,
-    totalQuantityCount,
+    flatRateEnabled,
     paymentMethod,
   ]);
 
@@ -1128,16 +1022,20 @@ export function CreateDispatchPage() {
     setPropertySource('');
     setFranchiseAssociation('');
     setCompanyAffiliations([]);
+    setCreateCompanyTillDate(null);
+    setCreateCompanyFloor('');
+    setCreateCompanySpaceType('Suite');
+    setCreateCompanySpaceId('');
     setContactName('');
     setContactEmail('');
     setContactPhone('');
     setContactUserByRole({ ...EMPTY_CONTACT_ROLE_SELECTIONS });
     setContactDirectory([...CONTACT_DIRECTORY_USERS]);
     setContractStartDate(null);
-    setContractEndDate(null);
     setCycleReferenceDate(null);
     setServiceStartDate(null);
     setSameAsContractDate(false);
+    setFirstInstallOnServiceDate(false);
     setOccurrenceEvery('01');
     setOccurrenceUnit('Month');
     setFieldErrors({});
@@ -1147,20 +1045,20 @@ export function CreateDispatchPage() {
     setPreferredStartTime(null);
     setPreferredEndTime(null);
     setServiceProducts(DEFAULT_SERVICE_PRODUCTS.map((p) => ({ ...p })));
-    setProductEntryMode('byProduct');
-    setTotalQuantityRate('');
-    setTotalQuantityCount('');
+    setFlatRateEnabled(false);
+    setFlatRateAmount('0.00');
     setBillingPlanMode('recurring');
-    setBillingFrequency('annually');
-    setBillingDiscountValue('');
-    setBillingDiscountType('percentage');
-    setBillingExemptTax(false);
-    setBillingType('');
-    setCycleReferenceDateInput(null);
-    setPaymentMethod('Credit Card');
+    setBillingFrequencyPlan('annually');
+    setBillingDiscount('');
+    setBillingDiscountUnit('Percentage');
+    setBillingTaxRate('');
+    setExemptTax(false);
+    setTaxExemptionDocumentName('');
+    setAutoCharge(false);
+    setNextPaymentDate(null);
+    setAnnualRateIncrease('');
+    setPaymentMethod('Credit Card / ACH');
     setPaymentTerms('');
-    setPaymentPortal('');
-    setCompliancePortal('');
     setBillFirstName('');
     setBillLastName('');
     setBillEmail('');
@@ -1209,6 +1107,12 @@ export function CreateDispatchPage() {
         franchiseAssociation: franchiseAssociation.trim(),
         propertySource: propertySource.trim(),
         affiliations: [...companyAffiliations],
+        companyAtPropertyTillDate: createCompanyTillDate?.format('YYYY-MM-DD'),
+        propertyOccupancy: {
+          floor: createCompanyFloor.trim(),
+          spaceType: createCompanySpaceType,
+          spaceId: createCompanySpaceId.trim(),
+        },
       },
       contact: {
         name: contactName.trim(),
@@ -1227,10 +1131,10 @@ export function CreateDispatchPage() {
         ),
       },
       contractStartDate: contractStartDate?.toISOString(),
-      contractEndDate: contractEndDate?.toISOString(),
       cycleReferenceDate: cycleReferenceDate?.toISOString(),
       serviceStartDate: serviceStartDate?.toISOString(),
       sameAsContractDate,
+      firstInstallOnServiceDate,
       serviceOccurrence: { every: Number.parseInt(occurrenceEvery, 10), unit: occurrenceUnit, jobDays: [] },
       service: {
         label: serviceLabel,
@@ -1240,16 +1144,11 @@ export function CreateDispatchPage() {
         serviceStartingDate: serviceStartDate?.toISOString(),
         preferredStartTime: preferredStartTime?.toISOString(),
         preferredEndTime: preferredEndTime?.toISOString(),
-        productEntryMode,
-        products: productEntryMode === 'total' ? [] : serviceProducts,
-        totalQuantity:
-          productEntryMode === 'total'
-            ? {
-                rate: parseMoneyInput(totalQuantityRate),
-                quantity: parseInt(totalQuantityCount, 10) || 0,
-              }
-            : null,
+        products: serviceProducts,
         productsTotal: serviceProductsSubtotal,
+        flatRate: flatRateEnabled
+          ? { filters: flatRateFilterCount, rate: parseMoneyInput(flatRateAmount), total: flatRateTotal }
+          : null,
       },
       billingInfo: {
         contactId: billingContactId,
@@ -1266,26 +1165,18 @@ export function CreateDispatchPage() {
         zip: billZip,
         address: billAddress,
       },
-      billingFrequency: {
-        mode: billingPlanMode,
-        plan: billingPlanMode === 'recurring' ? billingFrequency : null,
-        termDiscountPct: billingPlanMode === 'recurring' ? selectedBillingPlan.discountPct : 0,
-        amountPerPayment:
-          billingPlanMode === 'recurring'
-            ? applyManualDiscount(selectedBillingPlan.price)
-            : applyManualDiscount(serviceProductsSubtotal),
-        discount: { value: parseMoneyInput(billingDiscountValue), type: billingDiscountType },
-        exemptTax: billingExemptTax,
-        schedule: billingSchedule.map((d) => d.format('YYYY-MM-DD')),
-        visits: billingPlanMode === 'perService' ? serviceVisitCount : null,
-      },
       payment: {
-        cycleReferenceDate: cycleReferenceDateInput?.format('YYYY-MM-DD') ?? '',
-        billingType,
+        cycleReferenceDate: (nextPaymentDate ?? contractStartDate)?.format('YYYY-MM-DD') ?? '',
+        billingPlanMode,
+        billingFrequency: billingFrequencyPlan,
+        discount: billingDiscount,
+        discountUnit: billingDiscountUnit,
+        taxRate: exemptTax ? 'exempt' : billingTaxRate,
+        taxExemptionDocument: exemptTax ? taxExemptionDocumentName : '',
+        autoCharge,
+        annualRateIncrease,
         paymentMethod,
         paymentTerms,
-        paymentPortal,
-        compliancePortal,
       },
       signees: signeeCards,
     };
@@ -1347,6 +1238,80 @@ export function CreateDispatchPage() {
     },
     [],
   );
+
+  const sectionCompletion = useMemo(() => {
+    const occurrenceCount = Number.parseInt(occurrenceEvery, 10);
+    const billingAddressComplete = sameAsPropertyAddress
+      ? true
+      : Boolean(billAddress.trim() && billCountry && billState && billCity.trim() && billZip.trim());
+    return {
+      'section-company-property':
+        Boolean(propertyAddress.trim()) &&
+        Boolean(propertyName.trim()) &&
+        Boolean(propertySource.trim()) &&
+        Boolean(companyName.trim()) &&
+        Boolean(industryVertical) &&
+        companyAffiliations.length > 0,
+      'section-property-occupancy':
+        createCompanyTillDate != null || Boolean(createCompanyFloor.trim()) || Boolean(createCompanySpaceId.trim()),
+      'section-contacts': (contactUserByRole.decision_maker ?? []).length > 0,
+      'section-contract':
+        contractStartDate != null &&
+        cycleReferenceDate != null &&
+        Boolean(occurrenceEvery.trim()) &&
+        !Number.isNaN(occurrenceCount) &&
+        occurrenceCount >= 1 &&
+        Boolean(occurrenceUnit.trim()),
+      'section-products':
+        serviceProducts.length > 0 &&
+        serviceProducts.every((p) => {
+          const quantity = parseInt(p.quantity, 10);
+          return Boolean(p.dimension.trim()) && (flatRateEnabled || parseMoneyInput(p.rate) > 0) && !Number.isNaN(quantity) && quantity >= 1;
+        }),
+      'section-billing':
+        Boolean(paymentMethod) &&
+        Boolean(paymentTerms) &&
+        Boolean(annualRateIncrease.trim()) &&
+        Boolean(billingContactId) &&
+        (billingPlanMode !== 'recurring' || nextPaymentDate != null) &&
+        billingAddressComplete,
+      'section-signee': signeeCards.length > 0 && signeeCards.every((card) => Boolean(card.name.trim())),
+    } as Record<(typeof FORM_PROGRESS_SECTIONS)[number]['id'], boolean>;
+  }, [
+    propertyAddress,
+    propertyName,
+    propertySource,
+    companyName,
+    industryVertical,
+    companyAffiliations,
+    createCompanyTillDate,
+    createCompanyFloor,
+    createCompanySpaceId,
+    contactUserByRole,
+    contractStartDate,
+    cycleReferenceDate,
+    occurrenceEvery,
+    occurrenceUnit,
+    serviceProducts,
+    flatRateEnabled,
+    paymentMethod,
+    paymentTerms,
+    annualRateIncrease,
+    billingContactId,
+    billingPlanMode,
+    nextPaymentDate,
+    sameAsPropertyAddress,
+    billAddress,
+    billCountry,
+    billState,
+    billCity,
+    billZip,
+    signeeCards,
+  ]);
+
+  const scrollToSection = useCallback((sectionId: string) => {
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
 
   return (
     <Box
@@ -1598,13 +1563,123 @@ export function CreateDispatchPage() {
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
-            // Most of the right padding lives on the scrolling form instead,
-            // leaving just a 16px gutter to the right of its scrollbar.
-            pl: { xs: 1.5, sm: 3, md: 4 },
-            pr: 2,
+            px: { xs: 1.5, sm: 3, md: 4 },
             py: { xs: 1.5, sm: 2, md: 2.5 },
           }}
         >
+          <Box
+            sx={{
+              flex: '1 1 0%',
+              minHeight: 0,
+              minWidth: 0,
+              display: 'flex',
+              flexDirection: { xs: 'column', md: 'row' },
+              alignItems: 'stretch',
+              gap: { xs: 1.5, md: 3 },
+              overflow: 'hidden',
+            }}
+          >
+            <Box
+              component="nav"
+              aria-label="Form progress"
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                flexShrink: 0,
+                width: { xs: '100%', md: 220 },
+                maxHeight: { xs: 'none', md: '100%' },
+                overflowX: { xs: 'auto', md: 'hidden' },
+                overflowY: { xs: 'hidden', md: 'auto' },
+                pr: { md: 1 },
+                pb: { xs: 0.5, md: 0 },
+                borderBottom: { xs: '1px solid #E6E6E7', md: 'none' },
+              }}
+            >
+              <Typography
+                sx={{
+                  fontSize: 12,
+                  fontWeight: 500,
+                  color: '#6A6A70',
+                  mb: { xs: 1.25, md: 2 },
+                  display: { xs: 'none', md: 'block' },
+                }}
+              >
+                {FORM_PROGRESS_SECTIONS.filter((s) => sectionCompletion[s.id]).length}/{FORM_PROGRESS_SECTIONS.length} sections complete
+              </Typography>
+              <Stack
+                spacing={0}
+                sx={{
+                  position: 'relative',
+                  flexDirection: { xs: 'row', md: 'column' },
+                  gap: { xs: 1, md: 0 },
+                  minWidth: { xs: 'max-content', md: 0 },
+                }}
+              >
+                {FORM_PROGRESS_SECTIONS.map((section, index) => {
+                  const complete = sectionCompletion[section.id];
+                  const isLast = index === FORM_PROGRESS_SECTIONS.length - 1;
+                  return (
+                    <Box
+                      key={section.id}
+                      sx={{
+                        position: 'relative',
+                        display: 'flex',
+                        gap: 1.25,
+                        pb: { xs: 0, md: isLast ? 0 : 2.25 },
+                        pr: { xs: isLast ? 0 : 1.5, md: 0 },
+                        alignItems: 'center',
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          width: 20,
+                          height: 20,
+                          flexShrink: 0,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          zIndex: 1,
+                          bgcolor: '#FFFFFF',
+                        }}
+                      >
+                        {complete ? (
+                          <CheckCircle sx={{ fontSize: 18, color: '#2DA551' }} />
+                        ) : (
+                          <RadioButtonUnchecked sx={{ fontSize: 18, color: '#C8C8CB' }} />
+                        )}
+                      </Box>
+                      <Box
+                        component="button"
+                        type="button"
+                        onClick={() => scrollToSection(section.id)}
+                        sx={{
+                          all: 'unset',
+                          cursor: 'pointer',
+                          flex: 1,
+                          minWidth: 0,
+                          pt: '1px',
+                          '&:hover .progress-section-label': { color: '#2DA551' },
+                        }}
+                      >
+                        <Typography
+                          className="progress-section-label"
+                          sx={{
+                            fontSize: { xs: 12, md: 13 },
+                            fontWeight: complete ? 600 : 500,
+                            lineHeight: '18px',
+                            color: complete ? '#262527' : '#6A6A70',
+                            transition: 'color 120ms ease',
+                            whiteSpace: { xs: 'nowrap', md: 'normal' },
+                          }}
+                        >
+                          {section.label}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  );
+                })}
+              </Stack>
+            </Box>
           <Box
             component="form"
             id="create-contract-form"
@@ -1616,15 +1691,88 @@ export function CreateDispatchPage() {
               mx: 'auto',
               flex: '1 1 0%',
               minHeight: 0,
+              minWidth: 0,
               display: 'flex',
               flexDirection: 'column',
               overflowY: 'auto',
               overflowX: 'hidden',
               WebkitOverflowScrolling: 'touch',
-              // Padding inside the scroll container keeps content off the
-              // scrollbar, which still paints at the container's right edge.
-              pr: { xs: 1.5, sm: 3, md: 4 },
-              ...formScrollbarSx,
+              '& .MuiOutlinedInput-root:not(.Mui-error) .MuiOutlinedInput-notchedOutline, & .MuiPickersOutlinedInput-root:not(.Mui-error) .MuiPickersOutlinedInput-notchedOutline': {
+                borderColor: '#E6E6E7',
+                borderWidth: '1px',
+              },
+              '& .MuiOutlinedInput-root:not(.Mui-error):not(.Mui-disabled):hover .MuiOutlinedInput-notchedOutline, & .MuiPickersOutlinedInput-root:not(.Mui-error):not(.Mui-disabled):hover .MuiPickersOutlinedInput-notchedOutline': {
+                borderColor: '#D0CFD2',
+              },
+              '& .MuiOutlinedInput-root.Mui-focused:not(.Mui-error) .MuiOutlinedInput-notchedOutline, & .MuiPickersOutlinedInput-root.Mui-focused:not(.Mui-error) .MuiPickersOutlinedInput-notchedOutline': {
+                borderColor: '#6A6A70',
+                borderWidth: '2px',
+              },
+              '& .MuiOutlinedInput-root.Mui-disabled .MuiOutlinedInput-notchedOutline, & .MuiOutlinedInput-root.Mui-disabled:hover .MuiOutlinedInput-notchedOutline, & .MuiPickersOutlinedInput-root.Mui-disabled .MuiPickersOutlinedInput-notchedOutline, & .MuiPickersOutlinedInput-root.Mui-disabled:hover .MuiPickersOutlinedInput-notchedOutline': {
+                borderColor: '#E6E6E7',
+              },
+              '& .MuiOutlinedInput-root:not(.MuiInputBase-multiline):not(.MuiAutocomplete-inputRoot)': {
+                height: 37,
+                minHeight: 37,
+                boxSizing: 'border-box',
+              },
+              '& .flat-rate-field .MuiOutlinedInput-root': {
+                height: 27,
+                minHeight: 27,
+              },
+              '& .MuiSelect-select': {
+                display: 'flex',
+                alignItems: 'center',
+                boxSizing: 'border-box',
+                minHeight: '0 !important',
+                paddingTop: '0 !important',
+                paddingBottom: '0 !important',
+                fontSize: 12,
+                lineHeight: '18px',
+                color: '#262527',
+              },
+              '& .Mui-disabled .MuiSelect-select': {
+                color: '#86868B',
+                WebkitTextFillColor: '#86868B',
+              },
+              '& .MuiInputBase-input': {
+                color: '#262527',
+              },
+              '& .MuiInputBase-input.Mui-disabled': {
+                color: '#86868B',
+                WebkitTextFillColor: '#86868B',
+              },
+              '& .MuiInputBase-input::placeholder': {
+                color: '#CCCCCC',
+                opacity: 1,
+                WebkitTextFillColor: '#CCCCCC',
+              },
+              '& .MuiPickersSectionList-sectionContent[aria-valuetext="Empty"]': {
+                color: '#CCCCCC',
+              },
+              '& .MuiAutocomplete-root:not(.contact-role-field) .MuiAutocomplete-inputRoot': {
+                height: 37,
+                minHeight: 37,
+                boxSizing: 'border-box',
+                alignItems: 'center',
+                paddingTop: '0 !important',
+                paddingBottom: '0 !important',
+              },
+              '& .MuiAutocomplete-root .MuiAutocomplete-input': {
+                paddingTop: '0 !important',
+                paddingBottom: '0 !important',
+              },
+              '& .contact-role-field .MuiAutocomplete-inputRoot': {
+                height: 'auto',
+                minHeight: 37,
+                boxSizing: 'border-box',
+                alignItems: 'center',
+              },
+              '& .MuiPickersOutlinedInput-root': {
+                height: 37,
+                minHeight: 37,
+                boxSizing: 'border-box',
+              },
             }}
           >
             <Stack
@@ -1637,7 +1785,7 @@ export function CreateDispatchPage() {
                 flex: '0 0 auto',
               }}
             >
-              <FormSection title="Company & Property Details" showDivider={false}>
+              <FormSection id="section-company-property" title="Company & Property Details" showDivider={false}>
                 <Grid container spacing={2}>
                   <Grid size={{ xs: 12, md: 4 }}>
                     <Stack spacing={0.75} sx={{ width: '100%' }}>
@@ -1785,11 +1933,17 @@ export function CreateDispatchPage() {
                   </Grid>
                   <Grid size={{ xs: 12, md: 4 }}>
                     <Stack spacing={0.75} sx={{ width: '100%' }}>
-                      <Typography sx={figmaLabelSx}>Associated Franchise</Typography>
+                      <Typography sx={figmaLabelSx}>
+                        Property Source
+                        <RequiredAsterisk />
+                      </Typography>
                       <Autocomplete
-                        options={franchiseAssociationOptions}
-                        value={franchiseAssociationOptions.find((o) => o.value === franchiseAssociation) ?? null}
-                        onChange={(_, next) => setFranchiseAssociation(next?.value ?? '')}
+                        options={propertySourceOptions}
+                        value={propertySourceOptions.find((o) => o.value === propertySource) ?? null}
+                        onChange={(_, next) => {
+                          setPropertySource(next?.value ?? '');
+                          clearFieldError('propertySource');
+                        }}
                         getOptionLabel={(o) => o.label}
                         isOptionEqualToValue={(a, b) => a.value === b.value}
                         filterOptions={(options, { inputValue }) => {
@@ -1826,9 +1980,11 @@ export function CreateDispatchPage() {
                         renderInput={(params) => (
                           <TextField
                             {...params}
-                            name="franchiseAssociation"
+                            name="propertySource"
                             size="small"
-                            placeholder="Select associated franchise"
+                            placeholder="Select property source"
+                            error={Boolean(fieldErrors.propertySource)}
+                            helperText={fieldErrors.propertySource}
                             sx={figmaTextFieldSx}
                           />
                         )}
@@ -1904,8 +2060,60 @@ export function CreateDispatchPage() {
                             name="companyName"
                             size="small"
                             placeholder="Select company"
-                            error={Boolean(fieldErrors.companyName)}
-                            helperText={fieldErrors.companyName}
+                      error={Boolean(fieldErrors.companyName)}
+                      helperText={fieldErrors.companyName}
+                            sx={figmaTextFieldSx}
+                    />
+                        )}
+                      />
+                    </Stack>
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <Stack spacing={0.75} sx={{ width: '100%' }}>
+                      <Typography sx={figmaLabelSx}>Associated Franchise</Typography>
+                      <Autocomplete
+                        options={franchiseAssociationOptions}
+                        value={franchiseAssociationOptions.find((o) => o.value === franchiseAssociation) ?? null}
+                        onChange={(_, next) => setFranchiseAssociation(next?.value ?? '')}
+                        getOptionLabel={(o) => o.label}
+                        isOptionEqualToValue={(a, b) => a.value === b.value}
+                        filterOptions={(options, { inputValue }) => {
+                          const q = inputValue.trim().toLowerCase();
+                          if (!q) return options;
+                          return options.filter(
+                            (o) =>
+                              o.label.toLowerCase().includes(q) ||
+                              o.value.toLowerCase().includes(q),
+                          );
+                        }}
+                        popupIcon={<KeyboardArrowDownOutlined sx={{ fontSize: 16, color: '#6A6A70' }} />}
+                        slotProps={{
+                          paper: {
+                            sx: {
+                              borderRadius: '8px',
+                              mt: 0.5,
+                              boxShadow: '0px 8px 24px rgba(15, 23, 42, 0.12)',
+                            },
+                          },
+                          listbox: {
+                            sx: {
+                              py: 0.5,
+                              '& .MuiAutocomplete-option': {
+                                fontSize: 12,
+                                lineHeight: '18px',
+                                minHeight: 36,
+                                py: 1,
+                                px: 1.5,
+                              },
+                            },
+                          },
+                        }}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            name="franchiseAssociation"
+                            size="small"
+                            placeholder="Select associated franchise"
                             sx={figmaTextFieldSx}
                           />
                         )}
@@ -1925,8 +2133,8 @@ export function CreateDispatchPage() {
                         }
                         onChange={(_, next) => {
                           setIndustryVertical(next?.value ?? '');
-                          clearFieldError('industryVertical');
-                        }}
+                        clearFieldError('industryVertical');
+                      }}
                         getOptionLabel={(o) => o.label}
                         isOptionEqualToValue={(a, b) => a.value === b.value}
                         openOnFocus
@@ -1963,8 +2171,8 @@ export function CreateDispatchPage() {
                             name="industryVertical"
                             size="small"
                             placeholder="Select industry vertical"
-                            error={Boolean(fieldErrors.industryVertical)}
-                            helperText={fieldErrors.industryVertical}
+                      error={Boolean(fieldErrors.industryVertical)}
+                      helperText={fieldErrors.industryVertical}
                             sx={figmaTextFieldSx}
                           />
                         )}
@@ -2009,17 +2217,12 @@ export function CreateDispatchPage() {
                             color: '#262527',
                             bgcolor: '#FFFFFF',
                             boxShadow: 'none',
-                            '&.MuiButton-outlined': {
-                              borderWidth: selected ? '1.5px' : '1px',
-                              borderStyle: 'solid',
-                              borderColor: selected ? '#146DFF' : '#E6E6E7',
+                            '&&.MuiButton-outlined': {
+                              border: selected ? '1.5px solid #2DA551' : '1px solid #E6E6E7',
                             },
-                            '&:hover': {
+                            '&&.MuiButton-outlined:hover': {
                               bgcolor: '#FFFFFF',
-                              '&.MuiButton-outlined': {
-                                borderColor: selected ? '#146DFF' : '#D0CFD2',
-                                borderWidth: selected ? '1.5px' : '1px',
-                              },
+                              border: selected ? '1.5px solid #2DA551' : '1px solid #D0CFD2',
                             },
                           }}
                         >
@@ -2031,7 +2234,167 @@ export function CreateDispatchPage() {
                 </Stack>
               </FormSection>
 
+              <FormSection id="section-property-occupancy" title="Property Occupancy">
+                <Grid container spacing={2}>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <Stack spacing={0.75} sx={{ width: '100%' }}>
+                      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                        <Typography sx={figmaLabelSx}>Company at Property - Till Date</Typography>
+                        <Tooltip
+                          title="On the Company at Property - Till Date, the selected company is dissociated from this property. A company with active contracts cannot be dissociated; close or complete them first"
+                          arrow
+                          placement="bottom"
+                        slotProps={{
+                            tooltip: {
+                              sx: {
+                                bgcolor: '#000000',
+                                color: '#FFFFFF',
+                                fontSize: 13,
+                                fontWeight: 500,
+                                lineHeight: '18px',
+                                maxWidth: 320,
+                                px: 1.5,
+                                py: 1.25,
+                                borderRadius: '8px',
+                              },
+                            },
+                            arrow: { sx: { color: '#000000' } },
+                          }}
+                        >
+                          <InfoOutlined sx={{ fontSize: 16, color: '#86868B', cursor: 'help' }} />
+                        </Tooltip>
+                      </Stack>
+                      <DatePicker
+                        value={createCompanyTillDate}
+                        onChange={setCreateCompanyTillDate}
+                        format="MM/DD/YYYY"
+                        slots={{ openPickerIcon: CalendarTodayOutlined }}
+                        slotProps={{
+                          textField: { size: 'small', fullWidth: true, sx: figmaTextFieldSx },
+                          openPickerIcon: { sx: { color: '#6A6A70', fontSize: 14 } },
+                        }}
+                      />
+                    </Stack>
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <Stack spacing={0.75} sx={{ width: '100%' }}>
+                      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                        <Typography sx={figmaLabelSx}>Floor</Typography>
+                        <Tooltip
+                          title="The floor, suite, unit or apartment for this company. Cannot occupy the same space as another company"
+                          arrow
+                          placement="bottom"
+                          slotProps={{
+                            tooltip: {
+                              sx: {
+                                bgcolor: '#000000',
+                                color: '#FFFFFF',
+                                fontSize: 13,
+                                fontWeight: 500,
+                                lineHeight: '18px',
+                                maxWidth: 280,
+                                px: 1.5,
+                                py: 1.25,
+                                borderRadius: '8px',
+                              },
+                            },
+                            arrow: { sx: { color: '#000000' } },
+                          }}
+                        >
+                          <InfoOutlined sx={{ fontSize: 16, color: '#86868B', cursor: 'help' }} />
+                        </Tooltip>
+                      </Stack>
+                      <TextField
+                        name="propertyOccupancyFloor"
+                        size="small"
+                        fullWidth
+                        placeholder="5 or 1,3-5"
+                        value={createCompanyFloor}
+                        onChange={(e) => setCreateCompanyFloor(e.target.value)}
+                        sx={figmaTextFieldSx}
+                      />
+                    </Stack>
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <Stack spacing={0.75} sx={{ width: '100%' }}>
+                      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                        <Typography sx={figmaLabelSx}>Suite / Unit / Apartment</Typography>
+                        <Tooltip
+                          title="The floor, suite, unit or apartment for this company. Cannot occupy the same space as another company"
+                          arrow
+                          placement="bottom"
+                          slotProps={{
+                            tooltip: {
+                              sx: {
+                                bgcolor: '#000000',
+                                color: '#FFFFFF',
+                                fontSize: 13,
+                                fontWeight: 500,
+                                lineHeight: '18px',
+                                maxWidth: 280,
+                                px: 1.5,
+                                py: 1.25,
+                                borderRadius: '8px',
+                              },
+                            },
+                            arrow: { sx: { color: '#000000' } },
+                          }}
+                        >
+                          <InfoOutlined sx={{ fontSize: 16, color: '#86868B', cursor: 'help' }} />
+                        </Tooltip>
+                      </Stack>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                          alignItems: 'center',
+                          height: 37,
+                          border: '1px solid #E6E6E7',
+                          borderRadius: '8px',
+                          bgcolor: '#FFFFFF',
+                          overflow: 'hidden',
+                          '& .MuiOutlinedInput-notchedOutline': { border: 'none !important' },
+                        }}
+                      >
+                        <TextField
+                          select
+                          name="propertyOccupancySpaceType"
+                          value={createCompanySpaceType}
+                          onChange={(e) => setCreateCompanySpaceType(e.target.value)}
+                          size="small"
+                      sx={{
+                            width: 108,
+                        flexShrink: 0,
+                            '& .MuiInputBase-input': { fontSize: 12, lineHeight: '18px', py: 0 },
+                          }}
+                          slotProps={{
+                            select: { IconComponent: FieldSelectChevronIcon },
+                          }}
+                        >
+                          {['Suite', 'Unit', 'Apartment'].map((option) => (
+                            <MenuItem key={option} value={option}>{option}</MenuItem>
+                          ))}
+                        </TextField>
+                        <Box sx={{ width: '1px', height: 20, bgcolor: '#E6E6E7', flexShrink: 0 }} />
+                        <TextField
+                          name="propertyOccupancySpaceId"
+                          size="small"
+                          fullWidth
+                          placeholder="210B or 210B,212B"
+                          value={createCompanySpaceId}
+                          onChange={(e) => setCreateCompanySpaceId(e.target.value)}
+                        sx={{
+                            '& .MuiInputBase-input': { fontSize: 12, lineHeight: '18px', py: 0, px: 1.25 },
+                            '& .MuiInputBase-input::placeholder': { color: '#CCCCCC', opacity: 1, WebkitTextFillColor: '#CCCCCC' },
+                          }}
+                        />
+                      </Box>
+                    </Stack>
+                  </Grid>
+                </Grid>
+              </FormSection>
+
               <FormSection
+                id="section-contacts"
                 title="Contact Details"
                 titleEnd={
                   <Button
@@ -2039,17 +2402,17 @@ export function CreateDispatchPage() {
                     variant="text"
                     startIcon={<AddOutlined sx={{ fontSize: 16 }} />}
                     onClick={() => setCreateContactModalOpen(true)}
-                    sx={{
-                      color: '#146dff',
+                          sx={{
+                      color: '#2DA551',
                       textTransform: 'none',
                       fontSize: 14,
-                      fontWeight: 500,
+                              fontWeight: 500,
                       lineHeight: '20px',
                       px: 1,
                       py: 0.5,
                       minWidth: 0,
                       bgcolor: 'transparent',
-                      '&:hover': { bgcolor: 'rgba(20, 109, 255, 0.06)', color: '#0059FF' },
+                      '&:hover': { bgcolor: 'rgba(45, 165, 81, 0.08)', color: '#248A44' },
                     }}
                   >
                     Create New
@@ -2057,20 +2420,20 @@ export function CreateDispatchPage() {
                 }
               >
                 <Stack spacing={1.5}>
-                  {CONTACT_ROLE_ROWS.map((row) => {
+                      {CONTACT_ROLE_ROWS.map((row) => {
                     const selectedIds = contactUserByRole[row.id] ?? [];
                     const selectedUsers = contactDirectory.filter((u) => selectedIds.includes(u.id));
                     const showError = row.id === 'decision_maker' && Boolean(fieldErrors.decisionMakerContacts);
-                    return (
+                        return (
                       <Stack
-                        key={row.id}
+                            key={row.id}
                         direction={{ xs: 'column', sm: 'row' }}
                         spacing={1.5}
                         sx={{ alignItems: { xs: 'stretch', sm: 'flex-start' } }}
                       >
                         <Chip
                           label={row.label}
-                          sx={{
+                            sx={{
                             alignSelf: { xs: 'flex-start', sm: 'center' },
                             minWidth: { sm: 140 },
                             height: 28,
@@ -2083,6 +2446,7 @@ export function CreateDispatchPage() {
                           }}
                         />
                         <Autocomplete
+                          className="contact-role-field"
                           multiple
                           disableCloseOnSelect
                           options={contactDirectory}
@@ -2118,7 +2482,7 @@ export function CreateDispatchPage() {
                           renderValue={(value, getItemProps) =>
                             (value as ContactDirectoryUser[]).map((option, index) => {
                               const { key, ...tagProps } = getItemProps({ index });
-                              return (
+                                      return (
                                 <Chip
                                   key={key}
                                   {...tagProps}
@@ -2137,12 +2501,12 @@ export function CreateDispatchPage() {
                           }
                           renderOption={(props, option) => {
                             const { key, ...optionProps } = props;
-                            return (
+                                    return (
                               <Box
                                 component="li"
                                 key={key}
                                 {...optionProps}
-                                sx={{
+                                  sx={{
                                   display: 'flex !important',
                                   alignItems: 'center',
                                   gap: 1.25,
@@ -2157,9 +2521,9 @@ export function CreateDispatchPage() {
                                   </Typography>
                                   <Typography sx={{ fontSize: 11, color: '#86868B', lineHeight: '16px' }}>
                                     {option.email}
-                                  </Typography>
-                                </Box>
-                              </Box>
+                                    </Typography>
+                                  </Box>
+                          </Box>
                             );
                           }}
                           renderInput={(params) => (
@@ -2175,8 +2539,8 @@ export function CreateDispatchPage() {
                                 figmaTextFieldSx,
                                 {
                                   '& .MuiOutlinedInput-root': {
-                                    minHeight: 40,
-                                    py: 0.25,
+                                    minHeight: 37,
+                                    py: 0,
                                     alignItems: 'center',
                                   },
                                 },
@@ -2185,17 +2549,17 @@ export function CreateDispatchPage() {
                           )}
                         />
                       </Stack>
-                    );
-                  })}
+                        );
+                      })}
                 </Stack>
               </FormSection>
 
-              <FormSection title="Contract & dates">
+              <FormSection id="section-contract" title="Contract Details">
                 <Grid container spacing={2}>
                   <Grid size={{ xs: 12, md: 4 }}>
                     <LabeledDatePicker
                       name="contractStartDate"
-                      label="Contract start date"
+                      label="Contract Start Date"
                       required
                       placeholder="Select contract start date"
                       value={contractStartDate}
@@ -2213,9 +2577,9 @@ export function CreateDispatchPage() {
                   <Grid size={{ xs: 12, md: 4 }}>
                     <LabeledDatePicker
                       name="cycleReferenceDate"
-                      label="Service starting date"
+                      label="Service Start Date"
                       required
-                      placeholder="Select service starting date"
+                      placeholder="Select service start date"
                       value={cycleReferenceDate}
                       onChange={(v) => {
                         setCycleReferenceDate(v);
@@ -2225,18 +2589,10 @@ export function CreateDispatchPage() {
                       helperText={fieldErrors.cycleReferenceDate}
                     />
                   </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <LabeledDatePicker
-                      name="contractEndDate"
-                      label="Contract end date"
-                      placeholder="Select contract end date"
-                      value={contractEndDate}
-                      onChange={setContractEndDate}
-                    />
-                  </Grid>
                 </Grid>
+                <Stack spacing={0.5} sx={{ mt: 1.5, alignItems: 'flex-start' }}>
                 <FormControlLabel
-                  sx={{ mt: 1.5, alignItems: 'center' }}
+                  sx={{ m: 0, alignItems: 'center' }}
                   control={
                     <Checkbox
                       size="small"
@@ -2248,14 +2604,57 @@ export function CreateDispatchPage() {
                         }
                         clearFieldError('serviceStartDate');
                       }}
+                      sx={{ px: 0, mr: 0.5 }}
                     />
                   }
                   label={
                     <Typography sx={{ fontSize: 14, lineHeight: '20px', color: '#262527' }}>
-                      Service start same as contract start date
+                      Service Start Same As Contract Start Date
                     </Typography>
                   }
                 />
+                <FormControlLabel
+                  sx={{ m: 0, alignItems: 'center' }}
+                  control={
+                    <Checkbox
+                      size="small"
+                      checked={firstInstallOnServiceDate}
+                      onChange={(_, checked) => setFirstInstallOnServiceDate(checked)}
+                      sx={{ px: 0, mr: 0.5 }}
+                    />
+                  }
+                  label={
+                    <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
+                      <Typography sx={{ fontSize: 14, lineHeight: '20px', color: '#262527' }}>
+                        First Install On Service Date
+                      </Typography>
+                      <Tooltip
+                        title="The first install will be performed on the service date and won't be grouped into a harmonized route. Later visits of contract are harmonized as usual."
+                        arrow
+                        placement="bottom"
+                        slotProps={{
+                          tooltip: {
+                            sx: {
+                              bgcolor: '#000000',
+                              color: '#FFFFFF',
+                              fontSize: 13,
+                              fontWeight: 500,
+                              lineHeight: '18px',
+                              maxWidth: 280,
+                              px: 1.5,
+                              py: 1.25,
+                              borderRadius: '8px',
+                            },
+                          },
+                          arrow: { sx: { color: '#000000' } },
+                        }}
+                      >
+                        <InfoOutlined sx={{ fontSize: 18, color: '#17B26A', cursor: 'help' }} />
+                      </Tooltip>
+                    </Stack>
+                  }
+                />
+                </Stack>
                 <Divider sx={{ borderColor: '#E6E6E7', mt: 2 }} />
                 <Stack
                   direction="row"
@@ -2287,191 +2686,101 @@ export function CreateDispatchPage() {
                 </Stack>
               </FormSection>
 
-              <FormSection title="Products">
+              <FormSection id="section-products" title="Add Products">
                 <Stack sx={{ width: '100%', maxWidth: 960, mx: 'auto', gap: 2 }}>
-                    <Box>
-                      <Typography sx={{ fontSize: 14, fontWeight: 700, lineHeight: '20px', color: '#444446', pb: 0.75 }}>
-                        Add Products
+                  <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                    <Checkbox
+                      checked={flatRateEnabled}
+                      onChange={(_, checked) => setFlatRateEnabled(checked)}
+                      sx={{
+                        p: 0,
+                        color: '#D0D5DD',
+                        '&.Mui-checked': { color: '#17B26A' },
+                        '& .MuiSvgIcon-root': { fontSize: 20 },
+                      }}
+                    />
+                    <Typography sx={{ fontSize: 14, fontWeight: 700, lineHeight: '24px', color: '#262527' }}>
+                      Flat Rate
                       </Typography>
-                      <RadioGroup
-                        row
-                        name="productEntryMode"
-                        aria-label="Product entry mode"
-                        value={productEntryMode}
-                        onChange={(e) => {
-                          setProductEntryMode(e.target.value as 'total' | 'byProduct');
-                          clearFieldError('serviceProducts');
-                        }}
-                        sx={{ gap: 3, pb: 1 }}
-                      >
-                        {([
-                          { value: 'total', label: 'Total Quantity' },
-                          { value: 'byProduct', label: 'By Product Type' },
-                        ] as const).map((o) => (
-                          <FormControlLabel
-                            key={o.value}
-                            value={o.value}
-                            control={
-                              <Radio
-                                size="small"
-                                sx={{ p: 0, mr: 1, color: '#86868B', '&.Mui-checked': { color: '#2DA551' } }}
-                              />
-                            }
-                            label={
-                              <Typography sx={{ fontSize: 14, lineHeight: '20px', color: '#262527' }}>
-                                {o.label}
-                              </Typography>
-                            }
-                            sx={{ ml: 0, mr: 0 }}
-                          />
-                        ))}
-                      </RadioGroup>
-                      {productEntryMode === 'total' ? (
-                        <Box
+                    {flatRateEnabled ? (
+                      <>
+                        <Typography sx={{ fontSize: 14, fontWeight: 500, lineHeight: '24px', color: '#262527', pl: 0.5 }}>
+                          {flatRateFilterCount} Filters
+                        </Typography>
+                        <Typography sx={{ fontSize: 14, lineHeight: '24px', color: '#262527' }}>×</Typography>
+                        <TextField
+                          className="flat-rate-field"
+                          size="small"
+                          value={flatRateAmount}
+                          onChange={(e) => setFlatRateAmount(e.target.value)}
                           sx={{
-                            width: '100%',
-                            display: 'flex',
-                            flexDirection: { xs: 'column', sm: 'row' },
-                            flexWrap: 'wrap',
-                            alignItems: { xs: 'stretch', sm: 'flex-start' },
-                            gap: 1.5,
-                            py: 1.5,
-                            boxSizing: 'border-box',
-                            borderBottom: '1px solid #E6E6E7',
+                            width: 88,
+                            '& .MuiOutlinedInput-root': {
+                              height: 27,
+                              minHeight: 27,
+                              borderRadius: '6px',
+                              bgcolor: '#FFFFFF',
+                              '& fieldset': { borderColor: '#E6E6E7' },
+                            },
+                            '& .MuiInputBase-input': { fontSize: 12, lineHeight: '16px', py: 0, px: 0.5 },
+                            '& .MuiInputAdornment-root': { height: 27, maxHeight: 27 },
                           }}
-                        >
-                          <Stack spacing={0.75} sx={{ flex: { sm: '1 1 0%' }, minWidth: { sm: 0 }, width: { xs: '100%', sm: 'auto' } }}>
-                            <Typography sx={figmaLabelSx}>
-                              Rate
-                              <Box component="span" sx={{ color: '#B32318' }}> *</Box>
-                            </Typography>
-                            <TextField
-                              name="totalQuantityRate"
-                              value={totalQuantityRate}
-                              onChange={(e) => {
-                                setTotalQuantityRate(e.target.value);
-                                clearFieldError('totalQuantityRate');
-                              }}
-                              size="small"
-                              fullWidth
-                              placeholder="00.00"
-                              error={Boolean((fieldErrors as Record<string, string>).totalQuantityRate)}
-                              helperText={(fieldErrors as Record<string, string>).totalQuantityRate}
-                              sx={[
-                                figmaTextFieldSx,
-                                {
-                                  '& .MuiInputAdornment-root': {
-                                    fontSize: 12,
-                                    lineHeight: '18px',
-                                    fontWeight: 400,
-                                    color: '#262527',
-                                    maxHeight: 'none',
-                                    mt: 0,
-                                    alignSelf: 'center',
-                                  },
-                                },
-                              ]}
-                              slotProps={{
-                                htmlInput: { 'aria-label': 'Rate' },
-                                input: {
-                                  startAdornment: (
-                                    <InputAdornment position="start" sx={{ mr: 0.5, maxHeight: 'none' }}>
-                                      <Box
-                                        component="span"
-                                        sx={{ fontSize: 12, lineHeight: '18px', fontWeight: 400, color: '#262527' }}
-                                      >
-                                        $
-                                      </Box>
-                                    </InputAdornment>
-                                  ),
-                                },
-                              }}
-                            />
-                          </Stack>
-                          <Stack spacing={0.75} sx={{ flex: { sm: '1 1 0%' }, minWidth: { sm: 0 }, width: { xs: '100%', sm: 'auto' } }}>
-                            <Typography sx={figmaLabelSx}>
-                              Quantity
-                              <Box component="span" sx={{ color: '#B32318' }}> *</Box>
-                            </Typography>
-                            <TextField
-                              name="totalQuantityCount"
-                              value={totalQuantityCount}
-                              onChange={(e) => {
-                                setTotalQuantityCount(e.target.value);
-                                clearFieldError('totalQuantityCount');
-                              }}
-                              size="small"
-                              fullWidth
-                              placeholder="00"
-                              error={Boolean((fieldErrors as Record<string, string>).totalQuantityCount)}
-                              helperText={(fieldErrors as Record<string, string>).totalQuantityCount}
-                              sx={figmaTextFieldSx}
-                              slotProps={{ htmlInput: { inputMode: 'numeric', min: 1, 'aria-label': 'Quantity' } }}
-                            />
-                          </Stack>
-                          <Stack spacing={0.75} sx={{ flex: { sm: '1 1 0%' }, minWidth: { sm: 0 }, width: { xs: '100%', sm: 'auto' } }}>
-                            <Typography sx={figmaLabelSx}>Total</Typography>
-                            <Box sx={{ minHeight: 40, display: 'flex', alignItems: 'center' }}>
-                              <Typography
-                                sx={{
-                                  fontSize: 14,
-                                  lineHeight: '20px',
-                                  color: '#262527',
-                                  fontVariantNumeric: 'tabular-nums',
-                                }}
-                              >
-                                {totalQuantityAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
-                              </Typography>
-                            </Box>
-                          </Stack>
-                        </Box>
-                      ) : (
-                      <Stack spacing={1.5} sx={{ mt: 0 }}>
-                        <Stack direction="column" spacing={0} sx={{ width: '100%' }}>
+                          slotProps={{
+                            htmlInput: { inputMode: 'decimal', 'aria-label': 'Flat rate' },
+                            input: {
+                              startAdornment: (
+                                <InputAdornment position="start" sx={{ mr: 0.25, height: 27, maxHeight: 27 }}>
+                                  <Box component="span" sx={{ fontSize: 12, lineHeight: '16px', color: '#262527' }}>
+                                    $
+                                  </Box>
+                                </InputAdornment>
+                              ),
+                            },
+                          }}
+                        />
+                        <Typography sx={{ fontSize: 14, lineHeight: '24px', color: '#262527' }}>=</Typography>
+                        <Typography sx={{ fontSize: 14, fontWeight: 600, lineHeight: '24px', color: '#262527' }}>
+                          {flatRateTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                        </Typography>
+                      </>
+                    ) : null}
+                  </Stack>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, alignItems: 'stretch' }}>
                           {serviceProducts.map((p, pIdx) => {
                             const lineSub = parseMoneyInput(p.rate) * (parseInt(p.quantity, 10) || 0);
                             return (
                               <Box
                                 key={p.id}
                                 sx={{
-                                  width: '100%',
+                                  flex: '0 0 calc((100% - 24px) / 3)',
+                                  maxWidth: 'calc((100% - 24px) / 3)',
+                                  minWidth: 0,
+                                  bgcolor: '#F6F6F8',
+                                  border: '1px solid #E6E6E7',
+                                  borderRadius: '12px',
+                                  p: 1.5,
                                   display: 'flex',
-                                  flexDirection: { xs: 'column', sm: 'row' },
-                                  flexWrap: 'wrap',
-                                  alignItems: { xs: 'stretch', sm: 'flex-start' },
-                                  gap: 1.5,
-                                  py: 1.5,
+                                  flexDirection: 'column',
+                                  gap: 1.25,
                                   boxSizing: 'border-box',
-                                  borderBottom: '1px solid #E6E6E7',
                                 }}
                               >
-                                <Stack
-                                  direction="row"
-                                  spacing={0.5}
-                                  sx={{
-                                    alignItems: 'flex-start',
-                                    width: { xs: '100%', sm: 'auto' },
-                                    minWidth: { sm: 88 },
-                                    flexShrink: 0,
-                                  }}
-                                >
-                                  <Typography sx={{ fontSize: 12, fontWeight: 500, color: '#86868B', pt: 0.5 }}>
+                                <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
+                                  <Typography sx={{ fontSize: 12, fontWeight: 500, lineHeight: '18px', color: '#86868B' }}>
                                     Product {String(pIdx + 1).padStart(2, '0')}
                                   </Typography>
+                                  {serviceProducts.length > 1 ? (
+                                    <IconButton
+                                      type="button"
+                                      size="small"
+                                      aria-label="Remove product"
+                                      onClick={() => removeServiceProduct(p.id)}
+                                      sx={{ p: 0, color: '#E43F32' }}
+                                    >
+                                      <DeleteOutlineOutlined sx={{ fontSize: 18 }} />
+                                    </IconButton>
+                                  ) : null}
                                 </Stack>
-                                <Stack
-                                  spacing={0.75}
-                                  sx={{
-                                    flex: { sm: '0 1 220px' },
-                                    minWidth: { xs: '100%', sm: 160 },
-                                    maxWidth: { sm: 280 },
-                                    width: { xs: '100%', sm: 'auto' },
-                                  }}
-                                >
-                                  <Typography sx={figmaLabelSx}>
-                                    Select product
-                                    <Box component="span" sx={{ color: '#B32318' }}> *</Box>
-                                  </Typography>
                                   <TextField
                                     select
                                     name={`productDim_${p.id}`}
@@ -2485,7 +2794,7 @@ export function CreateDispatchPage() {
                                     fullWidth
                                     error={Boolean((fieldErrors as Record<string, string>)[`product_${pIdx}_dimension`])}
                                     helperText={(fieldErrors as Record<string, string>)[`product_${pIdx}_dimension`]}
-                                    sx={figmaTextFieldSx}
+                                    sx={[figmaTextFieldSx, { '& .MuiOutlinedInput-root': { backgroundColor: '#FFFFFF' } }]}
                                     slotProps={{
                                       select: {
                                         displayEmpty: true,
@@ -2500,35 +2809,44 @@ export function CreateDispatchPage() {
                                             );
                                           }
                                           const o = productDimensionOptions.find((x) => x.value === v);
-                                          return o?.label ?? v;
+                                          return (
+                                            <Typography component="span" sx={{ fontSize: 12, lineHeight: '18px', color: '#262527' }}>
+                                              {o?.label ?? v}
+                                            </Typography>
+                                          );
                                         },
                                       },
                                     }}
                                   >
-                                    {productDimensionOptions.map((o) => (
-                                      <MenuItem key={o.value || 'dim-empty'} value={o.value}>
+                                    {productDimensionOptions.filter((o) => o.value !== '').map((o) => (
+                                      <MenuItem key={o.value} value={o.value}>
                                         {o.label}
                                       </MenuItem>
                                     ))}
                                   </TextField>
-                                </Stack>
-                                <Stack
-                                  direction="row"
-                                  spacing={1}
-                                  useFlexGap
-                                  sx={{
-                                    flex: { sm: '1 1 0%' },
-                                    minWidth: { xs: '100%', sm: 0 },
-                                    width: '100%',
-                                    flexWrap: 'wrap',
-                                    alignItems: 'flex-start',
-                                  }}
-                                >
-                                  <Stack spacing={0.75} sx={{ flex: { sm: '1 1 0%' }, minWidth: { sm: 0 }, width: { xs: '100%', sm: 'auto' } }}>
-                                    <Typography sx={figmaLabelSx}>
-                                      Rate
-                                      <Box component="span" sx={{ color: '#B32318' }}> *</Box>
-                                    </Typography>
+                                <Stack direction="row" spacing={1} useFlexGap sx={{ alignItems: 'flex-end' }}>
+                                  <Stack spacing={0.75} sx={{ flex: 1, minWidth: 0 }}>
+                                    <Typography sx={figmaLabelSx}>Quantity</Typography>
+                                    <TextField
+                                      name={`productQty_${p.id}`}
+                                      value={p.quantity}
+                                      onChange={(e) => {
+                                        updateServiceProduct(p.id, 'quantity', e.target.value);
+                                        clearFieldError('serviceProducts');
+                                        clearFieldError(`product_${pIdx}_quantity`);
+                                      }}
+                                      size="small"
+                                      fullWidth
+                                      placeholder="1"
+                                      error={Boolean((fieldErrors as Record<string, string>)[`product_${pIdx}_quantity`])}
+                                      helperText={(fieldErrors as Record<string, string>)[`product_${pIdx}_quantity`]}
+                                      sx={[figmaTextFieldSx, { '& .MuiOutlinedInput-root': { backgroundColor: '#FFFFFF' } }]}
+                                      slotProps={{ htmlInput: { inputMode: 'numeric', 'aria-label': 'Quantity' } }}
+                                    />
+                                  </Stack>
+                                  {flatRateEnabled ? null : (
+                                  <Stack spacing={0.75} sx={{ flex: 1, minWidth: 0 }}>
+                                    <Typography sx={figmaLabelSx}>Rate</Typography>
                                     <TextField
                                       name={`productRate_${p.id}`}
                                       value={p.rate}
@@ -2539,12 +2857,13 @@ export function CreateDispatchPage() {
                                       }}
                                       size="small"
                                       fullWidth
-                                      placeholder="Enter rate (e.g. 35.00)"
+                                      placeholder="0.00"
                                       error={Boolean((fieldErrors as Record<string, string>)[`product_${pIdx}_rate`])}
                                       helperText={(fieldErrors as Record<string, string>)[`product_${pIdx}_rate`]}
                                       sx={[
                                         figmaTextFieldSx,
                                         {
+                                          '& .MuiOutlinedInput-root': { backgroundColor: '#FFFFFF' },
                                           '& .MuiInputAdornment-root': {
                                             fontSize: 12,
                                             lineHeight: '18px',
@@ -2561,152 +2880,73 @@ export function CreateDispatchPage() {
                                         input: {
                                           startAdornment: (
                                             <InputAdornment position="start" sx={{ mr: 0.5, maxHeight: 'none' }}>
-                                              <Box
-                                                component="span"
-                                                sx={{
-                                                  fontSize: 12,
-                                                  lineHeight: '18px',
-                                                  fontWeight: 400,
-                                                  color: '#262527',
-                                                }}
-                                              >
-                                                $
-                                              </Box>
+                                              <Box component="span" sx={{ fontSize: 12, lineHeight: '18px', fontWeight: 400, color: '#262527' }}>$</Box>
                                             </InputAdornment>
                                           ),
                                         },
                                       }}
                                     />
                                   </Stack>
-                                  <Stack spacing={0.75} sx={{ flex: { sm: '1 1 0%' }, minWidth: { sm: 0 }, width: { xs: '100%', sm: 'auto' } }}>
-                                    <Typography sx={figmaLabelSx}>
-                                      Quantity
-                                      <Box component="span" sx={{ color: '#B32318' }}> *</Box>
-                                    </Typography>
-                                    <TextField
-                                      name={`productQty_${p.id}`}
-                                      value={p.quantity}
-                                      onChange={(e) => {
-                                        updateServiceProduct(p.id, 'quantity', e.target.value);
-                                        clearFieldError('serviceProducts');
-                                        clearFieldError(`product_${pIdx}_quantity`);
-                                      }}
-                                      size="small"
-                                      fullWidth
-                                      placeholder="Enter quantity (e.g. 1)"
-                                      error={Boolean((fieldErrors as Record<string, string>)[`product_${pIdx}_quantity`])}
-                                      helperText={(fieldErrors as Record<string, string>)[`product_${pIdx}_quantity`]}
-                                      sx={figmaTextFieldSx}
-                                      slotProps={{ htmlInput: { inputMode: 'numeric', 'aria-label': 'Quantity' } }}
-                                    />
-                                  </Stack>
-                                  <Stack
-                                    direction="row"
-                                    spacing={1}
-                                    useFlexGap
-                                    sx={{
-                                      flex: { sm: '1 1 0%' },
-                                      minWidth: { xs: '100%', sm: 0 },
-                                      width: { xs: '100%', sm: 'auto' },
-                                      alignItems: 'flex-end',
-                                    }}
-                                  >
-                                    <Stack spacing={0.75} sx={{ flex: { sm: '1 1 0%' }, minWidth: 0, flexGrow: 1 }}>
+                                  )}
+                                  {flatRateEnabled ? null : (
+                                  <Stack spacing={0.75} sx={{ flex: 1, minWidth: 0 }}>
                                       <Typography sx={figmaLabelSx}>Sub total</Typography>
                                       <Box sx={{ minHeight: 40, display: 'flex', alignItems: 'center' }}>
-                                        <Typography
-                                          sx={{
-                                            fontSize: 14,
-                                            lineHeight: '20px',
-                                            color: '#262527',
-                                            fontVariantNumeric: 'tabular-nums',
-                                          }}
-                                        >
+                                      <Typography sx={{ fontSize: 14, lineHeight: '20px', color: '#262527', fontVariantNumeric: 'tabular-nums' }}>
                                           {lineSub.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
                                         </Typography>
                                       </Box>
                                     </Stack>
-                                    {serviceProducts.length > 1 ? (
-                                      <Stack spacing={0.75} sx={{ flex: '0 0 auto' }}>
-                                        <Box sx={{ minHeight: '18px' }} aria-hidden />
-                                        <Box sx={{ minHeight: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                          <IconButton
-                                            type="button"
-                                            size="small"
-                                            aria-label="Remove product"
-                                            onClick={() => removeServiceProduct(p.id)}
-                                            sx={{ p: 0, color: '#D9534F' }}
-                                          >
-                                            <DeleteOutlineOutlined sx={{ fontSize: 16 }} />
-                                          </IconButton>
-                                        </Box>
-                                      </Stack>
-                                    ) : null}
-                                  </Stack>
+                                  )}
                                 </Stack>
                               </Box>
                             );
                           })}
-                        </Stack>
                         <Button
                           type="button"
                           variant="outlined"
                           onClick={addServiceProduct}
                           sx={{
-                            width: '100%',
-                            minHeight: 0,
+                            flex: '0 0 calc((100% - 24px) / 3)',
+                            maxWidth: 'calc((100% - 24px) / 3)',
+                            minWidth: 0,
+                            minHeight: 180,
                             border: '1px solid #E6E6E7',
-                            borderStyle: 'dashed',
-                            borderRadius: '8px',
+                            borderRadius: '12px',
                             textTransform: 'none',
-                            flexDirection: 'row',
+                            flexDirection: 'column',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            gap: 1.5,
+                            gap: 1,
                             px: 2,
-                            py: 1.5,
-                            bgcolor: 'transparent',
+                            py: 2,
+                            bgcolor: '#FFFFFF',
                             color: 'inherit',
-                            alignSelf: 'stretch',
                             boxSizing: 'border-box',
-                            '&:hover': { borderColor: '#D0CFD2', bgcolor: 'rgba(0,0,0,0.03)' },
+                            '&:hover': { borderColor: '#D0CFD2', bgcolor: '#FAFAFA' },
                           }}
                         >
                           <Box
                             sx={{
-                              width: 20,
-                              height: 20,
+                              width: 32,
+                              height: 32,
                               flexShrink: 0,
                               borderRadius: '50%',
-                              bgcolor: '#E5F6FF',
-                              border: '1px solid #146DFF',
+                              bgcolor: '#E7F8EE',
                               display: 'grid',
                               placeItems: 'center',
                             }}
                           >
-                            <AddOutlined sx={{ fontSize: 14, color: '#146DFF' }} />
+                            <AddOutlined sx={{ fontSize: 18, color: '#2DA551' }} />
                           </Box>
-                          <Typography sx={{ fontSize: 14, fontWeight: 600, color: '#262527', textAlign: 'center' }}>
+                          <Typography sx={{ fontSize: 14, fontWeight: 600, lineHeight: '20px', color: '#262527', textAlign: 'center' }}>
                             Add Product
                           </Typography>
+                          <Typography sx={{ fontSize: 12, fontWeight: 400, lineHeight: '18px', color: '#86868B', textAlign: 'center', maxWidth: 160 }}>
+                            Add more products in this service
+                          </Typography>
                         </Button>
-                      </Stack>
-                      )}
                     </Box>
-                    {productEntryMode === 'byProduct' ? (
-                      <Box sx={{ borderTop: '1px solid #E6E6E7', pt: 0.5, mt: 0.5, display: 'flex', justifyContent: 'flex-end' }}>
-                        <Typography sx={{ fontSize: 18, fontWeight: 600, lineHeight: '26px', color: '#262527', textAlign: 'right' }}>
-                          Total value:{' '}
-                          {serviceProductsSubtotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
-                          {' '}/{' '}
-                          {occurrenceUnit === 'Month'
-                            ? 'monthly'
-                            : occurrenceUnit === 'Week'
-                              ? 'weekly'
-                              : '—'}
-                        </Typography>
-                      </Box>
-                    ) : null}
                     {fieldErrors.serviceProducts ? (
                       <Typography variant="caption" color="error">
                         {fieldErrors.serviceProducts}
@@ -2715,398 +2955,511 @@ export function CreateDispatchPage() {
                 </Stack>
               </FormSection>
 
-              <FormSection title="Billing and Payment details">
+              <FormSection id="section-billing" title="Billing And Payment Details">
                 <Grid container spacing={2}>
                   <Grid size={12}>
-                    <Stack
-                      spacing={2}
-                      sx={{
-                        width: '100%',
-                        p: 2,
-                        borderRadius: '12px',
-                        border: '1px solid #E6E6E7',
-                        bgcolor: '#F8F8F9',
-                      }}
-                    >
-                      <Stack
-                        direction="row"
-                        spacing={1.5}
-                        sx={{ alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', rowGap: 1 }}
-                      >
-                        <Typography sx={{ fontSize: 14, fontWeight: 600, lineHeight: '20px', color: '#262527' }}>
-                          Billing Frequency
-                        </Typography>
-                        {contractStartDate && contractEndDate ? (
-                          <Box
-                            sx={{
-                              px: 1.5,
-                              py: 0.5,
-                              borderRadius: '999px',
-                              bgcolor: '#FFFFFF',
-                              border: '1px solid #E6E6E7',
-                            }}
-                          >
-                            <Typography sx={{ fontSize: 12, lineHeight: '18px', color: '#444446' }}>
-                              Contract Duration: {contractStartDate.format('M/D/YYYY')} -{' '}
-                              {contractEndDate.format('M/D/YYYY')}
-                            </Typography>
-                          </Box>
-                        ) : null}
-                      </Stack>
-
-                      <Stack
-                        direction="row"
-                        sx={{
-                          alignSelf: 'flex-start',
-                          p: '3px',
-                          gap: '2px',
-                          borderRadius: '999px',
-                          bgcolor: '#FFFFFF',
-                          border: '1px solid #E6E6E7',
-                        }}
-                      >
-                        {([
-                          { id: 'recurring', label: 'Recurring Plan' },
-                          { id: 'perService', label: 'Per Service Completion' },
-                        ] as const).map((mode) => {
-                          const selected = billingPlanMode === mode.id;
-                          return (
-                            <Button
-                              key={mode.id}
-                              type="button"
-                              disableRipple
-                              onClick={() => setBillingPlanMode(mode.id)}
-                              aria-pressed={selected}
+                    <Stack spacing={2} sx={{ width: '100%' }}>
+                      {(() => {
+                        const plans = (
+                          [
+                            ['annually', 'Annually', 'year'],
+                            ['semi_annually', 'Semi-Annually', '6 months'],
+                            ['quarterly', 'Quarterly', 'quarter'],
+                            ['monthly', 'Monthly', 'month'],
+                          ] as const
+                        ).map(([id, label, every]) => ({ id, label, every, ...billingPlanQuote(id) }));
+                        const selectedPlan = plans.find((plan) => plan.id === billingFrequencyPlan) ?? plans[0];
+                        const billingStart = nextPaymentDate ?? contractStartDate ?? dayjs('2026-04-01');
+                        const startLabel = billingStart.format('MM/DD/YY');
+                        const scheduleDates = [0, 1, 2, 3]
+                          .map((step) => billingStart.add(step * 3, 'month').format('MM/DD/YY'))
+                          .join(', ')
+                          .replace(/, ([^,]+)$/, ', and $1');
+                        const durationStart = contractStartDate ?? dayjs('2024-12-24');
+                        const durationLabel = `${durationStart.format('MM/DD/YY')} - ${durationStart.add(2, 'year').add(6, 'day').format('MM/DD/YY')}`;
+                        const money = (n: number) =>
+                          n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+                        return (
+                          <Box sx={{ bgcolor: '#F5F5F6', borderRadius: '12px', p: 2 }}>
+                            <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', gap: 1, mb: 1.5 }}>
+                              <Typography sx={{ fontSize: 14, fontWeight: 600, lineHeight: '20px', color: '#262527' }}>
+                                Billing Frequency
+                              </Typography>
+                              <Box
+                                sx={{
+                                  bgcolor: '#FFFFFF',
+                                  borderRadius: '16px',
+                                  px: 1.25,
+                                  py: 0.25,
+                                  border: '1px solid #E6E6E7',
+                                }}
+                              >
+                                <Typography sx={{ fontSize: 12, lineHeight: '18px', color: '#667085' }}>
+                                  Contract Duration: {durationLabel}
+                                </Typography>
+                              </Box>
+                            </Stack>
+                            <Box
                               sx={{
-                                minHeight: 24,
-                                height: 24,
-                                px: 1.25,
-                                py: 0,
-                                borderRadius: '999px',
-                                textTransform: 'none',
-                                fontSize: 11,
-                                fontWeight: selected ? 600 : 500,
-                                lineHeight: '16px',
-                                letterSpacing: 0,
-                                whiteSpace: 'nowrap',
-                                minWidth: 0,
-                                boxShadow: 'none',
-                                color: selected ? '#FFFFFF' : '#444446',
-                                bgcolor: selected ? '#2DA551' : 'transparent',
-                                '&:hover': { bgcolor: selected ? '#248B45' : 'rgba(0,0,0,0.04)' },
+                                display: 'inline-flex',
+                                p: '3px',
+                                mb: 1.5,
+                                borderRadius: '8px',
+                                bgcolor: '#FFFFFF',
+                                border: '1px solid #E6E6E7',
                               }}
                             >
-                              {mode.label}
-                            </Button>
-                          );
-                        })}
-                      </Stack>
-
-                      {billingPlanMode === 'recurring' ? (
-                        <Grid container spacing={1.5}>
-                          {billingFrequencyPricing.map((plan) => {
-                            const selected = billingFrequency === plan.id;
-                            const discounted = plan.discountPct > 0;
-                            return (
-                              <Grid key={plan.id} size={{ xs: 12, sm: 6, lg: 3 }}>
+                              {(
+                                [
+                                  ['recurring', 'Recurring Plan'],
+                                  ['at_service', 'At Service'],
+                                ] as const
+                              ).map(([id, label]) => {
+                                const selected = billingPlanMode === id;
+                                return (
+                                  <Button
+                                    key={id}
+                                    type="button"
+                                    disableRipple
+                                    onClick={() => {
+                                      setBillingPlanMode(id);
+                                      if (id !== 'at_service' && paymentMethod === 'Check') {
+                                        setPaymentMethod('Credit Card / ACH');
+                                      }
+                                    }}
+                                    sx={{
+                                      minWidth: 0,
+                                      px: 1.75,
+                                      py: 0.5,
+                                      borderRadius: '8px',
+                                      textTransform: 'none',
+                                      fontSize: 14,
+                                      fontWeight: 500,
+                                      lineHeight: '20px',
+                                      color: selected ? '#FFFFFF' : '#6A6A70',
+                                      bgcolor: selected ? '#2DA551' : 'transparent',
+                                      '&:hover': { bgcolor: selected ? '#248A44' : '#F8F8F9' },
+                                    }}
+                                  >
+                                    {label}
+                                  </Button>
+                                );
+                              })}
+                            </Box>
+                            {billingPlanMode === 'recurring' ? (
+                              <>
                                 <Box
-                                  role="radio"
-                                  aria-checked={selected}
-                                  tabIndex={0}
-                                  onClick={() => setBillingFrequency(plan.id)}
-                                  onKeyDown={(ev) => {
-                                    if (ev.key === 'Enter' || ev.key === ' ') {
-                                      ev.preventDefault();
-                                      setBillingFrequency(plan.id);
-                                    }
-                                  }}
                                   sx={{
-                                    height: '100%',
-                                    display: 'flex',
-                                    alignItems: 'flex-start',
-                                    gap: 1,
-                                    px: 1.5,
-                                    py: 1.25,
-                                    cursor: 'pointer',
-                                    borderRadius: '10px',
-                                    bgcolor: '#FFFFFF',
-                                    border: selected ? '1.5px solid #2DA551' : '1px solid #E6E6E7',
-                                    '&:hover': { borderColor: selected ? '#2DA551' : '#D0CFD2' },
+                                    display: 'grid',
+                                    gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: 'repeat(4, 1fr)' },
+                                    gap: 2,
                                   }}
                                 >
-                                  <Radio
-                                    size="small"
-                                    checked={selected}
-                                    tabIndex={-1}
-                                    slotProps={{ input: { 'aria-label': plan.label } }}
-                                    sx={{ p: 0, mt: '2px', color: '#86868B', '&.Mui-checked': { color: '#2DA551' } }}
-                                  />
-                                  <Box sx={{ minWidth: 0 }}>
-                                    <Stack
-                                      direction="row"
-                                      spacing={0.75}
-                                      sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 0.5 }}
-                                    >
-                                      <Typography
-                                        sx={{ fontSize: 13, fontWeight: 600, lineHeight: '20px', color: '#262527' }}
-                                      >
-                                        {plan.label}
-                                      </Typography>
-                                      {discounted ? (
-                                        <Box
-                                          sx={{
-                                            px: 0.75,
-                                            py: '1px',
-                                            borderRadius: '6px',
-                                            bgcolor: '#E5EFFF',
-                                          }}
-                                        >
-                                          <Typography
-                                            sx={{ fontSize: 11, fontWeight: 600, lineHeight: '16px', color: '#146DFF' }}
-                                          >
-                                            {plan.discountPct}% off
-                                          </Typography>
-                                        </Box>
-                                      ) : null}
-                                    </Stack>
-                                    <Stack direction="row" spacing={0.75} sx={{ alignItems: 'baseline', mt: 0.25 }}>
-                                      {discounted ? (
-                                        <Typography
-                                          sx={{
-                                            fontSize: 12,
-                                            lineHeight: '18px',
-                                            color: '#86868B',
-                                            textDecoration: 'line-through',
-                                          }}
-                                        >
-                                          {formatBillingAmount(plan.listPrice)}
-                                        </Typography>
-                                      ) : null}
-                                      <Typography
+                                  {plans.map((plan) => {
+                                    const selected = billingFrequencyPlan === plan.id;
+                                    return (
+                                      <Box
+                                        key={plan.id}
+                                        onClick={() => setBillingFrequencyPlan(plan.id)}
                                         sx={{
-                                          fontSize: 13,
-                                          fontWeight: discounted ? 600 : 500,
-                                          lineHeight: '18px',
-                                          color: discounted ? '#146DFF' : '#262527',
+                                          textAlign: 'left',
+                                          cursor: 'pointer',
+                                          bgcolor: '#FFFFFF',
+                                          border: '1px solid',
+                                          borderColor: selected ? '#2DA551' : '#E6E6E7',
+                                          borderRadius: '10px',
+                                          px: 1.5,
+                                          py: 1.25,
+                                          display: 'flex',
+                                          alignItems: 'flex-start',
+                                          gap: 1,
                                         }}
                                       >
-                                        {formatBillingAmount(plan.price)}
-                                      </Typography>
-                                    </Stack>
-                                  </Box>
+                                        <Radio
+                                          checked={selected}
+                                          size="small"
+                                          tabIndex={-1}
+                                          disableRipple
+                                          sx={{
+                                            p: 0,
+                                            mt: '1px',
+                                            pointerEvents: 'none',
+                                            color: '#D0D5DD',
+                                            '&.Mui-checked': { color: '#2DA551' },
+                                          }}
+                                        />
+                                        <Stack spacing={0.25} sx={{ minWidth: 0 }}>
+                                          <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                                            <Typography sx={{ fontSize: 13, fontWeight: 600, lineHeight: '20px', color: '#262527' }}>
+                                              {plan.label}
+                                            </Typography>
+                                            {plan.off ? (
+                                              <Box
+                                                sx={{
+                                                  px: 0.75,
+                                                  py: 0.125,
+                                                  borderRadius: '10px',
+                                                  bgcolor: '#E7F8EE',
+                                                  color: '#2DA551',
+                                                  fontSize: 11,
+                                                  fontWeight: 600,
+                                                  lineHeight: '16px',
+                                                }}
+                                              >
+                                                {plan.off}
+                                              </Box>
+                                            ) : null}
+                                          </Stack>
+                                          <Stack direction="row" spacing={0.75} sx={{ alignItems: 'baseline' }}>
+                                            {plan.compareAt ? (
+                                              <Typography sx={{ fontSize: 11, lineHeight: '18px', color: '#98A2B3', textDecoration: 'line-through' }}>
+                                                {money(plan.compareAt)}
+                                              </Typography>
+                                            ) : null}
+                                            <Typography sx={{ fontSize: 12, fontWeight: 700, lineHeight: '20px', color: '#262527' }}>
+                                              {money(plan.price)}
+                                            </Typography>
+                                          </Stack>
+                                        </Stack>
+                                      </Box>
+                                    );
+                                  })}
                                 </Box>
-                              </Grid>
-                            );
-                          })}
-                        </Grid>
-                      ) : null}
-
-                      <Stack spacing={0.75} sx={{ width: '100%' }}>
-                        <Typography sx={figmaLabelSx}>Discount</Typography>
-                        <Stack
-                          direction={{ xs: 'column', sm: 'row' }}
-                          spacing={2}
-                          sx={{ alignItems: { xs: 'stretch', sm: 'center' } }}
-                        >
-                          <Box
-                            sx={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              width: { xs: '100%', sm: 300 },
-                              borderRadius: '8px',
-                              border: '1px solid #E6E6E7',
-                              bgcolor: '#FFFFFF',
-                              overflow: 'hidden',
-                            }}
-                          >
-                            <TextField
-                              size="small"
-                              placeholder="E.g., 10"
-                              value={billingDiscountValue}
-                              onChange={(ev) => setBillingDiscountValue(ev.target.value)}
-                              slotProps={{ htmlInput: { inputMode: 'decimal', 'aria-label': 'Discount value' } }}
+                              </>
+                            ) : null}
+                            <Box
                               sx={{
-                                flex: 1,
-                                minWidth: 0,
-                                '& .MuiOutlinedInput-root': { fontSize: 12 },
-                                '& .MuiOutlinedInput-notchedOutline': { border: 'none' },
-                              }}
-                            />
-                            <Divider orientation="vertical" flexItem sx={{ borderColor: '#E6E6E7' }} />
-                            <TextField
-                              select
-                              size="small"
-                              value={billingDiscountType}
-                              onChange={(ev) =>
-                                setBillingDiscountType(ev.target.value as 'percentage' | 'fixed')
-                              }
-                              slotProps={{
-                                select: { IconComponent: FieldSelectChevronIcon },
-                                htmlInput: { 'aria-label': 'Discount type' },
-                              }}
-                              sx={{
-                                width: 132,
-                                flexShrink: 0,
-                                '& .MuiSelect-select': { fontSize: 12 },
-                                '& .MuiOutlinedInput-notchedOutline': { border: 'none' },
+                                display: 'grid',
+                                gridTemplateColumns: { xs: '1fr', md: 'calc((100% - 48px) / 4) calc((100% - 48px) / 4) auto' },
+                                gap: 2,
+                                alignItems: 'end',
+                                mt: billingPlanMode === 'recurring' ? 2 : 0,
                               }}
                             >
-                              <MenuItem value="percentage" sx={{ fontSize: 12 }}>
-                                Percentage
-                              </MenuItem>
-                              <MenuItem value="fixed" sx={{ fontSize: 12 }}>
-                                Fixed
-                              </MenuItem>
-                            </TextField>
-                          </Box>
-                          <FormControlLabel
-                            sx={{ m: 0, gap: 1, width: 'fit-content' }}
-                            control={
-                              <Checkbox
-                                size="small"
-                                checked={billingExemptTax}
-                                onChange={(_, checked) => setBillingExemptTax(checked)}
-                                sx={{ p: 0, color: '#86868B', '&.Mui-checked': { color: '#146dff' } }}
-                              />
-                            }
-                            label={
-                              <Typography sx={{ fontSize: 12, lineHeight: '18px', color: '#262527' }}>
-                                Exempt tax
-                              </Typography>
-                            }
-                          />
-                        </Stack>
-                      </Stack>
-
-                      <Stack
-                        direction="row"
-                        spacing={1}
-                        sx={{ alignItems: 'flex-start', px: 1.5, py: 1.25, borderRadius: '8px', bgcolor: '#EAF2FF' }}
-                      >
-                        <InfoOutlined sx={{ fontSize: 16, color: '#146DFF', mt: '1px', flexShrink: 0 }} />
-                        <Typography sx={{ fontSize: 12, lineHeight: '18px', color: '#444446' }}>
-                          {billingPlanMode === 'perService' ? (
-                            <>
-                              Each job is billed at{' '}
-                              <Box component="span" sx={{ fontWeight: 600, color: '#262527' }}>
-                                {formatBillingAmount(applyManualDiscount(serviceProductsSubtotal))}
-                              </Box>{' '}
-                              after completion. You&rsquo;ll receive an invoice after every visit
-                              {serviceVisitCount > 0 ? (
-                                <>
-                                  , and billing ends once all{' '}
-                                  <Box component="span" sx={{ fontWeight: 600, color: '#262527' }}>
-                                    {serviceVisitCount}
-                                  </Box>{' '}
-                                  visits are done.
-                                </>
-                              ) : (
-                                '.'
-                              )}
-                            </>
-                          ) : billingSchedule.length === 0 ? (
-                            'Add a service starting date and a contract end date to preview the payment schedule.'
-                          ) : (
-                            <>
-                              Billing starts on{' '}
-                              <Box component="span" sx={{ fontWeight: 600, color: '#262527' }}>
-                                {billingSchedule[0].format('M/D/YYYY')}
-                              </Box>
-                              . You&rsquo;ll pay{' '}
-                              <Box component="span" sx={{ fontWeight: 600, color: '#262527' }}>
-                                {formatBillingAmount(applyManualDiscount(selectedBillingPlan.price))}
-                              </Box>{' '}
-                              every {selectedBillingPlan.cadence}{' '}
-                              {billingType === 'Post Bill' ? 'in arrears' : 'in advance'} on{' '}
-                              <Box component="span" sx={{ fontWeight: 600, color: '#262527' }}>
-                                {billingSchedule
-                                  .slice(0, 4)
-                                  .map((d) => d.format('M/D/YYYY'))
-                                  .join(', ')}
-                                {billingSchedule.length > 4
-                                  ? `, and ${billingSchedule.length - 4} more`
-                                  : ''}
-                              </Box>
-                              . Billing ends after{' '}
-                              <Box component="span" sx={{ fontWeight: 600, color: '#262527' }}>
-                                {billingSchedule.length}
-                              </Box>{' '}
-                              {billingSchedule.length === 1 ? 'payment' : 'payments'}.
-                            </>
-                          )}
-                        </Typography>
-                      </Stack>
-                    </Stack>
-                  </Grid>
-                  <Grid size={12}>
-                    <Stack spacing={2} sx={{ width: '100%' }}>
-                      <Typography sx={{ fontSize: 14, fontWeight: 600, lineHeight: '20px', color: '#262527' }}>
-                        Payment details
+                                  <Stack spacing={0.75}>
+                                    <Typography sx={figmaLabelSx}>Discount</Typography>
+                                    <Box
+                                      ref={setDiscountFieldEl}
+                                      sx={{
+                                        display: 'flex',
+                                        alignItems: 'stretch',
+                                        height: 37,
+                                        border: '1px solid #E6E6E7',
+                                        borderRadius: '8px',
+                                        bgcolor: '#FFFFFF',
+                                        overflow: 'hidden',
+                                        '&:hover': { borderColor: '#D0CFD2' },
+                                        '&:focus-within': { borderColor: '#6A6A70' },
+                                      }}
+                                    >
+                                      <TextField
+                                        variant="standard"
+                                        placeholder="E.g., 10"
+                                        value={billingDiscount}
+                                        onChange={(e) => setBillingDiscount(e.target.value)}
+                                        sx={{
+                                          flex: 1,
+                                          justifyContent: 'center',
+                                          '& .MuiInputBase-root': { height: '100%', px: 1.5 },
+                                          '& .MuiInputBase-input': { fontSize: 12, lineHeight: '18px', p: 0, color: '#262527' },
+                                          '& .MuiInputBase-input::placeholder': { color: '#CCCCCC', opacity: 1, fontSize: 12, WebkitTextFillColor: '#CCCCCC' },
+                                        }}
+                                        slotProps={{ input: { disableUnderline: true } }}
+                                      />
+                                      <Divider orientation="vertical" flexItem sx={{ borderColor: '#E6E6E7', my: 1 }} />
+                                      <TextField
+                                        select
+                                        variant="standard"
+                                        value={billingDiscountUnit}
+                                        onChange={(e) => setBillingDiscountUnit(e.target.value)}
+                                        sx={{
+                                          width: 140,
+                                          justifyContent: 'center',
+                                          '& .MuiInputBase-root': { height: '100%' },
+                                          '& .MuiSelect-icon': { right: 7 },
+                                          '& .MuiSelect-select': {
+                                            fontSize: 12,
+                                            fontWeight: 500,
+                                            lineHeight: '18px',
+                                            color: '#262527',
+                                            py: 0,
+                                            pl: 1.5,
+                                            pr: '32px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            minHeight: '0 !important',
+                                          },
+                                        }}
+                                        slotProps={{
+                                          input: { disableUnderline: true },
+                                          select: {
+                                            IconComponent: FieldSelectChevronIcon,
+                                            renderValue: (selected: unknown) => (selected === 'Amount' ? 'Amount' : 'Percentage'),
+                                            MenuProps: {
+                                              variant: 'menu',
+                                              anchorEl: discountFieldEl ?? undefined,
+                                              anchorOrigin: { vertical: 'bottom', horizontal: 'left' },
+                                              transformOrigin: { vertical: 'top', horizontal: 'left' },
+                                              slotProps: {
+                                                paper: {
+                                                  sx: {
+                                                    mt: 0.5,
+                                                    width: discountFieldEl ? `${discountFieldEl.offsetWidth}px !important` : undefined,
+                                                    minWidth: discountFieldEl ? `${discountFieldEl.offsetWidth}px !important` : undefined,
+                                                    borderRadius: '8px',
+                                                    boxShadow: '0px 8px 24px rgba(16, 24, 40, 0.12)',
+                                                    '& .MuiMenuItem-root': {
+                                                      fontSize: 14,
+                                                      fontWeight: 500,
+                                                      lineHeight: '20px',
+                                                      color: '#262527',
+                                                      px: 2,
+                                                      py: 1.25,
+                                                    },
+                                                    '& .MuiMenuItem-root.Mui-selected': {
+                                                      bgcolor: '#EDF5EE',
+                                                    },
+                                                    '& .MuiMenuItem-root.Mui-selected:hover': {
+                                                      bgcolor: '#EDF5EE',
+                                                    },
+                                                    '& .MuiMenuItem-root:hover': {
+                                                      bgcolor: '#F5F5F6',
+                                                    },
+                                                    '& .MuiMenuItem-root.Mui-selected:hover, & .MuiMenuItem-root.Mui-selected.Mui-focusVisible': {
+                                                      bgcolor: '#EDF5EE',
+                                                    },
+                                                  },
+                                                },
+                                              },
+                                            },
+                                          },
+                                        }}
+                                      >
+                                        <MenuItem value="Percentage">Percentage (%)</MenuItem>
+                                        <MenuItem value="Amount">Amount ($)</MenuItem>
+                                      </TextField>
+                                    </Box>
+                                  </Stack>
+                                  <Stack spacing={0.75}>
+                                    <Typography sx={figmaLabelSx}>Tax Rate (%)</Typography>
+                                    <TextField
+                                      size="small"
+                                      placeholder="E.g., 10"
+                                      value={billingTaxRate}
+                                      onChange={(e) => setBillingTaxRate(e.target.value)}
+                                      disabled={exemptTax}
+                                      sx={[
+                                        figmaTextFieldSx,
+                                        {
+                                          '& .MuiOutlinedInput-root:not(.Mui-disabled)': {
+                                            backgroundColor: '#FFFFFF',
+                                          },
+                                          '& .MuiOutlinedInput-root.Mui-disabled': {
+                                            backgroundColor: '#F5F5F6',
+                                          },
+                                        },
+                                      ]}
+                                    />
+                                  </Stack>
+                  <FormControlLabel
+                                    sx={{ m: 0, mb: 0.5, alignItems: 'center' }}
+                    control={
+                      <Checkbox
+                        size="small"
+                                        checked={exemptTax}
+                                        onChange={(_, checked) => setExemptTax(checked)}
+                                        sx={{
+                                          p: 0.5,
+                                          color: '#D0D5DD',
+                                          '&.Mui-checked': { color: '#2DA551' },
+                        }}
+                      />
+                    }
+                    label={
+                                      <Typography sx={{ fontSize: 12, lineHeight: '20px', color: '#262527' }}>
+                                        Exempt Tax
                       </Typography>
+                    }
+                  />
+                                </Box>
+                                {exemptTax ? (
+                                  <Stack spacing={1.25} sx={{ mt: 1.5, alignItems: 'flex-start' }}>
+                                    <Typography sx={{ fontSize: 12, lineHeight: '20px', color: '#262527' }}>
+                                      Upload a valid legal document to verify your tax exemption eligibility
+                                    </Typography>
+                                    <Button
+                                      type="button"
+                                      variant="outlined"
+                                      startIcon={<FileUploadOutlined sx={{ fontSize: 18 }} />}
+                                      onClick={() => taxExemptionInputRef.current?.click()}
+                                      sx={{
+                                        borderColor: '#E6E6E7',
+                                        color: '#262527',
+                                        bgcolor: '#FFFFFF',
+                                        borderRadius: '8px',
+                                        textTransform: 'none',
+                                        fontSize: 14,
+                                        fontWeight: 500,
+                                        lineHeight: '20px',
+                                        px: 1.5,
+                                        py: 0.75,
+                                        '&:hover': { borderColor: '#D0D5DD', bgcolor: '#FFFFFF' },
+                                      }}
+                                    >
+                                      Upload document
+                                    </Button>
+                                    <Box
+                                      component="input"
+                                      ref={taxExemptionInputRef}
+                                      type="file"
+                                      accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+                                      aria-label="Upload tax exemption document"
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        setTaxExemptionDocumentName(file?.name ?? '');
+                                      }}
+                                      sx={{ display: 'none' }}
+                                    />
+                                    {taxExemptionDocumentName ? (
+                                      <Typography sx={{ fontSize: 12, lineHeight: '18px', color: '#667085' }}>
+                                        {taxExemptionDocumentName}
+                                      </Typography>
+                                    ) : null}
+                                  </Stack>
+                                ) : null}
+                                <Stack
+                                  direction="row"
+                                  spacing={1}
+                                  sx={{
+                                    alignItems: 'flex-start',
+                                    mt: 2,
+                                    px: 1.5,
+                                    py: 1.25,
+                                    borderRadius: '8px',
+                                    bgcolor: 'rgba(45, 165, 81, 0.1)',
+                                  }}
+                                >
+                                  <InfoOutlined sx={{ fontSize: 18, color: '#2DA551', mt: '1px' }} />
+                                  <Typography sx={{ fontSize: 13, lineHeight: '20px', color: '#344054' }}>
+                                    {billingPlanMode === 'recurring' ? (
+                                      <>
+                                        Billing starts on <Box component="span" sx={{ fontWeight: 700, color: '#262527' }}>{startLabel}</Box>.
+                                        {' '}You'll pay <Box component="span" sx={{ fontWeight: 700, color: '#262527' }}>{money(selectedPlan.price)}</Box> every {selectedPlan.every} in advance on {scheduleDates}. Billing ends after <Box component="span" sx={{ fontWeight: 700, color: '#262527' }}>4 payments</Box>
+                                      </>
+                                    ) : (
+                                      <>
+                                        Each job is billed at <Box component="span" sx={{ fontWeight: 700, color: '#262527' }}>$100</Box> after completion.
+                                        {' '}You'll receive an invoice after every visit, and billing ends once all <Box component="span" sx={{ fontWeight: 700, color: '#262527' }}>12 visits</Box> are done.
+                                      </>
+                                    )}
+                                  </Typography>
+                                </Stack>
+                          </Box>
+                        );
+                      })()}
+
+                    <Typography sx={{ fontSize: 14, fontWeight: 600, lineHeight: '20px', color: '#262527' }}>
+                        Payment Terms
+                    </Typography>
                       <Grid container spacing={2}>
                         <Grid size={{ xs: 12, md: 4 }}>
-                          <LabeledDatePicker
-                            name="cycleReferenceDate"
-                            label="Cycle Reference Date"
-                            required
-                            placeholder="Select cycle reference date"
-                            value={cycleReferenceDateInput}
-                            onChange={setCycleReferenceDateInput}
-                          />
-                        </Grid>
-                        <Grid size={{ xs: 12, md: 4 }}>
-                          <LabeledField
-                            name="billingType"
-                            label="Billing type"
-                            required
-                            value={billingType}
-                            onChange={setBillingType}
-                            select
-                            options={billingTypeOptions}
-                          />
-                        </Grid>
-                        <Grid size={{ xs: 12, md: 4 }}>
-                          <LabeledField
+                          <Stack spacing={0.5}>
+                            <Typography sx={{ ...figmaLabelSx, color: '#000000' }}>Auto Charge</Typography>
+                            <Stack direction="row" spacing={1} sx={{ alignItems: 'center', minHeight: 36 }}>
+                              <Typography sx={{ fontSize: 12, lineHeight: '16px', color: '#667085', flex: '1 1 auto' }}>
+                                {billingPlanMode === 'recurring'
+                                  ? 'Charge automatically on payment date'
+                                  : 'Charge automatically after service completion'}
+                              </Typography>
+                              <Switch
+                                checked={autoCharge}
+                                onChange={(_, checked) => {
+                                  setAutoCharge(checked);
+                                  if (checked) {
+                                    setPaymentMethod('Credit Card / ACH');
+                                    setPaymentTerms('Due Upon Invoice');
+                                  }
+                                }}
+                                sx={{
+                                  width: 42,
+                                  height: 24,
+                                  p: 0,
+                                  flexShrink: 0,
+                                  '& .MuiSwitch-switchBase': {
+                                    p: 0,
+                                    m: '2px',
+                                    transitionDuration: '200ms',
+                                    '&.Mui-checked': {
+                                      transform: 'translateX(18px)',
+                                      color: '#FFFFFF',
+                                      '& + .MuiSwitch-track': {
+                                        bgcolor: '#54A35A',
+                                        opacity: 1,
+                                      },
+                                    },
+                                  },
+                                  '& .MuiSwitch-thumb': {
+                                    width: 20,
+                                    height: 20,
+                                    bgcolor: '#FFFFFF',
+                                    boxShadow: '0 1px 2px rgba(16, 24, 40, 0.15)',
+                                  },
+                                  '& .MuiSwitch-track': {
+                                    borderRadius: 12,
+                                    bgcolor: '#E6E6E7',
+                                    opacity: 1,
+                                  },
+                                }}
+                              />
+                            </Stack>
+                          </Stack>
+                  </Grid>
+                        {billingPlanMode === 'recurring' ? (
+                  <Grid size={{ xs: 12, md: 4 }}>
+                            <LabeledDatePicker
+                              name="nextPaymentDate"
+                              label="Next Payment Date"
+                      required
+                              placeholder="Select date"
+                              value={nextPaymentDate}
+                              onChange={setNextPaymentDate}
+                    />
+                  </Grid>
+                        ) : null}
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <LabeledField
                             name="paymentMethod"
-                            label="Payment method"
-                            required
+                            label="Payment Method"
+                      required
+                            placeholder="Select Payment Method"
                             value={paymentMethod}
-                            onChange={(v) => { setPaymentMethod(v); }}
+                            onChange={setPaymentMethod}
                             select
+                            disabled={autoCharge}
                             options={paymentMethodOptions}
-                          />
-                        </Grid>
-                        <Grid size={{ xs: 12, md: 4 }}>
-                          <LabeledField
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <LabeledField
                             name="paymentTerms"
-                            label="Payment terms"
-                            required
+                            label="Payment Terms"
+                      required
+                            placeholder="Select Payment Terms"
                             value={paymentTerms}
                             onChange={setPaymentTerms}
                             select
+                            disabled={autoCharge}
                             options={paymentTermsOptions}
-                          />
-                        </Grid>
-                        <Grid size={{ xs: 12, md: 4 }}>
-                          <LabeledAutocompleteField
-                            name="paymentPortal"
-                            label="Payment Portal"
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                          <LabeledField
+                            name="annualRateIncrease"
+                            label="Annual Rate Increase (%)"
                             required
-                            placeholder="Select payment portal"
-                            value={paymentPortal}
-                            onChange={setPaymentPortal}
-                            options={paymentPortalOptions}
-                          />
-                        </Grid>
-                        <Grid size={{ xs: 12, md: 4 }}>
-                          <LabeledAutocompleteField
-                            name="compliancePortal"
-                            label="Compliance Portal"
-                            required
-                            placeholder="Select compliance portal"
-                            value={compliancePortal}
-                            onChange={setCompliancePortal}
-                            options={compliancePortalOptions}
+                            placeholder="Enter %"
+                            value={annualRateIncrease}
+                            onChange={setAnnualRateIncrease}
                           />
                         </Grid>
                       </Grid>
@@ -3115,13 +3468,13 @@ export function CreateDispatchPage() {
                   <Grid size={12}>
                     <Stack spacing={2} sx={{ width: '100%' }}>
                       <Typography sx={{ fontSize: 14, fontWeight: 600, lineHeight: '20px', color: '#262527' }}>
-                        Billing Information
+                        Billing Address
                       </Typography>
-                      <Stack spacing={0.75} sx={{ width: '100%' }}>
-                        <Typography sx={figmaLabelSx}>
+                    <Stack spacing={0.75} sx={{ width: '100%' }}>
+                      <Typography sx={figmaLabelSx}>
                           Contact
                           <RequiredAsterisk />
-                        </Typography>
+                      </Typography>
                         <Stack
                           direction={{ xs: 'column', sm: 'row' }}
                           spacing={1.5}
@@ -3157,9 +3510,9 @@ export function CreateDispatchPage() {
                               );
                             }}
                             renderInput={(params) => (
-                              <TextField
+                      <TextField
                                 {...params}
-                                size="small"
+                        size="small"
                                 placeholder="Select contact"
                                 sx={figmaTextFieldSx}
                               />
@@ -3174,8 +3527,8 @@ export function CreateDispatchPage() {
                                   sx={{
                                     flex: 1,
                                     minWidth: 0,
-                                    display: 'flex',
-                                    alignItems: 'center',
+                                      display: 'flex',
+                                      alignItems: 'center',
                                     gap: 1,
                                     px: 1.5,
                                     py: 0.75,
@@ -3216,10 +3569,10 @@ export function CreateDispatchPage() {
                               );
                             })()
                           ) : null}
-                        </Stack>
+                    </Stack>
                       </Stack>
 
-                      <FormControlLabel
+                        <FormControlLabel
                         sx={{
                           m: 0,
                           ml: 0,
@@ -3228,9 +3581,9 @@ export function CreateDispatchPage() {
                           width: 'fit-content',
                           '& .MuiFormControlLabel-label': { pl: 0 },
                         }}
-                        control={
+                          control={
                           <Checkbox
-                            size="small"
+                              size="small"
                             checked={sameAsPropertyAddress}
                             onChange={(_, checked) => {
                               setSameAsPropertyAddress(checked);
@@ -3245,77 +3598,77 @@ export function CreateDispatchPage() {
                             sx={{
                               p: 0,
                               color: '#86868B',
-                              '&.Mui-checked': { color: '#146dff' },
+                              '&.Mui-checked': { color: '#2DA551' },
                             }}
-                          />
-                        }
-                        label={
+                            />
+                          }
+                          label={
                           <Typography sx={{ fontSize: 12, lineHeight: '18px', color: '#262527' }}>
-                            Same as Property Address
-                          </Typography>
-                        }
-                      />
+                            Same As Property Address
+                            </Typography>
+                          }
+                        />
 
                       {!sameAsPropertyAddress ? (
                       <Grid container spacing={2}>
                         <Grid size={{ xs: 12, md: 6 }}>
-                          <LabeledField
-                            name="billAddress"
-                            label="Address"
-                            required
+                    <LabeledField
+                      name="billAddress"
+                      label="Address"
+                      required
                             placeholder="Enter Address"
-                            value={billAddress}
-                            onChange={setBillAddress}
-                          />
-                        </Grid>
-                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                          <LabeledField
+                      value={billAddress}
+                      onChange={setBillAddress}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <LabeledField
                             name="billCountry"
                             label="Country"
-                            required
+                      required
                             value={billCountry}
                             onChange={setBillCountry}
                             select
                             options={countryOptions}
-                          />
-                        </Grid>
-                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                          <LabeledField
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <LabeledField
                             name="billState"
                             label="State"
-                            required
+                      required
                             value={billState}
                             onChange={setBillState}
-                            select
+                      select
                             options={stateOptions}
-                          />
-                        </Grid>
-                        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                          <LabeledField
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <LabeledField
                             name="billCity"
                             label="City"
-                            required
+                      required
                             value={billCity}
                             onChange={setBillCity}
-                            select
+                      select
                             options={cityOptions}
-                          />
-                        </Grid>
-                        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                          <LabeledField
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <LabeledField
                             name="billZip"
                             label="Zip Code / Postal Code"
-                            required
+                      required
                             placeholder="Enter Zip Code"
                             value={billZip}
                             onChange={setBillZip}
-                          />
-                        </Grid>
+                    />
+                  </Grid>
                       </Grid>
                       ) : null}
                     </Stack>
                   </Grid>
-                  {paymentMethod === 'Credit Card' ? (
+                  {paymentMethod === 'Credit Card' || paymentMethod === 'Credit Card / ACH' ? (
                     <Grid size={12}>
                       <Button
                         type="button"
@@ -3346,16 +3699,16 @@ export function CreateDispatchPage() {
                             height: 20,
                             flexShrink: 0,
                             borderRadius: '50%',
-                            bgcolor: '#E5F6FF',
-                            border: '1px solid #146DFF',
+                            bgcolor: '#E7F8EE',
+                            border: '1px solid #2DA551',
                             display: 'grid',
                             placeItems: 'center',
                           }}
                         >
-                          <AddOutlined sx={{ fontSize: 14, color: '#146DFF' }} />
+                          <AddOutlined sx={{ fontSize: 14, color: '#2DA551' }} />
                         </Box>
-                        <Typography sx={{ fontSize: 14, fontWeight: 600, color: '#262527', textAlign: 'center' }}>
-                          Add Payment Method
+                        <Typography sx={{ fontSize: 14, fontWeight: 500, lineHeight: '20px', color: '#262527', textAlign: 'center' }}>
+                        Add Payment Method
                         </Typography>
                       </Button>
                     </Grid>
@@ -3363,7 +3716,7 @@ export function CreateDispatchPage() {
                 </Grid>
               </FormSection>
 
-              <FormSection title="Signee">
+              <FormSection id="section-signee" title="Signee">
                 <Box sx={{ width: '100%', overflowX: 'auto' }}>
                   <Stack sx={{ minWidth: { xs: 560, sm: 640 }, gap: 2, alignItems: 'stretch' }}>
                     {signeeCards.length > 0 ? (
@@ -3743,6 +4096,7 @@ export function CreateDispatchPage() {
               </FormSection>
             </Stack>
           </Box>
+          </Box>
         </Box>
 
         <Box
@@ -3759,9 +4113,43 @@ export function CreateDispatchPage() {
         >
           <Box sx={{ width: '100%', maxWidth: '100%', mx: 'auto' }}>
             <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={1.5}
+              sx={{ alignItems: { xs: 'stretch', sm: 'center' }, justifyContent: 'space-between' }}
+            >
+              {serviceProductsSubtotal > 0 && billingPlanMode === 'recurring' ? (
+                <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start', minWidth: 0 }}>
+                  <InfoOutlined sx={{ fontSize: 18, color: '#2DA551', mt: '1px' }} />
+                  <Typography sx={{ fontSize: 14, fontWeight: 400, lineHeight: '20px', color: '#262527' }}>
+                    Billing starts on{' '}
+                    <Box component="span" sx={{ fontWeight: 700 }}>
+                      {(nextPaymentDate ?? contractStartDate ?? dayjs('2026-04-01')).format('MM/DD/YY')}
+                    </Box>
+                    {' '}and you'll pay{' '}
+                    <Box component="span" sx={{ fontWeight: 700 }}>
+                      ~
+                      {billingPlanQuote(billingFrequencyPlan).price.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })}
+                    </Box>
+                    {' '}every{' '}
+                    {{
+                      annually: 'year',
+                      semi_annually: '6 months',
+                      quarterly: 'quarter',
+                      monthly: 'month',
+                    }[billingFrequencyPlan] ?? 'year'}
+                    . Billing ends after <Box component="span" sx={{ fontWeight: 700 }}>4 payments</Box>
+                  </Typography>
+                </Stack>
+              ) : (
+                <Typography sx={{ fontSize: 14, fontWeight: 400, lineHeight: '20px', color: '#262527' }}>
+                  Total value: USD{' '}
+                  {serviceProductsSubtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </Typography>
+              )}
+            <Stack
               direction={{ xs: 'column-reverse', sm: 'row' }}
               spacing={1.5}
-              sx={{ alignItems: { xs: 'stretch', sm: 'center' }, justifyContent: { sm: 'flex-end' } }}
+                sx={{ alignItems: { xs: 'stretch', sm: 'center' }, justifyContent: 'flex-end' }}
             >
               <Button
                 type="button"
@@ -3782,6 +4170,7 @@ export function CreateDispatchPage() {
               >
                 Create Contract
               </Button>
+              </Stack>
             </Stack>
           </Box>
         </Box>
@@ -4112,7 +4501,7 @@ export function CreateDispatchPage() {
                     <Grid size={{ xs: 12, md: 6 }}>
                       <Stack spacing={0.75} sx={{ width: '100%' }}>
                         <Typography sx={figmaLabelSx}>
-                          Phone number
+                          Phone Number
                           <Box component="span" sx={{ color: '#B32318' }}>
                             {' '}
                             *
@@ -4128,7 +4517,7 @@ export function CreateDispatchPage() {
                           sx={[
                             figmaTextFieldSx,
                             {
-                              '& .MuiOutlinedInput-root': { minHeight: 36, height: 36 },
+                              '& .MuiOutlinedInput-root': { minHeight: 37, height: 37 },
                               '& .MuiInputAdornment-root': { mr: 0.75 },
                             },
                           ]}
@@ -4330,7 +4719,7 @@ export function CreateDispatchPage() {
                     <Grid size={{ xs: 12, md: 6 }}>
                       <LabeledField
                         name="newCompanyEmployees"
-                        label="No. of Employees"
+                        label="No. Of Employees"
                         required={false}
                         placeholder="No. of employees"
                         value={createCompanyEmployees}
