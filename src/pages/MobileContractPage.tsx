@@ -20,11 +20,12 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import CloseIcon from '@mui/icons-material/Close';
 import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import FileUploadOutlinedIcon from '@mui/icons-material/FileUploadOutlined';
 import MapOutlinedIcon from '@mui/icons-material/MapOutlined';
 import PersonIcon from '@mui/icons-material/Person';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import { useEffect, useLayoutEffect, useState, useRef, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useState, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 
@@ -817,6 +818,32 @@ function CreateContactScreen({
 }
 
 /* ─── Option constants ─── */
+const DESCRIPTION_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+const DESCRIPTION_IMAGE_ACCEPT =
+  'image/jpeg,image/png,image/heic,image/heif,.jpg,.jpeg,.png,.heic';
+
+function isDescriptionImageFile(file: File): boolean {
+  const lower = file.name.toLowerCase();
+  if (lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.png') || lower.endsWith('.heic')) {
+    return true;
+  }
+  return file.type.startsWith('image/');
+}
+
+type DescriptionImage = {
+  id: string;
+  file: File;
+  previewUrl: string;
+};
+
+const PROPERTY_BILLING_ADDRESS = {
+  address: '412 N Broadway St',
+  country: 'USA',
+  state: 'Nebraska',
+  city: 'Bloomfield',
+  zip: '68718',
+} as const;
+
 const AFFILIATION_OPTIONS = [
   { id: 'headquarters', label: 'Headquarters' },
   { id: 'regional_office', label: 'Regional Office' },
@@ -848,6 +875,12 @@ const PROPERTY_ADDRESS_OPTIONS = [
   { label: '200 Logistics Way, Omaha, NE 68102', value: '200 Logistics Way, Omaha, NE 68102' },
   { label: '901 Maple Ave, Bloomfield, NE 68718', value: '901 Maple Ave, Bloomfield, NE 68718' },
   { label: '220 Oak Street, Norfolk, NE 68701', value: '220 Oak Street, Norfolk, NE 68701' },
+];
+const PROPERTY_SOURCE_OPTIONS = [
+  { label: 'Select property source', value: '' },
+  { label: 'ALN', value: 'ALN' },
+  { label: 'Costar', value: 'Costar' },
+  { label: 'Referral', value: 'Referral' },
 ];
 const FRANCHISE_OPTIONS = [
   { label: 'Select associated franchise', value: '' },
@@ -914,6 +947,7 @@ export function MobileContractPage() {
   const [companyName, setCompanyName]             = useState('');
   const [propertyAddress, setPropertyAddress]     = useState('');
   const [propertyName, setPropertyName]           = useState('');
+  const [propertySource, setPropertySource]       = useState('');
   const [industryVertical, setIndustryVertical]   = useState('');
   const [franchise, setFranchise]                 = useState('');
   const [affiliations, setAffiliations]           = useState<string[]>([]);
@@ -975,17 +1009,54 @@ export function MobileContractPage() {
   const [discountUnitOpen, setDiscountUnitOpen] = useState(false);
   const [billingTaxRate, setBillingTaxRate] = useState('');
   const [exemptTax, setExemptTax] = useState(false);
-  const [autoCharge, setAutoCharge] = useState(false);
+  const [autoCharge, setAutoCharge] = useState(true);
   const [nextPaymentDate, setNextPaymentDate] = useState('');
   const [annualRateIncrease, setAnnualRateIncrease] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Credit Card / ACH');
-  const [paymentTerms, setPaymentTerms] = useState('');
+  const [paymentTerms, setPaymentTerms] = useState('Due Upon Invoice');
   const [sameAsPropertyAddress, setSameAsPropertyAddress] = useState(true);
-  const [billAddress, setBillAddress] = useState('');
-  const [billCountry, setBillCountry] = useState('');
-  const [billCity, setBillCity] = useState('');
-  const [billState, setBillState] = useState('');
-  const [billZip, setBillZip] = useState('');
+  const [billAddress, setBillAddress] = useState<string>(PROPERTY_BILLING_ADDRESS.address);
+  const [billCountry, setBillCountry] = useState<string>(PROPERTY_BILLING_ADDRESS.country);
+  const [billCity, setBillCity] = useState<string>(PROPERTY_BILLING_ADDRESS.city);
+  const [billState, setBillState] = useState<string>(PROPERTY_BILLING_ADDRESS.state);
+  const [billZip, setBillZip] = useState<string>(PROPERTY_BILLING_ADDRESS.zip);
+
+  const [descriptionImages, setDescriptionImages] = useState<DescriptionImage[]>([]);
+  const [descriptionImageError, setDescriptionImageError] = useState('');
+  const descriptionImageInputRef = useRef<HTMLInputElement>(null);
+
+  const appendDescriptionImages = useCallback((fileList: FileList | null | undefined) => {
+    if (!fileList?.length) return;
+    const toAdd: DescriptionImage[] = [];
+    let error = '';
+    for (const file of Array.from(fileList)) {
+      if (!isDescriptionImageFile(file)) {
+        error = 'Only jpg, png, and heic images are allowed.';
+        continue;
+      }
+      if (file.size > DESCRIPTION_IMAGE_MAX_BYTES) {
+        error = 'Each image must be 10MB or less.';
+        continue;
+      }
+      toAdd.push({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        file,
+        previewUrl: URL.createObjectURL(file),
+      });
+    }
+    setDescriptionImageError(error);
+    if (toAdd.length > 0) {
+      setDescriptionImages((prev) => [...prev, ...toAdd]);
+    }
+  }, []);
+
+  const removeDescriptionImage = useCallback((id: string) => {
+    setDescriptionImages((prev) => {
+      const target = prev.find((img) => img.id === id);
+      if (target) URL.revokeObjectURL(target.previewUrl);
+      return prev.filter((img) => img.id !== id);
+    });
+  }, []);
 
   /* ── Signees ── */
   const [signees, setSignees]     = useState<Signee[]>([]);
@@ -1010,7 +1081,32 @@ export function MobileContractPage() {
   const [openContractDates, setOpenContractDates] = useState(true);
   const [openProducts, setOpenProducts]         = useState(true);
   const [openBilling, setOpenBilling]           = useState(true);
+  const [openDescription, setOpenDescription]   = useState(true);
   const [openSignee, setOpenSignee]             = useState(true);
+
+  useEffect(() => {
+    if (!sameAsPropertyAddress) return;
+    const preset = PROPERTY_BILLING_ADDRESS;
+    setBillAddress(propertyAddress.trim() || preset.address);
+    setBillCountry(preset.country);
+    setBillState(preset.state);
+    setBillCity(preset.city);
+    setBillZip(preset.zip);
+  }, [sameAsPropertyAddress, propertyAddress]);
+
+  useEffect(() => {
+    if (billingPlanMode !== 'recurring') return;
+    setAutoCharge(true);
+    setPaymentMethod('Credit Card / ACH');
+    setPaymentTerms('Due Upon Invoice');
+  }, [billingPlanMode]);
+
+  const recurringPaymentCadence = {
+    annually: 'annually',
+    semi_annually: 'every 6 months',
+    quarterly: 'quarterly',
+    monthly: 'monthly',
+  }[billingFrequencyPlan];
 
   function openAddSigneeSheet() {
     setEditingSigneeId(null);
@@ -1199,11 +1295,12 @@ export function MobileContractPage() {
                 />
                 <Field label="Property Name" placeholder="Enter property name" value={propertyName} onChange={setPropertyName} />
                 <SelectField
-                  label="Associated Franchise"
-                  value={franchise}
-                  onChange={setFranchise}
-                  options={FRANCHISE_OPTIONS}
-                  placeholder="Select associated franchise"
+                  label="Property Source"
+                  value={propertySource}
+                  onChange={setPropertySource}
+                  options={PROPERTY_SOURCE_OPTIONS}
+                  placeholder="Select property source"
+                  required
                 />
                 <SelectField
                   label="Company"
@@ -1212,6 +1309,13 @@ export function MobileContractPage() {
                   options={COMPANY_OPTIONS}
                   placeholder="Select company"
                   required
+                />
+                <SelectField
+                  label="Associated Franchise"
+                  value={franchise}
+                  onChange={setFranchise}
+                  options={FRANCHISE_OPTIONS}
+                  placeholder="Select associated franchise"
                 />
                 <SelectField label="Industry Vertical" value={industryVertical} onChange={setIndustryVertical} options={INDUSTRY_OPTIONS} required />
                 <Stack sx={{ gap: 0.5 }}>
@@ -1707,24 +1811,6 @@ export function MobileContractPage() {
                       Upload a valid legal document to verify your tax exemption eligibility
                     </Typography>
                   ) : null}
-                  <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start', px: 1.5, py: 1.25, borderRadius: '8px', bgcolor: 'rgba(45, 165, 81, 0.1)' }}>
-                    <InfoOutlinedIcon sx={{ fontSize: 18, color: C.green, mt: '1px' }} />
-                    <Typography sx={{ fontSize: 13, lineHeight: '20px', color: '#344054' }}>
-                      {billingPlanMode === 'recurring' ? (
-                        <>
-                          Billing starts on <Box component="span" sx={{ fontWeight: 700, color: C.text }}>{nextPaymentDate || contractStartDate || '04/01/26'}</Box>.
-                          {' '}You'll pay <Box component="span" sx={{ fontWeight: 700, color: C.text }}>{money(billingPlanQuote(billingFrequencyPlan).price)}</Box> every {{
-                            annually: 'year', semi_annually: '6 months', quarterly: 'quarter', monthly: 'month',
-                          }[billingFrequencyPlan]}. Billing ends after <Box component="span" sx={{ fontWeight: 700, color: C.text }}>4 payments</Box>
-                        </>
-                      ) : (
-                        <>
-                          Each job is billed at <Box component="span" sx={{ fontWeight: 700, color: C.text }}>$100</Box> after completion.
-                          {' '}You'll receive an invoice after every visit, and billing ends once all <Box component="span" sx={{ fontWeight: 700, color: C.text }}>12 visits</Box> are done.
-                        </>
-                      )}
-                    </Typography>
-                  </Stack>
                 </Box>
 
                 <Typography sx={{ fontSize: 14, fontWeight: 600, lineHeight: '20px', color: C.text }}>Payment Terms</Typography>
@@ -1733,11 +1819,12 @@ export function MobileContractPage() {
                   <Stack direction="row" sx={{ alignItems: 'center', gap: 1, minHeight: 36 }}>
                     <Typography sx={{ fontSize: 12, lineHeight: '16px', color: '#667085', flex: 1 }}>
                       {billingPlanMode === 'recurring'
-                        ? 'Charge automatically on payment date'
+                        ? 'Payments are always automatically charged on the scheduled date.'
                         : 'Charge automatically after service completion'}
                     </Typography>
                     <Switch
                       checked={autoCharge}
+                      disabled={billingPlanMode === 'recurring'}
                       onChange={(_, checked) => {
                         setAutoCharge(checked);
                         if (checked) {
@@ -1749,6 +1836,7 @@ export function MobileContractPage() {
                         width: 42,
                         height: 24,
                         p: 0,
+                        flexShrink: 0,
                         '& .MuiSwitch-switchBase': {
                           p: 0,
                           m: '2px',
@@ -1757,37 +1845,51 @@ export function MobileContractPage() {
                             color: C.white,
                             '& + .MuiSwitch-track': { bgcolor: '#54A35A', opacity: 1 },
                           },
+                          '&.Mui-disabled': {
+                            opacity: 1,
+                            '&.Mui-checked + .MuiSwitch-track': {
+                              bgcolor: '#B8D9BA',
+                              opacity: 1,
+                            },
+                            '&:not(.Mui-checked) + .MuiSwitch-track': {
+                              bgcolor: '#F0F0F1',
+                              opacity: 1,
+                            },
+                            '& .MuiSwitch-thumb': {
+                              bgcolor: '#F5F5F5',
+                              boxShadow: 'none',
+                            },
+                          },
                         },
                         '& .MuiSwitch-thumb': { width: 20, height: 20, bgcolor: C.white },
                         '& .MuiSwitch-track': { borderRadius: 12, bgcolor: C.border, opacity: 1 },
+                        '&.Mui-disabled': { cursor: 'not-allowed' },
                       }}
                     />
                   </Stack>
                 </Stack>
                 {billingPlanMode === 'recurring' ? (
-                  <Field label="Next Payment Date" placeholder="MM/DD/YY" value={nextPaymentDate} onChange={setNextPaymentDate} required calendar />
+                  <Stack sx={{ gap: 0.5 }}>
+                    <Field label="Next Payment Date" placeholder="MM/DD/YY" value={nextPaymentDate} onChange={setNextPaymentDate} required calendar />
+                    <Stack direction="row" spacing={0.5} sx={{ alignItems: 'flex-start' }}>
+                      <InfoOutlinedIcon sx={{ fontSize: 14, color: C.grey400, mt: '2px' }} />
+                      <Typography sx={{ fontSize: 11, lineHeight: '16px', color: C.grey400 }}>
+                        The first payment is charged when the contract is published. Recurring payments are charged from this date onward.
+                      </Typography>
+                    </Stack>
+                  </Stack>
                 ) : null}
-                <SelectField
-                  label="Payment Method"
-                  required
-                  placeholder="Select Payment Method"
-                  value={paymentMethod}
-                  onChange={setPaymentMethod}
-                  disabled={autoCharge}
-                  options={[
-                    { label: 'Credit Card / ACH', value: 'Credit Card / ACH' },
-                    ...(billingPlanMode === 'at_service' ? [{ label: 'Check', value: 'Check' }] : []),
-                  ]}
-                />
-                <SelectField
-                  label="Payment Terms"
-                  required
-                  placeholder="Select Payment Terms"
-                  value={paymentTerms}
-                  onChange={setPaymentTerms}
-                  disabled={autoCharge}
-                  options={PAYMENT_TERMS_OPTIONS}
-                />
+                {billingPlanMode === 'at_service' ? (
+                  <SelectField
+                    label="Payment Terms"
+                    required
+                    placeholder="Select Payment Terms"
+                    value={paymentTerms}
+                    onChange={setPaymentTerms}
+                    disabled={autoCharge}
+                    options={PAYMENT_TERMS_OPTIONS}
+                  />
+                ) : null}
                 <Field label="Annual Rate Increase (%)" placeholder="Enter %" value={annualRateIncrease} onChange={setAnnualRateIncrease} required />
 
                 <Typography sx={{ fontSize: 12, fontWeight: 600, lineHeight: '20px', color: C.text }}>Billing Address</Typography>
@@ -1803,15 +1905,49 @@ export function MobileContractPage() {
                   }
                   label={<Typography sx={{ fontSize: 12, lineHeight: '18px', color: C.text }}>Same As Property Address</Typography>}
                 />
-                {!sameAsPropertyAddress ? (
-                  <>
-                    <Field label="Address" placeholder="Enter Address" value={billAddress} onChange={setBillAddress} required />
-                    <SelectField label="Country" value={billCountry} onChange={setBillCountry} options={COUNTRY_OPTIONS} required placeholder="Select" />
-                    <SelectField label="State" value={billState} onChange={setBillState} options={STATE_OPTIONS} required placeholder="Select" />
-                    <SelectField label="City" value={billCity} onChange={setBillCity} options={CITY_OPTIONS} required placeholder="Select" />
-                    <Field label="Zip Code / Postal Code" placeholder="Enter Zip Code" value={billZip} onChange={setBillZip} required />
-                  </>
-                ) : null}
+                <Field
+                  label="Address"
+                  placeholder="Enter Address"
+                  value={billAddress}
+                  onChange={setBillAddress}
+                  required
+                  disabled={sameAsPropertyAddress}
+                />
+                <SelectField
+                  label="Country"
+                  value={billCountry}
+                  onChange={setBillCountry}
+                  options={COUNTRY_OPTIONS}
+                  required
+                  placeholder="Select"
+                  disabled={sameAsPropertyAddress}
+                />
+                <SelectField
+                  label="State"
+                  value={billState}
+                  onChange={setBillState}
+                  options={STATE_OPTIONS}
+                  required
+                  placeholder="Select"
+                  disabled={sameAsPropertyAddress}
+                />
+                <SelectField
+                  label="City"
+                  value={billCity}
+                  onChange={setBillCity}
+                  options={CITY_OPTIONS}
+                  required
+                  placeholder="Select"
+                  disabled={sameAsPropertyAddress}
+                />
+                <Field
+                  label="Zip Code / Postal Code"
+                  placeholder="Enter Zip Code"
+                  value={billZip}
+                  onChange={setBillZip}
+                  required
+                  disabled={sameAsPropertyAddress}
+                />
                 {paymentMethod === 'Credit Card / ACH' ? (
                   <Button
                     variant="outlined"
@@ -1832,6 +1968,129 @@ export function MobileContractPage() {
                     </Box>
                     Add Payment Method
                   </Button>
+                ) : null}
+              </Stack>
+            </Collapse>
+          </Box>
+
+          {/* ── Description ── */}
+          <Box>
+            <SectionHeader title="Description" open={openDescription} onToggle={() => setOpenDescription((v) => !v)} />
+            <Collapse in={openDescription}>
+              <Stack sx={{ gap: 1.5, pt: 1.5 }}>
+                <Typography sx={{ fontSize: 14, fontWeight: 600, lineHeight: '20px', color: C.text }}>
+                  Images{' '}
+                  <Box component="span" sx={{ color: C.grey400, fontWeight: 400 }}>
+                    (Optional)
+                  </Box>
+                </Typography>
+                <Box
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => descriptionImageInputRef.current?.click()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      descriptionImageInputRef.current?.click();
+                    }
+                  }}
+                  sx={{
+                    width: '100%',
+                    border: `1px dashed ${C.border}`,
+                    borderRadius: '12px',
+                    bgcolor: '#FAFAFA',
+                    py: 3,
+                    px: 2,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 1,
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: '50%',
+                      bgcolor: '#E7F8EE',
+                      display: 'grid',
+                      placeItems: 'center',
+                    }}
+                  >
+                    <FileUploadOutlinedIcon sx={{ fontSize: 20, color: C.green }} />
+                  </Box>
+                  <Typography sx={{ fontSize: 13, lineHeight: '20px', color: C.text, textAlign: 'center' }}>
+                    <Box component="span" sx={{ fontWeight: 600 }}>
+                      Tap to upload
+                    </Box>
+                  </Typography>
+                  <Typography sx={{ fontSize: 11, lineHeight: '16px', color: C.grey400, textAlign: 'center' }}>
+                    jpg, png, heic (Max 10MB)
+                  </Typography>
+                </Box>
+                <Box
+                  component="input"
+                  ref={descriptionImageInputRef}
+                  type="file"
+                  accept={DESCRIPTION_IMAGE_ACCEPT}
+                  multiple
+                  aria-label="Upload description images"
+                  onChange={(e) => {
+                    appendDescriptionImages(e.target.files);
+                    e.target.value = '';
+                  }}
+                  sx={{ display: 'none' }}
+                />
+                {descriptionImageError ? (
+                  <Typography sx={{ fontSize: 11, lineHeight: '16px', color: C.red }}>{descriptionImageError}</Typography>
+                ) : null}
+                {descriptionImages.length > 0 ? (
+                  <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
+                    {descriptionImages.map((img) => (
+                      <Box
+                        key={img.id}
+                        sx={{
+                          position: 'relative',
+                          width: 96,
+                          height: 64,
+                          borderRadius: '8px',
+                          overflow: 'hidden',
+                          border: `1px solid ${C.border}`,
+                          flexShrink: 0,
+                        }}
+                      >
+                        <Box
+                          component="img"
+                          src={img.previewUrl}
+                          alt={img.file.name}
+                          sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                        />
+                        <Button
+                          type="button"
+                          onClick={() => removeDescriptionImage(img.id)}
+                          sx={{
+                            position: 'absolute',
+                            top: 4,
+                            right: 4,
+                            minWidth: 0,
+                            px: 0.75,
+                            py: 0.125,
+                            borderRadius: '999px',
+                            bgcolor: 'rgba(38, 37, 39, 0.88)',
+                            color: C.white,
+                            fontSize: 10,
+                            fontWeight: 500,
+                            lineHeight: '16px',
+                            textTransform: 'none',
+                          }}
+                        >
+                          Remove
+                        </Button>
+                      </Box>
+                    ))}
+                  </Stack>
                 ) : null}
               </Stack>
             </Collapse>
@@ -1928,6 +2187,28 @@ export function MobileContractPage() {
           }}
         >
           <Stack direction="column" sx={{ gap: 1 }}>
+            {subtotal > 0 && billingPlanMode === 'recurring' ? (
+              <Stack direction="row" spacing={0.75} sx={{ alignItems: 'flex-start', pb: 0.5 }}>
+                <InfoOutlinedIcon sx={{ fontSize: 16, color: C.green, mt: '2px', flexShrink: 0 }} />
+                <Typography sx={{ fontSize: 11, fontWeight: 400, lineHeight: '16px', color: C.grey400 }}>
+                  First payment of{' '}
+                  <Box component="span" sx={{ fontWeight: 700, color: C.text }}>
+                    {money(billingPlanQuote(billingFrequencyPlan).price)}
+                  </Box>
+                  {' '}is charged on contract publish, then{' '}
+                  <Box component="span" sx={{ fontWeight: 700, color: C.text }}>
+                    {recurringPaymentCadence}
+                  </Box>
+                  . Next payment:{' '}
+                  <Box component="span" sx={{ fontWeight: 700, color: C.text }}>
+                    {nextPaymentDate || '10/21/2027'}
+                  </Box>
+                  . Last payment:{' '}
+                  <Box component="span" sx={{ fontWeight: 700, color: C.text }}>10/21/2027</Box>
+                  . Amounts exclude tax.
+                </Typography>
+              </Stack>
+            ) : null}
             <Button
               variant="contained"
               disableElevation

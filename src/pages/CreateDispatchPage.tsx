@@ -159,8 +159,21 @@ const FORM_PROGRESS_SECTIONS = [
   { id: 'section-contract', label: 'Contract Details' },
   { id: 'section-products', label: 'Add Products' },
   { id: 'section-billing', label: 'Billing And Payment Details' },
+  { id: 'section-description', label: 'Description' },
   { id: 'section-signee', label: 'Signee' },
 ] as const;
+
+const DESCRIPTION_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+const DESCRIPTION_IMAGE_ACCEPT =
+  'image/jpeg,image/png,image/heic,image/heif,.jpg,.jpeg,.png,.heic';
+
+function isDescriptionImageFile(file: File): boolean {
+  const lower = file.name.toLowerCase();
+  if (lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.png') || lower.endsWith('.heic')) {
+    return true;
+  }
+  return file.type.startsWith('image/');
+}
 
 const CONTACT_ROLE_ROWS = [
   { id: 'decision_maker', label: 'Decision Maker', color: '#9747FF', bg: '#F5EDFF' },
@@ -387,6 +400,12 @@ type SigneeCard = {
   email?: string;
   hasSignature?: boolean;
   signatureText?: string;
+};
+
+type DescriptionImage = {
+  id: string;
+  file: File;
+  previewUrl: string;
 };
 
 function parseMoneyInput(s: string) {
@@ -748,18 +767,11 @@ export function CreateDispatchPage() {
   const [exemptTax, setExemptTax] = useState(false);
   const [taxExemptionDocumentName, setTaxExemptionDocumentName] = useState('');
   const taxExemptionInputRef = useRef<HTMLInputElement>(null);
-  const [autoCharge, setAutoCharge] = useState(false);
+  const [autoCharge, setAutoCharge] = useState(true);
   const [nextPaymentDate, setNextPaymentDate] = useState<Dayjs | null>(null);
   const [annualRateIncrease, setAnnualRateIncrease] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Credit Card / ACH');
-  const [paymentTerms, setPaymentTerms] = useState('');
-  const paymentMethodOptions = useMemo<UiOption[]>(
-    () => [
-      { label: 'Credit Card / ACH', value: 'Credit Card / ACH' },
-      ...(billingPlanMode === 'at_service' ? [{ label: 'Check', value: 'Check' }] : []),
-    ],
-    [billingPlanMode],
-  );
+  const [paymentTerms, setPaymentTerms] = useState('Due Upon Invoice');
   const paymentTermsOptions = useMemo<UiOption[]>(
     () => [
       { label: 'Due Upon Invoice', value: 'Due Upon Invoice' },
@@ -823,6 +835,45 @@ export function CreateDispatchPage() {
     [],
   );
 
+  const [descriptionImages, setDescriptionImages] = useState<DescriptionImage[]>([]);
+  const [descriptionImageDragOver, setDescriptionImageDragOver] = useState(false);
+  const descriptionImageInputRef = useRef<HTMLInputElement>(null);
+
+  const appendDescriptionImages = useCallback((fileList: FileList | null | undefined) => {
+    if (!fileList?.length) return;
+    const toAdd: DescriptionImage[] = [];
+    for (const file of Array.from(fileList)) {
+      if (!isDescriptionImageFile(file)) {
+        setSnackbar({
+          open: true,
+          message: 'Only jpg, png, and heic images are allowed.',
+          severity: 'error',
+        });
+        continue;
+      }
+      if (file.size > DESCRIPTION_IMAGE_MAX_BYTES) {
+        setSnackbar({ open: true, message: 'Each image must be 10MB or less.', severity: 'error' });
+        continue;
+      }
+      toAdd.push({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        file,
+        previewUrl: URL.createObjectURL(file),
+      });
+    }
+    if (toAdd.length > 0) {
+      setDescriptionImages((prev) => [...prev, ...toAdd]);
+    }
+  }, []);
+
+  const removeDescriptionImage = useCallback((id: string) => {
+    setDescriptionImages((prev) => {
+      const target = prev.find((img) => img.id === id);
+      if (target) URL.revokeObjectURL(target.previewUrl);
+      return prev.filter((img) => img.id !== id);
+    });
+  }, []);
+
   const [signeeCards, setSigneeCards] = useState<SigneeCard[]>([]);
   const [signContractModalSigneeId, setSignContractModalSigneeId] = useState<string | null>(null);
   const [modalSignaturePreview, setModalSignaturePreview] = useState('');
@@ -880,6 +931,14 @@ export function CreateDispatchPage() {
     setBillCity(preset.city);
     setBillZip(preset.zip);
   }, [sameAsPropertyAddress, propertyAddress]);
+
+  useEffect(() => {
+    if (billingPlanMode !== 'recurring') return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- recurring plan always auto-charges
+    setAutoCharge(true);
+    setPaymentMethod('Credit Card / ACH');
+    setPaymentTerms('Due Upon Invoice');
+  }, [billingPlanMode]);
 
   const clearFieldError = useCallback((key: string) => {
     setFieldErrors((prev) => {
@@ -1054,7 +1113,8 @@ export function CreateDispatchPage() {
     setBillingTaxRate('');
     setExemptTax(false);
     setTaxExemptionDocumentName('');
-    setAutoCharge(false);
+    setAutoCharge(true);
+    setPaymentTerms('Due Upon Invoice');
     setNextPaymentDate(null);
     setAnnualRateIncrease('');
     setPaymentMethod('Credit Card / ACH');
@@ -1071,6 +1131,11 @@ export function CreateDispatchPage() {
     setBillAddress(PROPERTY_BILLING_ADDRESS.address);
     setBillingContactId(null);
     setSameAsPropertyAddress(true);
+    setDescriptionImages((prev) => {
+      prev.forEach((img) => URL.revokeObjectURL(img.previewUrl));
+      return [];
+    });
+    setDescriptionImageDragOver(false);
     setSigneeCards([]);
     setSignContractModalSigneeId(null);
     setModalSignaturePreview('');
@@ -1178,6 +1243,13 @@ export function CreateDispatchPage() {
         paymentMethod,
         paymentTerms,
       },
+      description: {
+        images: descriptionImages.map((img) => ({
+          name: img.file.name,
+          size: img.file.size,
+          type: img.file.type,
+        })),
+      },
       signees: signeeCards,
     };
     // Replace with API call
@@ -1269,12 +1341,12 @@ export function CreateDispatchPage() {
           return Boolean(p.dimension.trim()) && (flatRateEnabled || parseMoneyInput(p.rate) > 0) && !Number.isNaN(quantity) && quantity >= 1;
         }),
       'section-billing':
-        Boolean(paymentMethod) &&
-        Boolean(paymentTerms) &&
         Boolean(annualRateIncrease.trim()) &&
         Boolean(billingContactId) &&
         (billingPlanMode !== 'recurring' || nextPaymentDate != null) &&
+        (billingPlanMode !== 'at_service' || Boolean(paymentTerms.trim())) &&
         billingAddressComplete,
+      'section-description': true,
       'section-signee': signeeCards.length > 0 && signeeCards.every((card) => Boolean(card.name.trim())),
     } as Record<(typeof FORM_PROGRESS_SECTIONS)[number]['id'], boolean>;
   }, [
@@ -1294,9 +1366,8 @@ export function CreateDispatchPage() {
     occurrenceUnit,
     serviceProducts,
     flatRateEnabled,
-    paymentMethod,
-    paymentTerms,
     annualRateIncrease,
+    paymentTerms,
     billingContactId,
     billingPlanMode,
     nextPaymentDate,
@@ -2968,13 +3039,6 @@ export function CreateDispatchPage() {
                             ['monthly', 'Monthly', 'month'],
                           ] as const
                         ).map(([id, label, every]) => ({ id, label, every, ...billingPlanQuote(id) }));
-                        const selectedPlan = plans.find((plan) => plan.id === billingFrequencyPlan) ?? plans[0];
-                        const billingStart = nextPaymentDate ?? contractStartDate ?? dayjs('2026-04-01');
-                        const startLabel = billingStart.format('MM/DD/YY');
-                        const scheduleDates = [0, 1, 2, 3]
-                          .map((step) => billingStart.add(step * 3, 'month').format('MM/DD/YY'))
-                          .join(', ')
-                          .replace(/, ([^,]+)$/, ', and $1');
                         const durationStart = contractStartDate ?? dayjs('2024-12-24');
                         const durationLabel = `${durationStart.format('MM/DD/YY')} - ${durationStart.add(2, 'year').add(6, 'day').format('MM/DD/YY')}`;
                         const money = (n: number) =>
@@ -3327,33 +3391,6 @@ export function CreateDispatchPage() {
                                     ) : null}
                                   </Stack>
                                 ) : null}
-                                <Stack
-                                  direction="row"
-                                  spacing={1}
-                                  sx={{
-                                    alignItems: 'flex-start',
-                                    mt: 2,
-                                    px: 1.5,
-                                    py: 1.25,
-                                    borderRadius: '8px',
-                                    bgcolor: 'rgba(45, 165, 81, 0.1)',
-                                  }}
-                                >
-                                  <InfoOutlined sx={{ fontSize: 18, color: '#2DA551', mt: '1px' }} />
-                                  <Typography sx={{ fontSize: 13, lineHeight: '20px', color: '#344054' }}>
-                                    {billingPlanMode === 'recurring' ? (
-                                      <>
-                                        Billing starts on <Box component="span" sx={{ fontWeight: 700, color: '#262527' }}>{startLabel}</Box>.
-                                        {' '}You'll pay <Box component="span" sx={{ fontWeight: 700, color: '#262527' }}>{money(selectedPlan.price)}</Box> every {selectedPlan.every} in advance on {scheduleDates}. Billing ends after <Box component="span" sx={{ fontWeight: 700, color: '#262527' }}>4 payments</Box>
-                                      </>
-                                    ) : (
-                                      <>
-                                        Each job is billed at <Box component="span" sx={{ fontWeight: 700, color: '#262527' }}>$100</Box> after completion.
-                                        {' '}You'll receive an invoice after every visit, and billing ends once all <Box component="span" sx={{ fontWeight: 700, color: '#262527' }}>12 visits</Box> are done.
-                                      </>
-                                    )}
-                                  </Typography>
-                                </Stack>
                           </Box>
                         );
                       })()}
@@ -3368,11 +3405,12 @@ export function CreateDispatchPage() {
                             <Stack direction="row" spacing={1} sx={{ alignItems: 'center', minHeight: 36 }}>
                               <Typography sx={{ fontSize: 12, lineHeight: '16px', color: '#667085', flex: '1 1 auto' }}>
                                 {billingPlanMode === 'recurring'
-                                  ? 'Charge automatically on payment date'
+                                  ? 'Payments are always automatically charged on the scheduled date.'
                                   : 'Charge automatically after service completion'}
                               </Typography>
                               <Switch
                                 checked={autoCharge}
+                                disabled={billingPlanMode === 'recurring'}
                                 onChange={(_, checked) => {
                                   setAutoCharge(checked);
                                   if (checked) {
@@ -3397,6 +3435,21 @@ export function CreateDispatchPage() {
                                         opacity: 1,
                                       },
                                     },
+                                    '&.Mui-disabled': {
+                                      opacity: 1,
+                                      '&.Mui-checked + .MuiSwitch-track': {
+                                        bgcolor: '#B8D9BA',
+                                        opacity: 1,
+                                      },
+                                      '&:not(.Mui-checked) + .MuiSwitch-track': {
+                                        bgcolor: '#F0F0F1',
+                                        opacity: 1,
+                                      },
+                                      '& .MuiSwitch-thumb': {
+                                        bgcolor: '#F5F5F5',
+                                        boxShadow: 'none',
+                                      },
+                                    },
                                   },
                                   '& .MuiSwitch-thumb': {
                                     width: 20,
@@ -3409,49 +3462,80 @@ export function CreateDispatchPage() {
                                     bgcolor: '#E6E6E7',
                                     opacity: 1,
                                   },
+                                  '&.Mui-disabled': {
+                                    cursor: 'not-allowed',
+                                  },
                                 }}
                               />
                             </Stack>
                           </Stack>
                   </Grid>
                         {billingPlanMode === 'recurring' ? (
-                  <Grid size={{ xs: 12, md: 4 }}>
-                            <LabeledDatePicker
-                              name="nextPaymentDate"
-                              label="Next Payment Date"
-                      required
-                              placeholder="Select date"
-                              value={nextPaymentDate}
-                              onChange={setNextPaymentDate}
-                    />
-                  </Grid>
+                          <Grid size={{ xs: 12, md: 4 }}>
+                            <Stack spacing={0.75} sx={{ width: '100%' }}>
+                              <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                                <Typography sx={figmaLabelSx}>
+                                  Next Payment Date
+                                  <Box component="span" sx={{ color: '#B32318' }}> *</Box>
+                                </Typography>
+                                <Tooltip
+                                  title="The first payment is charged when the contract is published. Recurring payments are charged from this date onward."
+                                  arrow
+                                  placement="top"
+                                  slotProps={{
+                                    tooltip: {
+                                      sx: {
+                                        bgcolor: '#262527',
+                                        color: '#FFFFFF',
+                                        fontSize: 12,
+                                        lineHeight: '18px',
+                                        fontWeight: 400,
+                                        maxWidth: 280,
+                                        px: 1.5,
+                                        py: 1,
+                                        borderRadius: '8px',
+                                      },
+                                    },
+                                    arrow: { sx: { color: '#262527' } },
+                                  }}
+                                >
+                                  <InfoOutlined sx={{ fontSize: 16, color: '#86868B', cursor: 'help' }} />
+                                </Tooltip>
+                              </Stack>
+                              <DatePicker
+                                value={nextPaymentDate}
+                                onChange={setNextPaymentDate}
+                                format="MM/DD/YY"
+                                name="nextPaymentDate"
+                                slots={{ openPickerIcon: CalendarTodayOutlined }}
+                                slotProps={{
+                                  textField: {
+                                    size: 'small',
+                                    fullWidth: true,
+                                    variant: 'outlined',
+                                    sx: figmaTextFieldSx,
+                                  },
+                                  openPickerIcon: { sx: { color: '#6A6A70', fontSize: 14 } },
+                                }}
+                              />
+                            </Stack>
+                          </Grid>
                         ) : null}
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <LabeledField
-                            name="paymentMethod"
-                            label="Payment Method"
-                      required
-                            placeholder="Select Payment Method"
-                            value={paymentMethod}
-                            onChange={setPaymentMethod}
-                            select
-                            disabled={autoCharge}
-                            options={paymentMethodOptions}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <LabeledField
-                            name="paymentTerms"
-                            label="Payment Terms"
-                      required
-                            placeholder="Select Payment Terms"
-                            value={paymentTerms}
-                            onChange={setPaymentTerms}
-                            select
-                            disabled={autoCharge}
-                            options={paymentTermsOptions}
-                    />
-                  </Grid>
+                        {billingPlanMode === 'at_service' ? (
+                          <Grid size={{ xs: 12, md: 4 }}>
+                            <LabeledField
+                              name="paymentTerms"
+                              label="Payment Terms"
+                              required
+                              placeholder="Select Payment Terms"
+                              value={paymentTerms}
+                              onChange={setPaymentTerms}
+                              select
+                              disabled={autoCharge}
+                              options={paymentTermsOptions}
+                            />
+                          </Grid>
+                        ) : null}
                   <Grid size={{ xs: 12, md: 4 }}>
                           <LabeledField
                             name="annualRateIncrease"
@@ -3609,9 +3693,8 @@ export function CreateDispatchPage() {
                           }
                         />
 
-                      {!sameAsPropertyAddress ? (
                       <Grid container spacing={2}>
-                        <Grid size={{ xs: 12, md: 6 }}>
+                        <Grid size={12}>
                     <LabeledField
                       name="billAddress"
                       label="Address"
@@ -3619,6 +3702,7 @@ export function CreateDispatchPage() {
                             placeholder="Enter Address"
                       value={billAddress}
                       onChange={setBillAddress}
+                      disabled={sameAsPropertyAddress}
                     />
                   </Grid>
                   <Grid size={{ xs: 12, md: 4 }}>
@@ -3630,6 +3714,7 @@ export function CreateDispatchPage() {
                             onChange={setBillCountry}
                             select
                             options={countryOptions}
+                            disabled={sameAsPropertyAddress}
                     />
                   </Grid>
                   <Grid size={{ xs: 12, md: 4 }}>
@@ -3641,6 +3726,7 @@ export function CreateDispatchPage() {
                             onChange={setBillState}
                       select
                             options={stateOptions}
+                            disabled={sameAsPropertyAddress}
                     />
                   </Grid>
                   <Grid size={{ xs: 12, md: 4 }}>
@@ -3652,6 +3738,7 @@ export function CreateDispatchPage() {
                             onChange={setBillCity}
                       select
                             options={cityOptions}
+                            disabled={sameAsPropertyAddress}
                     />
                   </Grid>
                   <Grid size={{ xs: 12, md: 4 }}>
@@ -3662,10 +3749,10 @@ export function CreateDispatchPage() {
                             placeholder="Enter Zip Code"
                             value={billZip}
                             onChange={setBillZip}
+                            disabled={sameAsPropertyAddress}
                     />
                   </Grid>
                       </Grid>
-                      ) : null}
                     </Stack>
                   </Grid>
                   {paymentMethod === 'Credit Card' || paymentMethod === 'Credit Card / ACH' ? (
@@ -3714,6 +3801,142 @@ export function CreateDispatchPage() {
                     </Grid>
                   ) : null}
                 </Grid>
+              </FormSection>
+
+              <FormSection id="section-description" title="Description">
+                <Stack spacing={1.5} sx={{ width: '100%' }}>
+                  <Typography sx={{ fontSize: 14, fontWeight: 600, lineHeight: '20px', color: '#262527' }}>
+                    Images{' '}
+                    <Box component="span" sx={{ color: '#86868B', fontWeight: 400 }}>
+                      (Optional)
+                    </Box>
+                  </Typography>
+                  <Box
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => descriptionImageInputRef.current?.click()}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        descriptionImageInputRef.current?.click();
+                      }
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setDescriptionImageDragOver(true);
+                    }}
+                    onDragLeave={() => setDescriptionImageDragOver(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setDescriptionImageDragOver(false);
+                      appendDescriptionImages(e.dataTransfer.files);
+                    }}
+                    sx={{
+                      width: '100%',
+                      border: `1px dashed ${descriptionImageDragOver ? '#2DA551' : '#E6E6E7'}`,
+                      borderRadius: '12px',
+                      bgcolor: descriptionImageDragOver ? 'rgba(45, 165, 81, 0.04)' : '#FAFAFA',
+                      py: 4,
+                      px: 2,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 1,
+                      boxSizing: 'border-box',
+                      transition: 'border-color 0.15s ease, background-color 0.15s ease',
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: '50%',
+                        bgcolor: '#E7F8EE',
+                        display: 'grid',
+                        placeItems: 'center',
+                      }}
+                    >
+                      <FileUploadOutlined sx={{ fontSize: 22, color: '#2DA551' }} />
+                    </Box>
+                    <Typography sx={{ fontSize: 14, lineHeight: '20px', color: '#262527', textAlign: 'center' }}>
+                      <Box component="span" sx={{ fontWeight: 600 }}>
+                        Click to upload
+                      </Box>{' '}
+                      or drag and drop
+                    </Typography>
+                    <Typography sx={{ fontSize: 12, lineHeight: '18px', color: '#86868B', textAlign: 'center' }}>
+                      jpg, png, heic (Max 10MB)
+                    </Typography>
+                  </Box>
+                  <Box
+                    component="input"
+                    ref={descriptionImageInputRef}
+                    type="file"
+                    accept={DESCRIPTION_IMAGE_ACCEPT}
+                    multiple
+                    aria-label="Upload description images"
+                    onChange={(e) => {
+                      appendDescriptionImages(e.target.files);
+                      e.target.value = '';
+                    }}
+                    sx={{ display: 'none' }}
+                  />
+                  {descriptionImages.length > 0 ? (
+                    <Stack direction="row" spacing={1.5} sx={{ flexWrap: 'wrap', pt: 0.5 }}>
+                      {descriptionImages.map((img) => (
+                        <Box
+                          key={img.id}
+                          sx={{
+                            position: 'relative',
+                            width: 120,
+                            height: 72,
+                            borderRadius: '8px',
+                            overflow: 'hidden',
+                            border: '1px solid #E6E6E7',
+                            flexShrink: 0,
+                            '&:hover .description-image-remove': { opacity: 1 },
+                          }}
+                        >
+                          <Box
+                            component="img"
+                            src={img.previewUrl}
+                            alt={img.file.name}
+                            sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                          />
+                          <Button
+                            type="button"
+                            className="description-image-remove"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeDescriptionImage(img.id);
+                            }}
+                            sx={{
+                              position: 'absolute',
+                              top: 6,
+                              right: 6,
+                              opacity: 0,
+                              minWidth: 0,
+                              px: 1.25,
+                              py: 0.25,
+                              borderRadius: '999px',
+                              bgcolor: 'rgba(38, 37, 39, 0.88)',
+                              color: '#FFFFFF',
+                              fontSize: 12,
+                              fontWeight: 500,
+                              lineHeight: '18px',
+                              textTransform: 'none',
+                              transition: 'opacity 0.15s ease',
+                              '&:hover': { bgcolor: '#262527' },
+                            }}
+                          >
+                            Remove
+                          </Button>
+                        </Box>
+                      ))}
+                    </Stack>
+                  ) : null}
+                </Stack>
               </FormSection>
 
               <FormSection id="section-signee" title="Signee">
@@ -4120,24 +4343,16 @@ export function CreateDispatchPage() {
               {serviceProductsSubtotal > 0 && billingPlanMode === 'recurring' ? (
                 <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start', minWidth: 0 }}>
                   <InfoOutlined sx={{ fontSize: 18, color: '#2DA551', mt: '1px' }} />
-                  <Typography sx={{ fontSize: 14, fontWeight: 400, lineHeight: '20px', color: '#262527' }}>
-                    Billing starts on{' '}
-                    <Box component="span" sx={{ fontWeight: 700 }}>
-                      {(nextPaymentDate ?? contractStartDate ?? dayjs('2026-04-01')).format('MM/DD/YY')}
-                    </Box>
-                    {' '}and you'll pay{' '}
-                    <Box component="span" sx={{ fontWeight: 700 }}>
-                      ~
-                      {billingPlanQuote(billingFrequencyPlan).price.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })}
-                    </Box>
-                    {' '}every{' '}
-                    {{
-                      annually: 'year',
-                      semi_annually: '6 months',
-                      quarterly: 'quarter',
-                      monthly: 'month',
-                    }[billingFrequencyPlan] ?? 'year'}
-                    . Billing ends after <Box component="span" sx={{ fontWeight: 700 }}>4 payments</Box>
+                  <Typography sx={{ fontSize: 14, fontWeight: 400, lineHeight: '20px', color: '#86868B' }}>
+                    First payment of{' '}
+                    <Box component="span" sx={{ fontWeight: 700, color: '#262527' }}>$1,080</Box>
+                    {' '}is charged on contract publish, then{' '}
+                    <Box component="span" sx={{ fontWeight: 700, color: '#262527' }}>annually</Box>
+                    . Next payment:{' '}
+                    <Box component="span" sx={{ fontWeight: 700, color: '#262527' }}>10/21/2027</Box>
+                    . Last payment:{' '}
+                    <Box component="span" sx={{ fontWeight: 700, color: '#262527' }}>10/21/2027</Box>
+                    . Amounts exclude tax.
                   </Typography>
                 </Stack>
               ) : (
