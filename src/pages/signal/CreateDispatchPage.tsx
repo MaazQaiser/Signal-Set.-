@@ -1275,7 +1275,6 @@ export function CreateDispatchPage({
   const [companyAffiliations, setCompanyAffiliations] = useState<string[]>([]);
   const [companyAtPropertyTillDate, setCompanyAtPropertyTillDate] = useState<Dayjs | null>(null);
   const [propertyOccupancyFloor, setPropertyOccupancyFloor] = useState('');
-  const [propertyOccupancySpaceType, setPropertyOccupancySpaceType] = useState('Suite');
   const [propertyOccupancySpaceId, setPropertyOccupancySpaceId] = useState('');
   const [createCompanyModalOpen, setCreateCompanyModalOpen] = useState(false);
   const [createCompanyDomain, setCreateCompanyDomain] = useState('');
@@ -1872,7 +1871,6 @@ export function CreateDispatchPage({
     setCompanyAffiliations([]);
     setCompanyAtPropertyTillDate(null);
     setPropertyOccupancyFloor('');
-    setPropertyOccupancySpaceType('Suite');
     setPropertyOccupancySpaceId('');
     setContactName('');
     setContactEmail('');
@@ -1963,7 +1961,7 @@ export function CreateDispatchPage({
         companyAtPropertyTillDate: companyAtPropertyTillDate?.format('YYYY-MM-DD'),
         propertyOccupancy: {
           floor: propertyOccupancyFloor.trim(),
-          spaceType: propertyOccupancySpaceType,
+          spaceType: 'Suite',
           spaceId: propertyOccupancySpaceId.trim(),
         },
       },
@@ -3234,51 +3232,15 @@ export function CreateDispatchPage({
                           <InfoOutlined sx={{ fontSize: 16, color: '#86868B', cursor: 'help' }} />
                         </Tooltip>
                       </Stack>
-                      <Box
-                        sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          height: 37,
-                          border: '1px solid #E6E6E7',
-                          borderRadius: '8px',
-                          bgcolor: '#FFFFFF',
-                          overflow: 'hidden',
-                          '& .MuiOutlinedInput-notchedOutline': { border: 'none !important' },
-                        }}
-                      >
-                        <TextField
-                          select
-                          name="propertyOccupancySpaceType"
-                          value={propertyOccupancySpaceType}
-                          onChange={(e) => setPropertyOccupancySpaceType(e.target.value)}
-                          size="small"
-                          sx={{
-                            width: 108,
-                            flexShrink: 0,
-                            '& .MuiInputBase-input': { fontSize: 12, lineHeight: '18px', py: 0 },
-                          }}
-                          slotProps={{
-                            select: { IconComponent: FieldSelectChevronIcon },
-                          }}
-                        >
-                          {['Suite', 'Unit', 'Apartment'].map((option) => (
-                            <MenuItem key={option} value={option}>{option}</MenuItem>
-                          ))}
-                        </TextField>
-                        <Box sx={{ width: '1px', height: 20, bgcolor: '#E6E6E7', flexShrink: 0 }} />
-                        <TextField
-                          name="propertyOccupancySpaceId"
-                          size="small"
-                          fullWidth
-                          placeholder="210B or 210B,212B"
-                          value={propertyOccupancySpaceId}
-                          onChange={(e) => setPropertyOccupancySpaceId(e.target.value)}
-                          sx={{
-                            '& .MuiInputBase-input': { fontSize: 12, lineHeight: '18px', py: 0, px: 1.25 },
-                            '& .MuiInputBase-input::placeholder': { color: '#CCCCCC', opacity: 1, WebkitTextFillColor: '#CCCCCC' },
-                          }}
-                        />
-                      </Box>
+                      <TextField
+                        name="propertyOccupancySpaceId"
+                        size="small"
+                        fullWidth
+                        placeholder="210B or 210B,212B"
+                        value={propertyOccupancySpaceId}
+                        onChange={(e) => setPropertyOccupancySpaceId(e.target.value)}
+                        sx={figmaTextFieldSx}
+                      />
                     </Stack>
                   </Grid>
                 </Grid>

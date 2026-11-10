@@ -46,7 +46,6 @@ import InfoOutlined from '@mui/icons-material/InfoOutlined';
 import KeyboardArrowDown from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowDownOutlined from '@mui/icons-material/KeyboardArrowDownOutlined';
 import NotificationsNoneOutlined from '@mui/icons-material/NotificationsNoneOutlined';
-import MapOutlined from '@mui/icons-material/MapOutlined';
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded';
 import PlaceOutlined from '@mui/icons-material/PlaceOutlined';
 import PersonOutlineOutlined from '@mui/icons-material/PersonOutlineOutlined';
@@ -369,7 +368,7 @@ const PROPERTY_BILLING_ADDRESS = {
   zip: '68718',
 } as const;
 
-/** Default product row — form starts empty except products stay prefilled. */
+/** One product row shown on load and after reset. */
 const DEFAULT_SERVICE_PRODUCTS: { id: string; dimension: string; rate: string; quantity: string }[] = [
   { id: 'p1', dimension: '20*20*12', rate: '35.00', quantity: '1' },
 ];
@@ -391,6 +390,17 @@ function billingPlanQuote(id: BillingFrequencyPlan) {
       : {}),
   };
 }
+
+function formatUsdWithCents(n: number) {
+  return n.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+const BILLING_PLAN_EVERY_LABEL: Record<BillingFrequencyPlan, string> = {
+  annually: 'year',
+  semi_annually: '6 months',
+  quarterly: 'quarter',
+  monthly: 'month',
+};
 
 type SigneeCard = {
   id: string;
@@ -672,7 +682,6 @@ export function CreateDispatchPage() {
   const [createCompanyRevenue, setCreateCompanyRevenue] = useState('');
   const [createCompanyTillDate, setCreateCompanyTillDate] = useState<Dayjs | null>(null);
   const [createCompanyFloor, setCreateCompanyFloor] = useState('');
-  const [createCompanySpaceType, setCreateCompanySpaceType] = useState('Suite');
   const [createCompanySpaceId, setCreateCompanySpaceId] = useState('');
 
   const propertyOptionsForCompany = useMemo(() => {
@@ -781,6 +790,21 @@ export function CreateDispatchPage() {
     ],
     [],
   );
+
+  const recurringFooterBilling = useMemo(() => {
+    const base = billingPlanQuote(billingFrequencyPlan).price;
+    const taxRate = parseMoneyInput(billingTaxRate);
+    const estimatedTax = exemptTax ? 0 : Math.round(((base * taxRate) / 100) * 100) / 100;
+    const totalWithTax = Math.round((base + estimatedTax) * 100) / 100;
+    const startSource = nextPaymentDate ?? contractStartDate;
+    const billingStart = startSource?.format('YYYY.MM.DD') ?? '2026.06.11';
+    return {
+      billingStart,
+      totalWithTax: formatUsdWithCents(totalWithTax),
+      estimatedTax: formatUsdWithCents(estimatedTax),
+      everyLabel: BILLING_PLAN_EVERY_LABEL[billingFrequencyPlan],
+    };
+  }, [billingFrequencyPlan, billingTaxRate, exemptTax, nextPaymentDate, contractStartDate]);
 
   const [billFirstName, setBillFirstName] = useState('');
   const [billLastName, setBillLastName] = useState('');
@@ -1083,7 +1107,6 @@ export function CreateDispatchPage() {
     setCompanyAffiliations([]);
     setCreateCompanyTillDate(null);
     setCreateCompanyFloor('');
-    setCreateCompanySpaceType('Suite');
     setCreateCompanySpaceId('');
     setContactName('');
     setContactEmail('');
@@ -1114,11 +1137,10 @@ export function CreateDispatchPage() {
     setExemptTax(false);
     setTaxExemptionDocumentName('');
     setAutoCharge(true);
-    setPaymentTerms('Due Upon Invoice');
     setNextPaymentDate(null);
     setAnnualRateIncrease('');
     setPaymentMethod('Credit Card / ACH');
-    setPaymentTerms('');
+    setPaymentTerms('Due Upon Invoice');
     setBillFirstName('');
     setBillLastName('');
     setBillEmail('');
@@ -1175,7 +1197,7 @@ export function CreateDispatchPage() {
         companyAtPropertyTillDate: createCompanyTillDate?.format('YYYY-MM-DD'),
         propertyOccupancy: {
           floor: createCompanyFloor.trim(),
-          spaceType: createCompanySpaceType,
+          spaceType: 'Suite',
           spaceId: createCompanySpaceId.trim(),
         },
       },
@@ -1340,13 +1362,13 @@ export function CreateDispatchPage() {
           const quantity = parseInt(p.quantity, 10);
           return Boolean(p.dimension.trim()) && (flatRateEnabled || parseMoneyInput(p.rate) > 0) && !Number.isNaN(quantity) && quantity >= 1;
         }),
+      'section-description': descriptionImages.length > 0,
       'section-billing':
         Boolean(annualRateIncrease.trim()) &&
         Boolean(billingContactId) &&
         (billingPlanMode !== 'recurring' || nextPaymentDate != null) &&
         (billingPlanMode !== 'at_service' || Boolean(paymentTerms.trim())) &&
         billingAddressComplete,
-      'section-description': true,
       'section-signee': signeeCards.length > 0 && signeeCards.every((card) => Boolean(card.name.trim())),
     } as Record<(typeof FORM_PROGRESS_SECTIONS)[number]['id'], boolean>;
   }, [
@@ -1378,6 +1400,7 @@ export function CreateDispatchPage() {
     billCity,
     billZip,
     signeeCards,
+    descriptionImages,
   ]);
 
   const scrollToSection = useCallback((sectionId: string) => {
@@ -1869,15 +1892,26 @@ export function CreateDispatchPage() {
                           Property Address
                           <RequiredAsterisk />
                         </Typography>
-                        <IconButton
+                        <Button
                           type="button"
-                          size="small"
-                          aria-label="Open address map to add a new property"
+                          variant="text"
                           onClick={() => setAddressMapModalOpen(true)}
-                          sx={{ color: '#6A6A70', p: 0.25, mr: -0.5 }}
+                          sx={{
+                            color: '#2DA551',
+                            textTransform: 'none',
+                            fontSize: 14,
+                            fontWeight: 500,
+                            lineHeight: '20px',
+                            px: 1,
+                            py: 0.5,
+                            minWidth: 0,
+                            bgcolor: 'transparent',
+                            mr: -0.5,
+                            '&:hover': { bgcolor: 'rgba(45, 165, 81, 0.08)', color: '#248A44' },
+                          }}
                         >
-                          <MapOutlined sx={{ fontSize: 16 }} />
-                        </IconButton>
+                          + Create New
+                        </Button>
                       </Stack>
                       <Autocomplete
                         options={propertyOptionsForCompany}
@@ -2414,51 +2448,15 @@ export function CreateDispatchPage() {
                           <InfoOutlined sx={{ fontSize: 16, color: '#86868B', cursor: 'help' }} />
                         </Tooltip>
                       </Stack>
-                  <Box
-                    sx={{
-                      display: 'flex',
-                          alignItems: 'center',
-                          height: 37,
-                          border: '1px solid #E6E6E7',
-                          borderRadius: '8px',
-                          bgcolor: '#FFFFFF',
-                          overflow: 'hidden',
-                          '& .MuiOutlinedInput-notchedOutline': { border: 'none !important' },
-                        }}
-                      >
-                        <TextField
-                          select
-                          name="propertyOccupancySpaceType"
-                          value={createCompanySpaceType}
-                          onChange={(e) => setCreateCompanySpaceType(e.target.value)}
-                          size="small"
-                      sx={{
-                            width: 108,
-                        flexShrink: 0,
-                            '& .MuiInputBase-input': { fontSize: 12, lineHeight: '18px', py: 0 },
-                          }}
-                          slotProps={{
-                            select: { IconComponent: FieldSelectChevronIcon },
-                          }}
-                        >
-                          {['Suite', 'Unit', 'Apartment'].map((option) => (
-                            <MenuItem key={option} value={option}>{option}</MenuItem>
-                          ))}
-                        </TextField>
-                        <Box sx={{ width: '1px', height: 20, bgcolor: '#E6E6E7', flexShrink: 0 }} />
-                        <TextField
-                          name="propertyOccupancySpaceId"
-                          size="small"
-                          fullWidth
-                          placeholder="210B or 210B,212B"
-                          value={createCompanySpaceId}
-                          onChange={(e) => setCreateCompanySpaceId(e.target.value)}
-                        sx={{
-                            '& .MuiInputBase-input': { fontSize: 12, lineHeight: '18px', py: 0, px: 1.25 },
-                            '& .MuiInputBase-input::placeholder': { color: '#CCCCCC', opacity: 1, WebkitTextFillColor: '#CCCCCC' },
-                          }}
-                        />
-                      </Box>
+                      <TextField
+                        name="propertyOccupancySpaceId"
+                        size="small"
+                        fullWidth
+                        placeholder="210B or 210B,212B"
+                        value={createCompanySpaceId}
+                        onChange={(e) => setCreateCompanySpaceId(e.target.value)}
+                        sx={figmaTextFieldSx}
+                      />
                     </Stack>
                   </Grid>
                 </Grid>
@@ -2834,6 +2832,7 @@ export function CreateDispatchPage() {
                                   flexDirection: 'column',
                                   gap: 1.25,
                                   boxSizing: 'border-box',
+                                  height: '100%',
                                 }}
                               >
                                 <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
@@ -2981,7 +2980,8 @@ export function CreateDispatchPage() {
                             flex: '0 0 calc((100% - 24px) / 3)',
                             maxWidth: 'calc((100% - 24px) / 3)',
                             minWidth: 0,
-                            minHeight: 180,
+                            alignSelf: 'stretch',
+                            minHeight: 0,
                             border: '1px solid #E6E6E7',
                             borderRadius: '12px',
                             textTransform: 'none',
@@ -4344,15 +4344,16 @@ export function CreateDispatchPage() {
                 <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start', minWidth: 0 }}>
                   <InfoOutlined sx={{ fontSize: 18, color: '#2DA551', mt: '1px' }} />
                   <Typography sx={{ fontSize: 14, fontWeight: 400, lineHeight: '20px', color: '#86868B' }}>
-                    First payment of{' '}
-                    <Box component="span" sx={{ fontWeight: 700, color: '#262527' }}>$1,080</Box>
-                    {' '}is charged on contract publish, then{' '}
-                    <Box component="span" sx={{ fontWeight: 700, color: '#262527' }}>annually</Box>
-                    . Next payment:{' '}
-                    <Box component="span" sx={{ fontWeight: 700, color: '#262527' }}>10/21/2027</Box>
-                    . Last payment:{' '}
-                    <Box component="span" sx={{ fontWeight: 700, color: '#262527' }}>10/21/2027</Box>
-                    . Amounts exclude tax.
+                    Billing starts on{' '}
+                    <Box component="span" sx={{ fontWeight: 700, color: '#262527' }}>
+                      {recurringFooterBilling.billingStart}
+                    </Box>
+                    . You&apos;ll pay{' '}
+                    <Box component="span" sx={{ fontWeight: 700, color: '#262527' }}>
+                      {recurringFooterBilling.totalWithTax}
+                    </Box>
+                    {' '}(incl. {recurringFooterBilling.estimatedTax} estimated tax) every{' '}
+                    {recurringFooterBilling.everyLabel}. Billing ends after 12 payments.
                   </Typography>
                 </Stack>
               ) : (

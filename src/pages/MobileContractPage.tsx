@@ -21,13 +21,13 @@ import CloseIcon from '@mui/icons-material/Close';
 import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import FileUploadOutlinedIcon from '@mui/icons-material/FileUploadOutlined';
-import MapOutlinedIcon from '@mui/icons-material/MapOutlined';
 import PersonIcon from '@mui/icons-material/Person';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import { useCallback, useEffect, useLayoutEffect, useState, useRef, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
+import { AddressMapPickerModal } from '../components/createContract/AddressMapPickerModal';
 
 const C = {
   bg: '#F6F6F8',
@@ -57,6 +57,8 @@ function Field({
   disabled = false,
   calendar = false,
   prefix,
+  labelStart,
+  labelEnd,
 }: {
   label: string;
   placeholder?: string;
@@ -67,14 +69,32 @@ function Field({
   disabled?: boolean;
   calendar?: boolean;
   prefix?: string;
+  labelStart?: ReactNode;
+  labelEnd?: ReactNode;
 }) {
   return (
     <Stack sx={{ gap: 0.5 }}>
       {label ? (
-        <Typography sx={{ fontSize: 12, fontWeight: 500, lineHeight: '18px', color: C.grey400 }}>
-          {label}
-          {required && <Box component="span" sx={{ color: C.red }}> *</Box>}
-        </Typography>
+        labelStart ? (
+          <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', minHeight: 18, gap: 0.5 }}>
+            <Stack direction="row" sx={{ alignItems: 'center', gap: 0.5, minWidth: 0, flex: 1 }}>
+              {labelStart}
+              <Typography sx={{ fontSize: 12, fontWeight: 500, lineHeight: '18px', color: C.grey400 }}>
+                {label}
+                {required && <Box component="span" sx={{ color: C.red }}> *</Box>}
+              </Typography>
+            </Stack>
+            {labelEnd}
+          </Stack>
+        ) : (
+          <Stack direction="row" sx={{ alignItems: 'center', gap: 0.5, minHeight: 18, flexWrap: 'wrap' }}>
+            <Typography sx={{ fontSize: 12, fontWeight: 500, lineHeight: '18px', color: C.grey400 }}>
+              {label}
+              {required && <Box component="span" sx={{ color: C.red }}> *</Box>}
+            </Typography>
+            {labelEnd}
+          </Stack>
+        )
       ) : null}
       <Box
         sx={{
@@ -867,6 +887,15 @@ const COMPANY_OPTIONS = [
   { label: 'Midwest Distribution Co', value: 'Midwest Distribution Co' },
   { label: 'Prairie Housing Group', value: 'Prairie Housing Group' },
 ];
+/** Same mock as web map flow so Pick + Use Address works on mobile. */
+const MOCK_MAP_NEW_PROPERTY_ADDRESS = '412 N Broadway St, Bloomfield, NE 68718';
+
+const OCCUPANCY_TILL_DATE_INFO =
+  'On the Company at Property - Till Date, the selected company is dissociated from this property. A company with active contracts cannot be dissociated; close or complete them first';
+
+const OCCUPANCY_FLOOR_SUITE_INFO =
+  'The floor, suite, unit or apartment for this company. Cannot occupy the same space as another company';
+
 const PROPERTY_ADDRESS_OPTIONS = [
   { label: 'Select property address', value: '' },
   { label: '1 World Trade Center, New York, NY 10007', value: '1 World Trade Center, New York, NY 10007' },
@@ -937,6 +966,25 @@ function money(n: number) {
   return n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
 }
 
+function moneyWithCents(n: number) {
+  return n.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+const BILLING_PLAN_EVERY_LABEL: Record<BillingPlan, string> = {
+  annually: 'year',
+  semi_annually: '6 months',
+  quarterly: 'quarter',
+  monthly: 'month',
+};
+
+function formatBillingStartFromMmDdYy(raw: string): string | null {
+  const m = raw.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (!m) return null;
+  let year = parseInt(m[3], 10);
+  if (year < 100) year += 2000;
+  return `${year}.${m[1].padStart(2, '0')}.${m[2].padStart(2, '0')}`;
+}
+
 type Product = { id: number; dimension: string; rate: string; quantity: string };
 type Signee  = { id: number; name: string; title: string; email: string; signature?: string };
 
@@ -951,6 +999,21 @@ export function MobileContractPage() {
   const [industryVertical, setIndustryVertical]   = useState('');
   const [franchise, setFranchise]                 = useState('');
   const [affiliations, setAffiliations]           = useState<string[]>([]);
+  const [addressMapModalOpen, setAddressMapModalOpen] = useState(false);
+  const [companyAtPropertyTillDate, setCompanyAtPropertyTillDate] = useState('');
+  const [occupancyFloor, setOccupancyFloor] = useState('');
+  const [occupancySpaceId, setOccupancySpaceId] = useState('');
+  const [occupancyTillInfoOpen, setOccupancyTillInfoOpen] = useState(false);
+  const [occupancyFloorInfoOpen, setOccupancyFloorInfoOpen] = useState(false);
+  const [occupancySuiteInfoOpen, setOccupancySuiteInfoOpen] = useState(false);
+
+  const propertyAddressOptions = useMemo(() => {
+    const has = PROPERTY_ADDRESS_OPTIONS.some((o) => o.value === propertyAddress);
+    if (propertyAddress.trim() && !has) {
+      return [...PROPERTY_ADDRESS_OPTIONS, { label: propertyAddress, value: propertyAddress }];
+    }
+    return PROPERTY_ADDRESS_OPTIONS;
+  }, [propertyAddress]);
 
   function toggleAffiliation(id: string) {
     setAffiliations((prev) =>
@@ -1007,6 +1070,7 @@ export function MobileContractPage() {
   const [billingDiscount, setBillingDiscount] = useState('');
   const [billingDiscountUnit, setBillingDiscountUnit] = useState('Percentage');
   const [discountUnitOpen, setDiscountUnitOpen] = useState(false);
+  const [nextPaymentDateInfoOpen, setNextPaymentDateInfoOpen] = useState(false);
   const [billingTaxRate, setBillingTaxRate] = useState('');
   const [exemptTax, setExemptTax] = useState(false);
   const [autoCharge, setAutoCharge] = useState(true);
@@ -1077,6 +1141,7 @@ export function MobileContractPage() {
 
   /* ── Section accordion state ── */
   const [openCompany, setOpenCompany]           = useState(true);
+  const [openOccupancy, setOpenOccupancy]       = useState(true);
   const [openContact, setOpenContact]           = useState(true);
   const [openContractDates, setOpenContractDates] = useState(true);
   const [openProducts, setOpenProducts]         = useState(true);
@@ -1101,12 +1166,22 @@ export function MobileContractPage() {
     setPaymentTerms('Due Upon Invoice');
   }, [billingPlanMode]);
 
-  const recurringPaymentCadence = {
-    annually: 'annually',
-    semi_annually: 'every 6 months',
-    quarterly: 'quarterly',
-    monthly: 'monthly',
-  }[billingFrequencyPlan];
+  const recurringFooterBilling = useMemo(() => {
+    const base = billingPlanQuote(billingFrequencyPlan).price;
+    const taxRate = parseFloat(billingTaxRate.replace(/[^0-9.]/g, '')) || 0;
+    const estimatedTax = exemptTax ? 0 : Math.round(((base * taxRate) / 100) * 100) / 100;
+    const totalWithTax = Math.round((base + estimatedTax) * 100) / 100;
+    const billingStart =
+      formatBillingStartFromMmDdYy(nextPaymentDate) ??
+      formatBillingStartFromMmDdYy(contractStartDate) ??
+      '2026.06.11';
+    return {
+      billingStart,
+      totalWithTax: moneyWithCents(totalWithTax),
+      estimatedTax: moneyWithCents(estimatedTax),
+      everyLabel: BILLING_PLAN_EVERY_LABEL[billingFrequencyPlan],
+    };
+  }, [billingFrequencyPlan, billingTaxRate, exemptTax, nextPaymentDate, contractStartDate]);
 
   function openAddSigneeSheet() {
     setEditingSigneeId(null);
@@ -1288,10 +1363,33 @@ export function MobileContractPage() {
                   label="Property Address"
                   value={propertyAddress}
                   onChange={setPropertyAddress}
-                  options={PROPERTY_ADDRESS_OPTIONS}
+                  options={propertyAddressOptions}
                   placeholder="Select property address"
                   required
-                  labelEnd={<MapOutlinedIcon sx={{ fontSize: 16, color: '#6A6A70' }} />}
+                  labelEnd={
+                    <Button
+                      type="button"
+                      variant="text"
+                      disableRipple
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setAddressMapModalOpen(true);
+                      }}
+                      sx={{
+                        color: C.green,
+                        textTransform: 'none',
+                        fontSize: 12,
+                        fontWeight: 500,
+                        lineHeight: '20px',
+                        minWidth: 0,
+                        px: 0.5,
+                        py: 0,
+                        '&:hover': { bgcolor: 'rgba(45, 165, 81, 0.08)', color: C.greenHover },
+                      }}
+                    >
+                      + Create New
+                    </Button>
+                  }
                 />
                 <Field label="Property Name" placeholder="Enter property name" value={propertyName} onChange={setPropertyName} />
                 <SelectField
@@ -1352,6 +1450,76 @@ export function MobileContractPage() {
                     })}
                   </Box>
                 </Stack>
+              </Stack>
+            </Collapse>
+          </Box>
+
+          {/* ── Property Occupancy ── */}
+          <Box>
+            <SectionHeader title="Property Occupancy" open={openOccupancy} onToggle={() => setOpenOccupancy((v) => !v)} />
+            <Collapse in={openOccupancy}>
+              <Stack sx={{ gap: 1.5, pt: 1.5 }}>
+                <Field
+                  label="Company at Property - Till Date"
+                  placeholder="MM/DD/YYYY"
+                  value={companyAtPropertyTillDate}
+                  onChange={setCompanyAtPropertyTillDate}
+                  calendar
+                  labelEnd={
+                    <IconButton
+                      type="button"
+                      size="small"
+                      aria-label="About company at property till date"
+                      onClick={() => setOccupancyTillInfoOpen(true)}
+                      sx={{ p: 0, color: C.grey400, flexShrink: 0, '&:hover': { bgcolor: 'rgba(0,0,0,0.04)' } }}
+                    >
+                      <InfoOutlinedIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  }
+                />
+                <InfoSheet open={occupancyTillInfoOpen} onClose={() => setOccupancyTillInfoOpen(false)}>
+                  <Typography sx={{ fontSize: 14, lineHeight: '20px', color: C.text }}>{OCCUPANCY_TILL_DATE_INFO}</Typography>
+                </InfoSheet>
+                <Field
+                  label="Floor"
+                  placeholder="5 or 1,3-5"
+                  value={occupancyFloor}
+                  onChange={setOccupancyFloor}
+                  labelEnd={
+                    <IconButton
+                      type="button"
+                      size="small"
+                      aria-label="About floor"
+                      onClick={() => setOccupancyFloorInfoOpen(true)}
+                      sx={{ p: 0, color: C.grey400, flexShrink: 0, '&:hover': { bgcolor: 'rgba(0,0,0,0.04)' } }}
+                    >
+                      <InfoOutlinedIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  }
+                />
+                <InfoSheet open={occupancyFloorInfoOpen} onClose={() => setOccupancyFloorInfoOpen(false)}>
+                  <Typography sx={{ fontSize: 14, lineHeight: '20px', color: C.text }}>{OCCUPANCY_FLOOR_SUITE_INFO}</Typography>
+                </InfoSheet>
+                <Field
+                  label="Suite / Unit / Apartment"
+                  placeholder="210B or 210B,212B"
+                  value={occupancySpaceId}
+                  onChange={setOccupancySpaceId}
+                  labelEnd={
+                    <IconButton
+                      type="button"
+                      size="small"
+                      aria-label="About suite unit or apartment"
+                      onClick={() => setOccupancySuiteInfoOpen(true)}
+                      sx={{ p: 0, color: C.grey400, flexShrink: 0, '&:hover': { bgcolor: 'rgba(0,0,0,0.04)' } }}
+                    >
+                      <InfoOutlinedIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  }
+                />
+                <InfoSheet open={occupancySuiteInfoOpen} onClose={() => setOccupancySuiteInfoOpen(false)}>
+                  <Typography sx={{ fontSize: 14, lineHeight: '20px', color: C.text }}>{OCCUPANCY_FLOOR_SUITE_INFO}</Typography>
+                </InfoSheet>
               </Stack>
             </Collapse>
           </Box>
@@ -1869,15 +2037,32 @@ export function MobileContractPage() {
                   </Stack>
                 </Stack>
                 {billingPlanMode === 'recurring' ? (
-                  <Stack sx={{ gap: 0.5 }}>
-                    <Field label="Next Payment Date" placeholder="MM/DD/YY" value={nextPaymentDate} onChange={setNextPaymentDate} required calendar />
-                    <Stack direction="row" spacing={0.5} sx={{ alignItems: 'flex-start' }}>
-                      <InfoOutlinedIcon sx={{ fontSize: 14, color: C.grey400, mt: '2px' }} />
-                      <Typography sx={{ fontSize: 11, lineHeight: '16px', color: C.grey400 }}>
+                  <>
+                    <Field
+                      label="Next Payment Date"
+                      placeholder="MM/DD/YY"
+                      value={nextPaymentDate}
+                      onChange={setNextPaymentDate}
+                      required
+                      calendar
+                      labelStart={
+                        <IconButton
+                          type="button"
+                          size="small"
+                          aria-label="About next payment date"
+                          onClick={() => setNextPaymentDateInfoOpen(true)}
+                          sx={{ p: 0, color: C.grey400, flexShrink: 0, '&:hover': { bgcolor: 'rgba(0,0,0,0.04)' } }}
+                        >
+                          <InfoOutlinedIcon sx={{ fontSize: 16 }} />
+                        </IconButton>
+                      }
+                    />
+                    <InfoSheet open={nextPaymentDateInfoOpen} onClose={() => setNextPaymentDateInfoOpen(false)}>
+                      <Typography sx={{ fontSize: 14, lineHeight: '20px', color: C.text }}>
                         The first payment is charged when the contract is published. Recurring payments are charged from this date onward.
                       </Typography>
-                    </Stack>
-                  </Stack>
+                    </InfoSheet>
+                  </>
                 ) : null}
                 {billingPlanMode === 'at_service' ? (
                   <SelectField
@@ -2191,21 +2376,16 @@ export function MobileContractPage() {
               <Stack direction="row" spacing={0.75} sx={{ alignItems: 'flex-start', pb: 0.5 }}>
                 <InfoOutlinedIcon sx={{ fontSize: 16, color: C.green, mt: '2px', flexShrink: 0 }} />
                 <Typography sx={{ fontSize: 11, fontWeight: 400, lineHeight: '16px', color: C.grey400 }}>
-                  First payment of{' '}
+                  Billing starts on{' '}
                   <Box component="span" sx={{ fontWeight: 700, color: C.text }}>
-                    {money(billingPlanQuote(billingFrequencyPlan).price)}
+                    {recurringFooterBilling.billingStart}
                   </Box>
-                  {' '}is charged on contract publish, then{' '}
+                  . You&apos;ll pay{' '}
                   <Box component="span" sx={{ fontWeight: 700, color: C.text }}>
-                    {recurringPaymentCadence}
+                    {recurringFooterBilling.totalWithTax}
                   </Box>
-                  . Next payment:{' '}
-                  <Box component="span" sx={{ fontWeight: 700, color: C.text }}>
-                    {nextPaymentDate || '10/21/2027'}
-                  </Box>
-                  . Last payment:{' '}
-                  <Box component="span" sx={{ fontWeight: 700, color: C.text }}>10/21/2027</Box>
-                  . Amounts exclude tax.
+                  {' '}(incl. {recurringFooterBilling.estimatedTax} estimated tax) every{' '}
+                  {recurringFooterBilling.everyLabel}. Billing ends after 12 payments.
                 </Typography>
               </Stack>
             ) : null}
@@ -2411,6 +2591,20 @@ export function MobileContractPage() {
             }}
           />
         ) : null}
+
+        <AddressMapPickerModal
+          open={addressMapModalOpen}
+          value={propertyAddress}
+          onClose={() => setAddressMapModalOpen(false)}
+          onConfirm={(address) => {
+            const next = address.trim() || MOCK_MAP_NEW_PROPERTY_ADDRESS;
+            setPropertyAddress(next);
+            setPropertyName('');
+            setPropertySource('');
+            setFranchise('');
+            setAffiliations([]);
+          }}
+        />
       </Box>
     </Box>
   );

@@ -656,7 +656,7 @@ function DealsFiltersRow() {
               onClick={() => setCreateMenuAnchor(null)}
               sx={{ fontSize: 14, py: 1.25, color: '#262527' }}
             >
-              Create deal
+              Create Deal
             </MenuItem>
             <MenuItem
               onClick={() => {
@@ -665,7 +665,7 @@ function DealsFiltersRow() {
               }}
               sx={{ fontSize: 14, py: 1.25, color: '#262527' }}
             >
-              Create smart contract
+              Create Smart Contract
             </MenuItem>
           </Menu>
         </Stack>
