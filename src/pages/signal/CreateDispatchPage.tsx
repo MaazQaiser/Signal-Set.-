@@ -1274,7 +1274,6 @@ export function CreateDispatchPage({
   const [propertySource, setPropertySource] = useState('');
   const [companyAffiliations, setCompanyAffiliations] = useState<string[]>([]);
   const [companyAtPropertyTillDate, setCompanyAtPropertyTillDate] = useState<Dayjs | null>(null);
-  const [propertyOccupancyFloor, setPropertyOccupancyFloor] = useState('');
   const [propertyOccupancySpaceId, setPropertyOccupancySpaceId] = useState('');
   const [createCompanyModalOpen, setCreateCompanyModalOpen] = useState(false);
   const [createCompanyDomain, setCreateCompanyDomain] = useState('');
@@ -1664,7 +1663,6 @@ export function CreateDispatchPage({
         companyAffiliations.length > 0,
       'section-property-occupancy':
         companyAtPropertyTillDate != null ||
-        Boolean(propertyOccupancyFloor.trim()) ||
         Boolean(propertyOccupancySpaceId.trim()),
       'section-proposal': Boolean(proposalName.trim()) && Boolean(timeZone),
       'section-contacts':
@@ -1701,7 +1699,6 @@ export function CreateDispatchPage({
     franchiseAssociation,
     companyAffiliations,
     companyAtPropertyTillDate,
-    propertyOccupancyFloor,
     propertyOccupancySpaceId,
     proposalName,
     timeZone,
@@ -1870,7 +1867,6 @@ export function CreateDispatchPage({
     setPropertySource('');
     setCompanyAffiliations([]);
     setCompanyAtPropertyTillDate(null);
-    setPropertyOccupancyFloor('');
     setPropertyOccupancySpaceId('');
     setContactName('');
     setContactEmail('');
@@ -1960,7 +1956,6 @@ export function CreateDispatchPage({
         affiliations: [...companyAffiliations],
         companyAtPropertyTillDate: companyAtPropertyTillDate?.format('YYYY-MM-DD'),
         propertyOccupancy: {
-          floor: propertyOccupancyFloor.trim(),
           spaceType: 'Suite',
           spaceId: propertyOccupancySpaceId.trim(),
         },
@@ -3162,45 +3157,6 @@ export function CreateDispatchPage({
                           openPickerButton: { sx: { p: 0, mr: 0.25 } },
                           openPickerIcon: { sx: { color: '#86868B', fontSize: 14 } },
                         }}
-                      />
-                    </Stack>
-                  </Grid>
-                  <Grid size={thirdWidthField}>
-                    <Stack spacing={0.75} sx={{ width: '100%' }}>
-                      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-                        <Typography sx={figmaLabelSx}>Floor</Typography>
-                        <Tooltip
-                          title="The floor, suite, unit or apartment for this company. Cannot occupy the same space as another company"
-                          arrow
-                          placement="bottom"
-                          slotProps={{
-                            tooltip: {
-                              sx: {
-                                bgcolor: '#000000',
-                                color: '#FFFFFF',
-                                fontSize: 13,
-                                fontWeight: 500,
-                                lineHeight: '18px',
-                                maxWidth: 280,
-                                px: 1.5,
-                                py: 1.25,
-                                borderRadius: '8px',
-                              },
-                            },
-                            arrow: { sx: { color: '#000000' } },
-                          }}
-                        >
-                          <InfoOutlined sx={{ fontSize: 16, color: '#86868B', cursor: 'help' }} />
-                        </Tooltip>
-                      </Stack>
-                      <TextField
-                        name="propertyOccupancyFloor"
-                        size="small"
-                        fullWidth
-                        placeholder="5 or 1,3-5"
-                        value={propertyOccupancyFloor}
-                        onChange={(e) => setPropertyOccupancyFloor(e.target.value)}
-                        sx={figmaTextFieldSx}
                       />
                     </Stack>
                   </Grid>

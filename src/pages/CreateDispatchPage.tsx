@@ -681,7 +681,6 @@ export function CreateDispatchPage() {
   const [createCompanyEmployees, setCreateCompanyEmployees] = useState('');
   const [createCompanyRevenue, setCreateCompanyRevenue] = useState('');
   const [createCompanyTillDate, setCreateCompanyTillDate] = useState<Dayjs | null>(null);
-  const [createCompanyFloor, setCreateCompanyFloor] = useState('');
   const [createCompanySpaceId, setCreateCompanySpaceId] = useState('');
 
   const propertyOptionsForCompany = useMemo(() => {
@@ -1106,7 +1105,6 @@ export function CreateDispatchPage() {
     setFranchiseAssociation('');
     setCompanyAffiliations([]);
     setCreateCompanyTillDate(null);
-    setCreateCompanyFloor('');
     setCreateCompanySpaceId('');
     setContactName('');
     setContactEmail('');
@@ -1196,7 +1194,6 @@ export function CreateDispatchPage() {
         affiliations: [...companyAffiliations],
         companyAtPropertyTillDate: createCompanyTillDate?.format('YYYY-MM-DD'),
         propertyOccupancy: {
-          floor: createCompanyFloor.trim(),
           spaceType: 'Suite',
           spaceId: createCompanySpaceId.trim(),
         },
@@ -1347,7 +1344,7 @@ export function CreateDispatchPage() {
         Boolean(industryVertical) &&
         companyAffiliations.length > 0,
       'section-property-occupancy':
-        createCompanyTillDate != null || Boolean(createCompanyFloor.trim()) || Boolean(createCompanySpaceId.trim()),
+        createCompanyTillDate != null || Boolean(createCompanySpaceId.trim()),
       'section-contacts': (contactUserByRole.decision_maker ?? []).length > 0,
       'section-contract':
         contractStartDate != null &&
@@ -1379,7 +1376,6 @@ export function CreateDispatchPage() {
     industryVertical,
     companyAffiliations,
     createCompanyTillDate,
-    createCompanyFloor,
     createCompanySpaceId,
     contactUserByRole,
     contractStartDate,
@@ -2378,45 +2374,6 @@ export function CreateDispatchPage() {
                           textField: { size: 'small', fullWidth: true, sx: figmaTextFieldSx },
                           openPickerIcon: { sx: { color: '#6A6A70', fontSize: 14 } },
                         }}
-                      />
-                    </Stack>
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <Stack spacing={0.75} sx={{ width: '100%' }}>
-                      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-                        <Typography sx={figmaLabelSx}>Floor</Typography>
-                        <Tooltip
-                          title="The floor, suite, unit or apartment for this company. Cannot occupy the same space as another company"
-                          arrow
-                          placement="bottom"
-                          slotProps={{
-                            tooltip: {
-                              sx: {
-                                bgcolor: '#000000',
-                                color: '#FFFFFF',
-                                fontSize: 13,
-                                fontWeight: 500,
-                                lineHeight: '18px',
-                                maxWidth: 280,
-                                px: 1.5,
-                                py: 1.25,
-                                borderRadius: '8px',
-                              },
-                            },
-                            arrow: { sx: { color: '#000000' } },
-                          }}
-                        >
-                          <InfoOutlined sx={{ fontSize: 16, color: '#86868B', cursor: 'help' }} />
-                        </Tooltip>
-                      </Stack>
-                      <TextField
-                        name="propertyOccupancyFloor"
-                        size="small"
-                        fullWidth
-                        placeholder="5 or 1,3-5"
-                        value={createCompanyFloor}
-                        onChange={(e) => setCreateCompanyFloor(e.target.value)}
-                        sx={figmaTextFieldSx}
                       />
                     </Stack>
                   </Grid>

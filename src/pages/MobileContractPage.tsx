@@ -1001,10 +1001,8 @@ export function MobileContractPage() {
   const [affiliations, setAffiliations]           = useState<string[]>([]);
   const [addressMapModalOpen, setAddressMapModalOpen] = useState(false);
   const [companyAtPropertyTillDate, setCompanyAtPropertyTillDate] = useState('');
-  const [occupancyFloor, setOccupancyFloor] = useState('');
   const [occupancySpaceId, setOccupancySpaceId] = useState('');
   const [occupancyTillInfoOpen, setOccupancyTillInfoOpen] = useState(false);
-  const [occupancyFloorInfoOpen, setOccupancyFloorInfoOpen] = useState(false);
   const [occupancySuiteInfoOpen, setOccupancySuiteInfoOpen] = useState(false);
 
   const propertyAddressOptions = useMemo(() => {
@@ -1479,26 +1477,6 @@ export function MobileContractPage() {
                 />
                 <InfoSheet open={occupancyTillInfoOpen} onClose={() => setOccupancyTillInfoOpen(false)}>
                   <Typography sx={{ fontSize: 14, lineHeight: '20px', color: C.text }}>{OCCUPANCY_TILL_DATE_INFO}</Typography>
-                </InfoSheet>
-                <Field
-                  label="Floor"
-                  placeholder="5 or 1,3-5"
-                  value={occupancyFloor}
-                  onChange={setOccupancyFloor}
-                  labelEnd={
-                    <IconButton
-                      type="button"
-                      size="small"
-                      aria-label="About floor"
-                      onClick={() => setOccupancyFloorInfoOpen(true)}
-                      sx={{ p: 0, color: C.grey400, flexShrink: 0, '&:hover': { bgcolor: 'rgba(0,0,0,0.04)' } }}
-                    >
-                      <InfoOutlinedIcon sx={{ fontSize: 16 }} />
-                    </IconButton>
-                  }
-                />
-                <InfoSheet open={occupancyFloorInfoOpen} onClose={() => setOccupancyFloorInfoOpen(false)}>
-                  <Typography sx={{ fontSize: 14, lineHeight: '20px', color: C.text }}>{OCCUPANCY_FLOOR_SUITE_INFO}</Typography>
                 </InfoSheet>
                 <Field
                   label="Suite / Unit / Apartment"
